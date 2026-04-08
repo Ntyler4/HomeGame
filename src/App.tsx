@@ -553,6 +553,49 @@ function FeedView({ profile, myLeagues, isActive }: any) {
   );
 }
 
+// ─── WIPE STATS BUTTON ─────────────────────────────────
+function WipeStatsButton({ profile, onWiped }: any) {
+  const [confirm, setConfirm] = useState(false);
+  const [wiping, setWiping] = useState(false);
+
+  const handleWipe = async () => {
+    if (!db) return;
+    setWiping(true);
+    try {
+      // Reset all player rows for this user across every league
+      await db.from("players").update({
+        total_profit: 0, session_count: 0, wins: 0,
+        best_night: 0, streak: 0, chicken_dinners: 0, time_played_seconds: 0
+      }).ilike("name", profile.display_name);
+      // Also reset their global profile stats
+      await db.from("profiles").update({
+        global_total_profit: 0, global_sessions: 0, global_wins: 0,
+        global_time_seconds: 0, chicken_dinners: 0
+      }).eq("id", profile.id);
+      setConfirm(false);
+      onWiped();
+    } finally { setWiping(false); }
+  };
+
+  if (!confirm) return (
+    <Card style={{ marginBottom: 10, border: "1px solid rgba(224,85,85,0.15)", background: "rgba(224,85,85,0.04)" }}>
+      <div style={{ color: "#E05555", fontSize: 10, fontFamily: "'Space Mono',monospace", letterSpacing: 2, marginBottom: 6 }}>DANGER ZONE</div>
+      <div style={{ color: "#666", fontSize: 11, lineHeight: 1.6, marginBottom: 10 }}>Reset all your stats to zero across every league. Your leagues, friends, and history are not affected — only your numbers.</div>
+      <button onClick={() => setConfirm(true)} style={{ width: "100%", padding: "10px 0", background: "rgba(224,85,85,0.06)", border: "1px solid rgba(224,85,85,0.2)", borderRadius: 9, color: "#E05555", fontFamily: "'Space Mono',monospace", fontSize: 11, letterSpacing: 1.5, cursor: "pointer" }}>WIPE MY STATS</button>
+    </Card>
+  );
+
+  return (
+    <Card style={{ marginBottom: 10, border: "1px solid rgba(224,85,85,0.4)", background: "rgba(224,85,85,0.06)" }}>
+      <div style={{ color: "#E05555", fontSize: 13, textAlign: "center", lineHeight: 1.6, marginBottom: 14 }}>Are you sure? This will zero out your profit, wins, sessions, and chicken dinners everywhere. This cannot be undone.</div>
+      <div style={{ display: "flex", gap: 9 }}>
+        <button onClick={() => setConfirm(false)} style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, color: "#888", fontFamily: "'Space Mono',monospace", fontSize: 12, cursor: "pointer" }}>CANCEL</button>
+        <button onClick={handleWipe} disabled={wiping} style={{ flex: 1, padding: "11px 0", background: "rgba(224,85,85,0.2)", border: "1px solid rgba(224,85,85,0.4)", borderRadius: 9, color: "#E05555", fontFamily: "'Space Mono',monospace", fontWeight: 700, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>{wiping ? <Spinner size={14} /> : "WIPE STATS"}</button>
+      </div>
+    </Card>
+  );
+}
+
 // ─── PROFILE TAB ───────────────────────────────────────
 function ProfileTabView({ profile, myLeagues, isSelf, externalName, onFriends, onLogout, onSendFriendRequest }: any) {
   const [allStats, setAllStats] = useState<any>(null); const [loading, setLoading] = useState(true);
@@ -652,6 +695,7 @@ function ProfileTabView({ profile, myLeagues, isSelf, externalName, onFriends, o
             <div style={{ color: "#555", fontSize: 11, fontFamily: "'Space Mono',monospace", marginBottom: 5 }}>{profile.email}</div>
             <div style={{ color: "#444", fontSize: 11, lineHeight: 1.6 }}>To change your password, sign out and use "Forgot password?"</div>
           </Card>
+          <WipeStatsButton profile={profile} onWiped={() => { loadStats(); setMsg("Stats wiped."); setTimeout(() => setMsg(""), 3000); }} />
           <button onClick={onLogout} style={{ width: "100%", padding: "13px 0", background: "rgba(224,85,85,0.08)", border: "1px solid rgba(224,85,85,0.25)", borderRadius: 11, color: "#E05555", fontFamily: "'Space Mono',monospace", fontWeight: 700, fontSize: 12, letterSpacing: 2, cursor: "pointer" }}>SIGN OUT</button>
         </>}
       </>}
