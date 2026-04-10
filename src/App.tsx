@@ -807,29 +807,72 @@ export default function HomeGameApp(){
     if(autoJoinCode&&profile){setLsv('joinCreate');setActiveTab('league');}
   },[autoJoinCode,profile]);
 
+  // Track whether init has already run so onAuthStateChange doesn't double-fire
+  const initRan=useRef(false);
+
   useEffect(()=>{
     if(!db){setBootstrapping(false);return;}
-    // Timeout fallback — if session check hangs for 8s, bail to login screen
-    const timeout=setTimeout(()=>setBootstrapping(false),8000);
-    db.auth.getSession().then(async({data:{session}})=>{clearTimeout(timeout);if(session?.user){setAuthUser(session.user);setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));await init(session.user);}else setBootstrapping(false);}).catch(()=>{clearTimeout(timeout);setBootstrapping(false);});
-    const{data:{subscription}}=db.auth.onAuthStateChange(async(_,session)=>{if(session?.user){setAuthUser(session.user);setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));await init(session.user);}else{setAuthUser(null);setProfile(null);setBootstrapping(false);}});
-    return()=>subscription.unsubscribe();
+
+    // Show login screen after 4 seconds max — don't leave user staring at spinner
+    const bootTimeout=setTimeout(()=>{
+      if(bootstrapping)setBootstrapping(false);
+    },4000);
+
+    // onAuthStateChange fires reliably on both desktop and mobile
+    // including when the session loads from localStorage after a slow start
+    const{data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
+      clearTimeout(bootTimeout);
+      if(session?.user){
+        if(initRan.current)return; // prevent double init
+        initRan.current=true;
+        setAuthUser(session.user);
+        setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));
+        await init(session.user);
+      }else{
+        initRan.current=false;
+        setAuthUser(null);
+        setProfile(null);
+        setBootstrapping(false);
+      }
+    });
+
+    // Also try getSession immediately for fast path
+    db.auth.getSession().then(({data:{session}})=>{
+      if(!session?.user){clearTimeout(bootTimeout);setBootstrapping(false);}
+      // if session exists, onAuthStateChange will fire and handle it
+    }).catch(()=>{clearTimeout(bootTimeout);setBootstrapping(false);});
+
+    return()=>{subscription.unsubscribe();clearTimeout(bootTimeout);};
   },[]);
 
   const init=async(user:any)=>{
     if(!db)return;
     try{
-      const{data,error}=await db.from("profiles").select("id,display_name,email,avatar_url,opt_in_global").eq("id",user.id).single();
+      const{data,error}=await db.from("profiles")
+        .select("id,display_name,email,avatar_url,opt_in_global")
+        .eq("id",user.id).single();
+
       if(data&&!error){
+        // Existing user — go straight to app
         setProfile({...data,email:user.email});
         if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
         const leagues=await loadMyLeagues(data.display_name,user.id);
-        await requestNotifPermission();
+        requestNotifPermission(); // don't await — don't block login for this
         if(leagues)setupRealtime(leagues,data.display_name);
+      } else if(error?.code==='PGRST116'||(!data&&!error)){
+        // No profile row — genuine new user, show nickname setup
+        // (authUser is set, profile stays null → SetupProfileView renders)
+      } else {
+        // Fetch failed — sign out and show login so user can try again
+        await db.auth.signOut();
+        setAuthUser(null);
+        initRan.current=false;
       }
-      // if no profile row exists, show setup screen — this is intentional for new users
     }catch(e){
-      // on fetch error, still clear bootstrapping so user sees login, not frozen screen
+      // Network error — sign out cleanly
+      await db.auth.signOut();
+      setAuthUser(null);
+      initRan.current=false;
     }
     setBootstrapping(false);
   };
