@@ -83,7 +83,20 @@ function Badge({text,color="#C9A84C"}:any){return<span style={{background:`${col
 const inp:any={width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:10,padding:"11px 14px",color:"#fff",fontSize:14,fontFamily:"'Space Mono',monospace",outline:"none",boxSizing:"border-box"};
 function BackButton({onBack}:any){return<button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer",marginBottom:14,display:"block"}}>←</button>;}
 function SectionTitle({text}:any){return<div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginBottom:16}}>{text}</div>;}
-function LoadingScreen(){return<div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}><div style={{position:"absolute",inset:0,border:"2px solid rgba(201,168,76,0.15)",borderTopColor:"#C9A84C",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/><div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#C9A84C"}}>♠</div></div><div style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:2}}>LOADING</div></div></div>;}
+function LoadingScreen(){
+  return(
+    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <style>{`@keyframes _spin{to{transform:rotate(360deg);}}`}</style>
+      <div style={{textAlign:"center"}}>
+        <div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}>
+          <div style={{position:"absolute",inset:0,border:"2px solid rgba(201,168,76,0.15)",borderTopColor:"#C9A84C",borderRadius:"50%",animation:"_spin 0.7s linear infinite"}}/>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#C9A84C"}}>♠</div>
+        </div>
+        <div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:2}}>LOADING</div>
+      </div>
+    </div>
+  );
+}
 
 // ─── AUTH ──────────────────────────────────────────────
 function SetupView(){return<div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}><Card style={{maxWidth:420,width:"100%"}}><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,marginBottom:12}}>⚠ DATABASE NOT CONNECTED</div><div style={{color:"#aaa",fontSize:13,lineHeight:1.8}}>Add your Supabase credentials to App.tsx.</div></Card></div>;}
@@ -782,7 +795,9 @@ export default function HomeGameApp(){
 
   useEffect(()=>{
     if(!db){setBootstrapping(false);return;}
-    db.auth.getSession().then(async({data:{session}})=>{if(session?.user){setAuthUser(session.user);setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));await init(session.user);}else setBootstrapping(false);});
+    // Timeout fallback — if session check hangs for 8s, bail to login screen
+    const timeout=setTimeout(()=>setBootstrapping(false),8000);
+    db.auth.getSession().then(async({data:{session}})=>{clearTimeout(timeout);if(session?.user){setAuthUser(session.user);setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));await init(session.user);}else setBootstrapping(false);}).catch(()=>{clearTimeout(timeout);setBootstrapping(false);});
     const{data:{subscription}}=db.auth.onAuthStateChange(async(_,session)=>{if(session?.user){setAuthUser(session.user);setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));await init(session.user);}else{setAuthUser(null);setProfile(null);setBootstrapping(false);}});
     return()=>subscription.unsubscribe();
   },[]);
