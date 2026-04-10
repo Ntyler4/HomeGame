@@ -77,7 +77,9 @@ function Avatar({name,url,size=40}:{name:string;url?:string|null;size?:number}){
 }
 function Card({children,style={}}:any){return<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:16,padding:20,...style}}>{children}</div>;}
 function StatBox({label,value,accent="#C9A84C"}:any){return<div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"10px 10px",flex:1,minWidth:50}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>{label}</div><div style={{color:accent,fontSize:16,fontWeight:700,fontFamily:"'Playfair Display',serif"}}>{value}</div></div>;}
-function Spinner({size=24}:any){return<div style={{width:size,height:size,border:`2px solid rgba(201,168,76,0.15)`,borderTopColor:"#C9A84C",borderRadius:"50%",animation:"spin 0.7s linear infinite",flexShrink:0}}/>;}
+function Spinner({size=24}:any){
+  return<><style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style><div style={{width:size,height:size,border:`2px solid rgba(201,168,76,0.15)`,borderTopColor:"#C9A84C",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite",flexShrink:0}}/></>;
+}
 function Toggle({value,onChange,label,sub}:any){return<div onClick={()=>onChange(!value)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,cursor:"pointer",marginBottom:10}}><div style={{flex:1,paddingRight:12}}><div style={{color:"#fff",fontSize:13}}>{label}</div>{sub&&<div style={{color:"#555",fontSize:11,marginTop:2}}>{sub}</div>}</div><div style={{width:44,height:24,borderRadius:12,background:value?"#5577CC":"rgba(255,255,255,0.1)",position:"relative",transition:"background 0.2s",flexShrink:0}}><div style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:value?22:2,transition:"left 0.2s"}}/></div></div>;}
 function Badge({text,color="#C9A84C"}:any){return<span style={{background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1}}>{text}</span>;}
 const inp:any={width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:10,padding:"11px 14px",color:"#fff",fontSize:14,fontFamily:"'Space Mono',monospace",outline:"none",boxSizing:"border-box"};
@@ -86,10 +88,10 @@ function SectionTitle({text}:any){return<div style={{fontFamily:"'Playfair Displ
 function LoadingScreen(){
   return(
     <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <style>{`@keyframes _spin{to{transform:rotate(360deg);}}`}</style>
+      <style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style>
       <div style={{textAlign:"center"}}>
         <div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}>
-          <div style={{position:"absolute",inset:0,border:"2px solid rgba(201,168,76,0.15)",borderTopColor:"#C9A84C",borderRadius:"50%",animation:"_spin 0.7s linear infinite"}}/>
+          <div style={{position:"absolute",inset:0,border:"2px solid rgba(201,168,76,0.15)",borderTopColor:"#C9A84C",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite"}}/>
           <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#C9A84C"}}>♠</div>
         </div>
         <div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:2}}>LOADING</div>
@@ -140,7 +142,19 @@ function AuthView(){
 
 function SetupProfileView({user,onDone}:any){
   const [name,setName]=useState("");const [loading,setLoading]=useState(false);const [err,setErr]=useState("");
-  const save=async()=>{if(!db||!name.trim())return;setLoading(true);const{error}=await db.from("profiles").upsert({id:user.id,display_name:name.trim(),email:user.email,opt_in_global:false,global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0});if(error){setErr(error.message);setLoading(false);return;}onDone({id:user.id,display_name:name.trim(),email:user.email,avatar_url:null,opt_in_global:false});};
+  const save=async()=>{
+    if(!db||!name.trim())return;
+    setLoading(true);
+    try{
+      const{error}=await db.from("profiles").upsert({id:user.id,display_name:name.trim(),email:user.email,opt_in_global:false,global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0});
+      if(error){setErr(error.message);return;}
+      onDone({id:user.id,display_name:name.trim(),email:user.email,avatar_url:null,opt_in_global:false});
+    }catch(e:any){
+      setErr(e.message||"Something went wrong. Check your connection.");
+    }finally{
+      setLoading(false);
+    }
+  };
   return(
     <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
@@ -804,14 +818,18 @@ export default function HomeGameApp(){
 
   const init=async(user:any)=>{
     if(!db)return;
-    const{data}=await db.from("profiles").select("id,display_name,email,avatar_url,opt_in_global").eq("id",user.id).single();
-    if(data){
-      setProfile({...data,email:user.email});
-      if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
-      const leagues=await loadMyLeagues(data.display_name,user.id);
-      // Set up realtime notifications
-      await requestNotifPermission();
-      if(leagues)setupRealtime(leagues,data.display_name);
+    try{
+      const{data,error}=await db.from("profiles").select("id,display_name,email,avatar_url,opt_in_global").eq("id",user.id).single();
+      if(data&&!error){
+        setProfile({...data,email:user.email});
+        if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
+        const leagues=await loadMyLeagues(data.display_name,user.id);
+        await requestNotifPermission();
+        if(leagues)setupRealtime(leagues,data.display_name);
+      }
+      // if no profile row exists, show setup screen — this is intentional for new users
+    }catch(e){
+      // on fetch error, still clear bootstrapping so user sees login, not frozen screen
     }
     setBootstrapping(false);
   };
@@ -975,12 +993,12 @@ export default function HomeGameApp(){
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Space+Mono:wght@400;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        body,html{background:#0A0A0A;color:#fff;-webkit-font-smoothing:antialiased;}
+        body,html{background:#0A0A0A;color:#fff;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;}
         input[type=number]{-moz-appearance:textfield;}
         input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
         input::placeholder,textarea::placeholder{color:#333!important;}
         select{appearance:none;-webkit-appearance:none;}
-        @keyframes spin{to{transform:rotate(360deg);}}
+        @keyframes hg_spin{to{transform:rotate(360deg);}}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
       `}</style>
