@@ -321,7 +321,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   const sessionsLeft=league.season_length>0?league.season_length-sessions.length:null;
   const seasonDone=sessionsLeft!==null&&sessionsLeft<=0;
   const copyInviteLink=()=>{
-    const link=`${window.location.origin}/invite?join=${league.code}`;
+    const link=`${window.location.origin}?join=${league.code}`;
     navigator.clipboard?.writeText(link).then(()=>showToast("Invite link copied! 🔗")).catch(()=>showToast(`Share this code: ${league.code}`));
   };
   return(
@@ -340,7 +340,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         <div style={{display:"flex",gap:7,marginBottom:11}}>
           <StatBox label="Members" value={`${players.length}/${league.max_players||12}`}/>
           <StatBox label="Sessions" value={sessions.length}/>
-          <StatBox label="Buy-in" value={`$${league.buy_in}`} accent="#4CAF8C"/>
+          <StatBox label="Last Buy-in" value={sessions[0]?.buy_in_amount?`$${sessions[0].buy_in_amount}`:`$${league.buy_in}`} accent="#4CAF8C"/>
           {sessionsLeft!==null&&<StatBox label={seasonDone?"Done":"Left"} value={seasonDone?"✓":sessionsLeft} accent={seasonDone?"#E05555":"#C9A84C"}/>}
         </div>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
@@ -380,24 +380,37 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
 function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved,showToast,showError}:any){
   const [entries,setEntries]=useState<any[]>([]);const [loading,setLoading]=useState(true);
   const [editing,setEditing]=useState(false);
-  const [winnerName,setWinnerName]=useState(session.winner_name||"");
   const [chickenDinner,setChickenDinner]=useState(session.chicken_dinner_name||"");
   const [buyInAmount,setBuyInAmount]=useState(String(session.buy_in_amount||""));
   const [notes,setNotes]=useState(session.notes||"");
   const [editedProfits,setEditedProfits]=useState<Record<string,string>>({});
   const [saving,setSaving]=useState(false);
-  useEffect(()=>{
+
+  // Add missing player state
+  const [addingPlayer,setAddingPlayer]=useState(false);
+  const [newPlayerName,setNewPlayerName]=useState("");
+  const [newPlayerBuyIn,setNewPlayerBuyIn]=useState(String(session.buy_in_amount||league.buy_in||20));
+  const [newPlayerRebuys,setNewPlayerRebuys]=useState("0");
+  const [newPlayerCashOut,setNewPlayerCashOut]=useState("0");
+
+  const loadEntries=()=>{
     if(!db)return;
-    db.from("session_entries").select("*, players(id,name,total_profit,wins,best_night,session_count,chicken_dinners)").eq("session_id",session.id).then(({data})=>{
+    db.from("session_entries").select("*, players(id,name,total_profit,wins,best_night,session_count,chicken_dinners,time_played_seconds)").eq("session_id",session.id).then(({data})=>{
       const e=data||[];setEntries(e);
       const profits:Record<string,string>={};e.forEach((en:any)=>{profits[en.id]=String(en.profit||0);});
       setEditedProfits(profits);setLoading(false);
     });
-  },[session.id]);
+  };
+  useEffect(()=>{loadEntries();},[session.id]);
+
   const handleSave=async()=>{
     if(!db)return;setSaving(true);
     try{
-      await db.from("sessions").update({winner_name:winnerName,chicken_dinner_name:chickenDinner||null,buy_in_amount:Number(buyInAmount)||null,notes:notes||null}).eq("id",session.id);
+      // Winner = highest profit player among entries
+      const sorted=[...entries].map(e=>({...e,newProfit:Number(editedProfits[e.id]||0)})).sort((a,b)=>b.newProfit-a.newProfit);
+      const winnerName=sorted[0]?.players?.name||session.winner_name||"";
+      const newPot=entries.reduce((a,e)=>a+(e.buy_in||0)+(e.rebuys||0),0);
+      await db.from("sessions").update({winner_name:winnerName,chicken_dinner_name:chickenDinner||null,buy_in_amount:Number(buyInAmount)||null,notes:notes||null,pot:newPot}).eq("id",session.id);
       for(const e of entries){
         const oldProfit=e.profit||0;const newProfit=Number(editedProfits[e.id]||0);const diff=newProfit-oldProfit;
         await db.from("session_entries").update({profit:newProfit}).eq("id",e.id);
@@ -410,10 +423,49 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
         const isChicken=chickenDinner?.toLowerCase()===e.players?.name?.toLowerCase();
         if(wasChicken!==isChicken&&e.players){const delta=isChicken?1:-1;await db.from("players").update({chicken_dinners:Math.max(0,(e.players.chicken_dinners||0)+delta)}).eq("id",e.player_id);}
       }
-      showToast("Session updated!");setSaving(false);setEditing(false);onSaved();
+      showToast("Session updated!");setSaving(false);setEditing(false);onSaved();loadEntries();
     }catch(err:any){showError(err.message||"Save failed");setSaving(false);}
   };
+
+  const handleAddPlayer=async()=>{
+    if(!db||!newPlayerName.trim())return;setSaving(true);
+    try{
+      // Find or use existing player row in this league
+      const{data:playerRows}=await db.from("players").select("*").eq("league_id",league.id).ilike("name",newPlayerName.trim());
+      let playerId=playerRows?.[0]?.id;
+      if(!playerId){
+        // Create player row if they're new to the league
+        const{data:np}=await db.from("players").insert({league_id:league.id,name:newPlayerName.trim(),total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).select().single();
+        playerId=np?.id;
+      }
+      if(!playerId){showError("Couldn't find or create player.");setSaving(false);return;}
+      const bi=Number(newPlayerBuyIn)||0;
+      const rb=Number(newPlayerRebuys)||0;
+      const co=Number(newPlayerCashOut)||0;
+      const profit=co-(bi+rb);
+      // Add session entry
+      await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
+      // Update player stats
+      const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
+      await db.from("players").update({
+        total_profit:(p.total_profit||0)+profit,
+        session_count:(p.session_count||0)+1,
+        wins:(p.wins||0)+(profit>0?1:0),
+        best_night:profit>(p.best_night||0)?profit:(p.best_night||0),
+      }).eq("id",playerId);
+      // Update session pot
+      const newPot=(session.pot||0)+bi+rb;
+      await db.from("sessions").update({pot:newPot}).eq("id",session.id);
+      setNewPlayerName("");setNewPlayerBuyIn(String(session.buy_in_amount||league.buy_in||20));setNewPlayerRebuys("0");setNewPlayerCashOut("0");
+      setAddingPlayer(false);showToast(`${newPlayerName.trim()} added!`);onSaved();loadEntries();
+    }catch(err:any){showError(err.message||"Failed to add player");}
+    setSaving(false);
+  };
+
   const d=new Date(session.created_at);
+  const alreadyInSession=new Set(entries.map((e:any)=>e.players?.name?.toLowerCase()));
+  const missingPlayers=players.filter((p:any)=>!alreadyInSession.has(p.name.toLowerCase()));
+
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/>
@@ -429,6 +481,7 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
         {session.notes&&!editing&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.05)",color:"#666",fontSize:12,fontStyle:"italic"}}>"{session.notes}"</div>}
         {editing&&<div style={{marginTop:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:5,display:"block"}}>OVERRIDE BUY-IN</label><input type="number" value={buyInAmount} onChange={e=>setBuyInAmount(e.target.value)} style={{...inp,marginBottom:8}}/><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:5,display:"block"}}>SESSION NOTES</label><input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Played at Nick's — wild night" style={inp}/></div>}
       </Card>
+
       <Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>RESULTS</div>
         {loading&&<div style={{display:"flex",justifyContent:"center",padding:16}}><Spinner/></div>}
@@ -440,18 +493,54 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
             {editing?<input type="number" value={editedProfits[e.id]||""} onChange={ev=>setEditedProfits(p=>({...p,[e.id]:ev.target.value}))} style={{...inp,width:80,textAlign:"center" as const,padding:"7px 8px",fontSize:13}}/>:<div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{profit>=0?"+":""}${profit}</div>}
           </div>;
         })}
+
+        {/* Add missing player to session */}
+        {isCommissioner&&!addingPlayer&&<button onClick={()=>setAddingPlayer(true)} style={{width:"100%",marginTop:11,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD MISSING PLAYER</button>}
+        {isCommissioner&&addingPlayer&&<div style={{marginTop:11,paddingTop:11,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+          <div style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>ADD PLAYER TO THIS SESSION</div>
+          <div style={{marginBottom:8}}>
+            <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:5,display:"block"}}>PLAYER NAME</label>
+            {missingPlayers.length>0
+              ?<select value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} style={{...inp,fontSize:13,marginBottom:4}}>
+                <option value="">-- select league member --</option>
+                {missingPlayers.map((p:any)=><option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+              :null}
+            <input value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} placeholder="Or type a name manually" style={{...inp,fontSize:13,marginTop:missingPlayers.length>0?6:0}}/>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>BUY-IN ($)</label><input type="number" value={newPlayerBuyIn} onChange={e=>setNewPlayerBuyIn(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>REBUYS ($)</label><input type="number" value={newPlayerRebuys} onChange={e=>setNewPlayerRebuys(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>CASH-OUT ($)</label><input type="number" value={newPlayerCashOut} onChange={e=>setNewPlayerCashOut(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+          </div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>
+            Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"+":""}${Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))}</span>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{flex:1,padding:"9px 0",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button>
+            <button onClick={handleAddPlayer} disabled={saving||!newPlayerName.trim()} style={{flex:2,padding:"9px 0",background:newPlayerName.trim()&&!saving?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${newPlayerName.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:newPlayerName.trim()?"#5577CC":"#555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:"ADD TO SESSION →"}</button>
+          </div>
+        </div>}
       </Card>
+
+      {/* Awards — chicken dinner only, winner is auto-set to highest profit */}
       <Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>AWARDS</div>
-        <div style={{display:"flex",gap:10}}>
-          <div style={{flex:1}}><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:6}}>🏆 WINNER</div>
-            {editing?<select value={winnerName} onChange={e=>setWinnerName(e.target.value)} style={{...inp,fontSize:13}}><option value="">-- select --</option>{entries.map((en:any)=><option key={en.id} value={en.players?.name}>{en.players?.name}</option>)}</select>:<div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.winner_name||"—"}</div>}
+        <div style={{display:"flex",gap:14,alignItems:"center"}}>
+          <div style={{flex:1}}>
+            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:4}}>🏆 WINNER</div>
+            <div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.winner_name||"—"}</div>
+            {editing&&<div style={{color:"#444",fontSize:10,marginTop:3,fontFamily:"'Space Mono',monospace"}}>Auto-set to highest profit</div>}
           </div>
-          <div style={{flex:1}}><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:6}}>🍗 CHICKEN DINNER</div>
-            {editing?<select value={chickenDinner} onChange={e=>setChickenDinner(e.target.value)} style={{...inp,fontSize:13}}><option value="">-- none --</option>{entries.map((en:any)=><option key={en.id} value={en.players?.name}>{en.players?.name}</option>)}</select>:<div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>}
+          <div style={{flex:1}}>
+            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:6}}>🍗 CHICKEN DINNER</div>
+            {editing
+              ?<select value={chickenDinner} onChange={e=>setChickenDinner(e.target.value)} style={{...inp,fontSize:13}}><option value="">-- none --</option>{entries.map((en:any)=><option key={en.id} value={en.players?.name}>{en.players?.name}</option>)}</select>
+              :<div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>}
           </div>
         </div>
       </Card>
+
       {editing&&<button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"12px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{saving?<><Spinner size={14}/> SAVING...</>:"SAVE CHANGES ✓"}</button>}
     </div>
   );
@@ -944,7 +1033,8 @@ export default function HomeGameApp(){
         if(ex&&ex.length>0){showError("You're already in this league!");return;}
         await joinLeague(lg);setAutoJoinCode("");
       }else{
-        const code2=profile.display_name.toUpperCase().replace(/\s/g,"").slice(0,3)+Math.floor(1000+Math.random()*9000);
+        const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const code2=Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
         const{data:lg,error:lgErr}=await db.from("leagues").insert({name:leagueName,description:description||null,code:code2,commissioner_name:profile.display_name,commissioner_id:authUser.id,buy_in:buyIn,season,season_length:seasonLength||0,is_public:isPublic||false,location_name:locationName||null,max_players:maxPlayers||12}).select().single();
         if(lgErr)throw lgErr;
         await db.from("players").insert({league_id:lg.id,name:profile.display_name,total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0});
