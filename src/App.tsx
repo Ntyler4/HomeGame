@@ -103,8 +103,27 @@ function AuthView(){
   const [loading,setLoading]=useState(false);const [msg,setMsg]=useState("");const [err,setErr]=useState("");
   const handle=async()=>{
     if(!db)return;setLoading(true);setMsg("");setErr("");
-    if(tab==='login'){const{error}=await db.auth.signInWithPassword({email,password:pw});if(error)setErr(error.message);}
-    else if(tab==='signup'){if(pw.length<6){setErr("Password must be 6+ characters.");setLoading(false);return;}const{error}=await db.auth.signUp({email,password:pw});if(error)setErr(error.message);else setMsg("Account created! Sign in now.");}
+    if(tab==='login'){
+      const{error}=await db.auth.signInWithPassword({email,password:pw});
+      if(error){setErr(error.message);}
+      else{
+        // Tell Safari/iOS to save this password
+        if(window.PasswordCredential){
+          try{const c=new (window as any).PasswordCredential({id:email,password:pw});await navigator.credentials.store(c);}catch(_){}
+        }
+      }
+    }
+    else if(tab==='signup'){
+      if(pw.length<6){setErr("Password must be 6+ characters.");setLoading(false);return;}
+      const{error}=await db.auth.signUp({email,password:pw});
+      if(error){setErr(error.message);}
+      else{
+        setMsg("Account created! Sign in now.");
+        if(window.PasswordCredential){
+          try{const c=new (window as any).PasswordCredential({id:email,password:pw});await navigator.credentials.store(c);}catch(_){}
+        }
+      }
+    }
     else{const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error)setErr(error.message);else setMsg("Reset email sent!");}
     setLoading(false);
   };
