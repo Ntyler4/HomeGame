@@ -32,15 +32,11 @@ export function bustAvatarCache(name:string, url:string|null){ avatarCache[name.
 async function requestNotifPermission(){ if(!('Notification' in window))return false; const p=await Notification.requestPermission(); return p==='granted'; }
 function sendNotif(title:string,body:string){ if('Notification' in window&&Notification.permission==='granted')new Notification(title,{body,icon:'/favicon.ico'}); }
 
-// Keep track of active realtime channels so we can clean them up
 const realtimeChannels: any[] = [];
 function setupRealtime(leagues:any[], displayName:string){
   if(!db)return;
-  // Tear down old channels first
   realtimeChannels.forEach(ch=>db!.removeChannel(ch));
   realtimeChannels.length=0;
-
-  // Live session alerts per league
   leagues.forEach(lg=>{
     const ch=db!.channel(`live-${lg.id}`)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'sessions',filter:`league_id=eq.${lg.id}`},(payload:any)=>{
@@ -48,8 +44,6 @@ function setupRealtime(leagues:any[], displayName:string){
       }).subscribe();
     realtimeChannels.push(ch);
   });
-
-  // Friend request alerts
   const fc=db!.channel(`friends-${displayName.toLowerCase()}`)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'friends',filter:`recipient_name=eq.${displayName}`},(payload:any)=>{
       sendNotif('New Friend Request',`${payload.new?.requester_name} wants to be friends!`);
@@ -307,12 +301,10 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   };
   const sessionsLeft=league.season_length>0?league.season_length-sessions.length:null;
   const seasonDone=sessionsLeft!==null&&sessionsLeft<=0;
-
   const copyInviteLink=()=>{
     const link=`${window.location.origin}?join=${league.code}`;
     navigator.clipboard?.writeText(link).then(()=>showToast("Invite link copied! 🔗")).catch(()=>showToast(`Share this code: ${league.code}`));
   };
-
   return(
     <div style={{maxWidth:500,margin:"0 auto"}}>
       <div style={{background:"linear-gradient(180deg,rgba(20,40,20,0.95) 0%,rgba(10,10,10,0) 100%)",padding:"18px 16px 0"}}>
@@ -337,14 +329,12 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           <span style={{color:"#C9A84C",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:"rgba(201,168,76,0.1)",padding:"2px 9px",borderRadius:6}}>{league.code}</span>
           {league.is_public&&<Badge text="PUBLIC 🌍" color="#5577CC"/>}
           {league.location_name&&<span style={{color:"#555",fontSize:10}}>📍{league.location_name}</span>}
-          {/* INVITE LINK button */}
           <button onClick={copyInviteLink} style={{padding:"2px 10px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>🔗 INVITE</button>
         </div>
       </div>
       <div style={{padding:"0 16px 20px"}}>
         {liveSession&&<div onClick={onStartSession} style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,padding:"13px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}><div style={{width:9,height:9,borderRadius:"50%",background:"#4CAF8C",animation:"pulse 1.5s infinite",flexShrink:0}}/><div style={{flex:1}}><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:2}}>● GAME IS LIVE</div><div style={{color:"#888",fontSize:11,marginTop:1}}>Tap to enter your stats</div></div><span style={{color:"#4CAF8C",fontSize:20}}>›</span></div>}
         {!liveSession&&<button onClick={onStartSession} style={{width:"100%",padding:"12px 0",marginBottom:12,background:"linear-gradient(135deg,#1a4a2a,#2a6a3a)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}><span style={{fontSize:17}}>♠</span> START TONIGHT'S SESSION</button>}
-        {/* Search + sort */}
         <div style={{display:"flex",gap:7,marginBottom:9,alignItems:"center"}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players..." style={{...inp,flex:1,padding:"7px 11px",fontSize:12}}/>
         </div>
@@ -377,7 +367,6 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
   const [notes,setNotes]=useState(session.notes||"");
   const [editedProfits,setEditedProfits]=useState<Record<string,string>>({});
   const [saving,setSaving]=useState(false);
-
   useEffect(()=>{
     if(!db)return;
     db.from("session_entries").select("*, players(id,name,total_profit,wins,best_night,session_count,chicken_dinners)").eq("session_id",session.id).then(({data})=>{
@@ -386,7 +375,6 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
       setEditedProfits(profits);setLoading(false);
     });
   },[session.id]);
-
   const handleSave=async()=>{
     if(!db)return;setSaving(true);
     try{
@@ -406,7 +394,6 @@ function SessionDetailView({session,league,players,isCommissioner,onBack,onSaved
       showToast("Session updated!");setSaving(false);setEditing(false);onSaved();
     }catch(err:any){showError(err.message||"Save failed");setSaving(false);}
   };
-
   const d=new Date(session.created_at);
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
@@ -474,19 +461,14 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
   const myPlayer=players.find((p:any)=>p.name.toLowerCase()===profile.display_name.toLowerCase());
   const myEntry=liveEntries.find((e:any)=>e.player_name.toLowerCase()===profile.display_name.toLowerCase());
   const inSession=!!myEntry;
-
   useEffect(()=>{if(session?.started_at){const t=setInterval(()=>setElapsed(Math.floor((Date.now()-new Date(session.started_at).getTime())/1000)),1000);return()=>clearInterval(t);}},[session]);
   useEffect(()=>{if(myEntry){setMyBuyIn(myEntry.buy_in||0);setMyRebuys(myEntry.rebuys||0);setMyCashOut(myEntry.cash_out||0);}else{setMyBuyIn(session.buy_in_amount||league.buy_in||20);}},[myEntry]);
-
   const fmt=(s:number)=>`${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
   const totalPot=liveEntries.reduce((a:number,e:any)=>a+(e.buy_in||0)+(e.rebuys||0),0);
   const handleSubmit=async()=>{if(!myPlayer)return;setSaving(true);await onSubmitEntry({player_id:myPlayer.id,player_name:profile.display_name,buy_in:myBuyIn,rebuys:myRebuys,cash_out:myCashOut});setSaving(false);};
   const handleEnd=async()=>{setSaving(true);const entries=liveEntries.map((e:any)=>({player_id:e.player_id,player_name:e.player_name,buy_in:e.buy_in||0,rebuys:e.rebuys||0,cash_out:isCommissioner?(cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||0)):(e.cash_out||0),profit:(isCommissioner?(cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||0)):(e.cash_out||0))-((e.buy_in||0)+(e.rebuys||0))}));await onEndSession({entries,elapsed,chickenDinner});setSaving(false);};
-
-  // Non-selected players in the league can join mid-game
   const notInSession=players.filter((p:any)=>!liveEntries.some((e:any)=>e.player_id===p.id));
   const ni:any={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:8,padding:"7px 9px",color:"#fff",fontSize:13,fontFamily:"'Space Mono',monospace",outline:"none",textAlign:"center",boxSizing:"border-box"};
-
   return(
     <div style={{padding:"16px 16px",maxWidth:500,margin:"0 auto"}}>
       <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:12}}><button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>←</button><div style={{flex:1}}><div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>● GAME IS LIVE</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,color:"#fff"}}>{league.name}</div></div></div>
@@ -494,8 +476,6 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
         <div style={{flex:1,background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>TIME</div><div style={{color:"#4CAF8C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>{fmt(elapsed)}</div></div>
         <div style={{flex:1,background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>POT</div><div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>${totalPot}</div></div>
       </div>
-
-      {/* Your stats — always shown if you're in the league */}
       {myPlayer&&<Card style={{marginBottom:12,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.04)"}}>
         <div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>YOUR STATS {inSession&&<span style={{color:"#4CAF8C",fontSize:9}}>✓ submitted</span>}</div>
         <div style={{display:"flex",gap:9,marginBottom:11}}>
@@ -506,11 +486,9 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
         <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-(myBuyIn+myRebuys)>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{myCashOut-(myBuyIn+myRebuys)>=0?"+":""}${myCashOut-(myBuyIn+myRebuys)}</span></div>
         <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
       </Card>}
-
       <Card style={{marginBottom:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
           <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>IN SESSION ({liveEntries.length})</div>
-          {/* Commissioner can add players mid-game */}
           {isCommissioner&&notInSession.length>0&&<button onClick={()=>setAddingPlayer(!addingPlayer)} style={{padding:"3px 9px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>+ ADD PLAYER</button>}
         </div>
         {addingPlayer&&isCommissioner&&<div style={{marginBottom:11,paddingBottom:11,borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
@@ -522,7 +500,6 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
         {liveEntries.length===0&&<div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",textAlign:"center",padding:"10px 0"}}>Waiting for players...</div>}
         {liveEntries.map((e:any,i:number)=>{const total=(e.buy_in||0)+(e.rebuys||0);const isMe=e.player_name.toLowerCase()===profile.display_name.toLowerCase();return<div key={e.id||i} style={{display:"flex",alignItems:"center",gap:9,padding:"7px 0",borderBottom:i<liveEntries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={e.player_name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}{isMe&&<span style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace"}}> (you)</span>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: ${e.rebuys||0} · out: ${e.cash_out||0}</div></div><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>${total}</div></div>;})}
       </Card>
-
       {isCommissioner&&<>{!showCashout&&<button onClick={()=>setShowCashout(true)} style={{width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#5a0000,#8B1A1A)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>END GAME & FINALIZE →</button>}{showCashout&&<Card>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>VERIFY / OVERRIDE CASH-OUTS</div>
         {liveEntries.map((e:any)=><div key={e.player_id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={e.player_name} size={26}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>submitted: ${e.cash_out||0}</div></div><input type="number" value={cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||"")} onChange={ev=>setCashOuts((c:any)=>({...c,[e.player_id]:Number(ev.target.value)}))} style={{...ni,width:"72px"}}/></div>)}
@@ -538,19 +515,13 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
 function NewSessionView({league,players,sessions,onStart,onBack}:any){
   const [sessionBuyIn,setSessionBuyIn]=useState(league.buy_in);const [selectedIds,setSelectedIds]=useState<string[]>([]);const [loading,setLoading]=useState(false);
   const [sessionNotes,setSessionNotes]=useState("");
-
-  // Rematch: pre-select last session's players
   const lastSession=sessions?.[0];
   const [lastPlayerIds,setLastPlayerIds]=useState<string[]>([]);
   useEffect(()=>{
     if(!db||!lastSession)return;
     db.from("session_entries").select("player_id").eq("session_id",lastSession.id).then(({data})=>{setLastPlayerIds((data||[]).map((e:any)=>e.player_id));});
   },[lastSession?.id]);
-
-  const handleRematch=()=>{
-    if(lastPlayerIds.length>0){setSelectedIds(lastPlayerIds);if(lastSession.buy_in_amount)setSessionBuyIn(lastSession.buy_in_amount);}
-  };
-
+  const handleRematch=()=>{if(lastPlayerIds.length>0){setSelectedIds(lastPlayerIds);if(lastSession.buy_in_amount)setSessionBuyIn(lastSession.buy_in_amount);}};
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Tonight's Setup"/>
@@ -588,7 +559,31 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
   const [buyIn,setBuyIn]=useState(String(league.buy_in));const [season,setSeason]=useState(league.season);const [seasonLength,setSeasonLength]=useState(String(league.season_length||0));const [description,setDescription]=useState(league.description||"");const [isPublic,setIsPublic]=useState(league.is_public||false);const [locationName,setLocationName]=useState(league.location_name||"");const [maxPlayers,setMaxPlayers]=useState(league.max_players||12);const [saving,setSaving]=useState(false);const [confirmDelete,setConfirmDelete]=useState(false);
   const save=async()=>{if(!db)return;setSaving(true);const{data,error}=await db.from("leagues").update({buy_in:Number(buyIn),season,season_length:Number(seasonLength),description,is_public:isPublic,location_name:locationName||null,max_players:maxPlayers}).eq("id",league.id).select().single();if(error)showError(error.message);else{showToast("Settings saved!");onLeagueUpdated(data);}setSaving(false);};
   const kick=async(id:string,name:string)=>{if(!db||!window.confirm(`Kick ${name}?`))return;await db.from("players").delete().eq("id",id);await db.from("live_entries").delete().eq("player_id",id);showToast(`${name} removed.`);onLeagueUpdated(league);};
-  const del=async()=>{if(!db)return;await db.from("leagues").delete().eq("id",league.id);showToast("League deleted.");onLeagueDeleted();};
+
+  // FIX: archive each player's stats into their profile before deleting the league
+  const del=async()=>{
+    if(!db)return;
+    const{data:playerRows}=await db.from("players").select("*").eq("league_id",league.id);
+    if(playerRows&&playerRows.length>0){
+      for(const p of playerRows){
+        const{data:prof}=await db.from("profiles").select("*").ilike("display_name",p.name).single();
+        if(prof){
+          await db.from("profiles").update({
+            archived_profit:(prof.archived_profit||0)+(p.total_profit||0),
+            archived_sessions:(prof.archived_sessions||0)+(p.session_count||0),
+            archived_wins:(prof.archived_wins||0)+(p.wins||0),
+            archived_best_night:Math.max(prof.archived_best_night||0,p.best_night||0),
+            archived_time_seconds:(prof.archived_time_seconds||0)+(p.time_played_seconds||0),
+            archived_chicken_dinners:(prof.archived_chicken_dinners||0)+(p.chicken_dinners||0),
+          }).eq("id",prof.id);
+        }
+      }
+    }
+    await db.from("leagues").delete().eq("id",league.id);
+    showToast("League deleted. Stats preserved.");
+    onLeagueDeleted();
+  };
+
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text={`👑 Manage ${league.name}`}/>
@@ -601,7 +596,7 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
       </Card>
       <Card style={{marginBottom:11}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PLAYERS ({players.length}/{maxPlayers})</div>{players.map((p:any,i:number)=>{const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();return<div key={p.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={p.name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",display:"flex",alignItems:"center",gap:4,fontSize:13}}>{p.name} {isComm&&<span>👑</span>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count} sessions</div></div>{!isComm&&<button onClick={()=>kick(p.id,p.name)} style={{padding:"3px 9px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>KICK</button>}</div>;})}
       </Card>
-      <Card><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>DANGER ZONE</div>{!confirmDelete?<button onClick={()=>setConfirmDelete(true)} style={{width:"100%",padding:"11px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>DELETE THIS LEAGUE</button>:<div><div style={{color:"#E05555",fontSize:12,marginBottom:11,textAlign:"center",lineHeight:1.6}}>Permanently delete all data? Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:"10px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button><button onClick={del} style={{flex:1,padding:"10px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer"}}>DELETE</button></div></div>}</Card>
+      <Card><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>DANGER ZONE</div>{!confirmDelete?<button onClick={()=>setConfirmDelete(true)} style={{width:"100%",padding:"11px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>DELETE THIS LEAGUE</button>:<div><div style={{color:"#E05555",fontSize:12,marginBottom:11,textAlign:"center",lineHeight:1.6}}>Permanently delete all data? Career stats will be preserved. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:"10px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button><button onClick={del} style={{flex:1,padding:"10px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer"}}>DELETE</button></div></div>}</Card>
     </div>
   );
 }
@@ -658,7 +653,7 @@ function WipeStatsButton({profile,onWiped}:any){
     if(!db)return;setWiping(true);
     try{
       await db.from("players").update({total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).ilike("name",profile.display_name);
-      await db.from("profiles").update({global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0}).eq("id",profile.id);
+      await db.from("profiles").update({global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0,archived_profit:0,archived_sessions:0,archived_wins:0,archived_best_night:0,archived_time_seconds:0,archived_chicken_dinners:0}).eq("id",profile.id);
       setConfirm(false);onWiped();
     }finally{setWiping(false);}
   };
@@ -675,15 +670,33 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
   const fileRef=useRef<HTMLInputElement>(null);
   const displayName=isSelf?profile.display_name:(externalName||profile.display_name);
   useEffect(()=>{loadStats();},[displayName]);
+
   const loadStats=async()=>{
     if(!db||!displayName)return;setLoading(true);
-    const[{data:rows},{data:fd}]=await Promise.all([db.from("players").select("total_profit,session_count,wins,best_night,time_played_seconds,chicken_dinners").ilike("name",displayName),db.from("friends").select("id").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted")]);
+    const[{data:rows},{data:fd}]=await Promise.all([
+      db.from("players").select("total_profit,session_count,wins,best_night,time_played_seconds,chicken_dinners").ilike("name",displayName),
+      db.from("friends").select("id").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted")
+    ]);
     setFriendCount((fd||[]).length);
-    if(!rows||rows.length===0){setAllStats({total_profit:0,sessions:0,wins:0,best_night:0,leagues:0,time_seconds:0,chicken_dinners:0,avg:0,losses:0});setLoading(false);return;}
-    const tp=rows.reduce((a:number,p:any)=>a+(p.total_profit||0),0);const s=rows.reduce((a:number,p:any)=>a+(p.session_count||0),0);const w=rows.reduce((a:number,p:any)=>a+(p.wins||0),0);
-    setAllStats({total_profit:tp,sessions:s,wins:w,losses:s-w,best_night:Math.max(0,...rows.map((p:any)=>p.best_night||0)),leagues:rows.length,time_seconds:rows.reduce((a:number,p:any)=>a+(p.time_played_seconds||0),0),chicken_dinners:rows.reduce((a:number,p:any)=>a+(p.chicken_dinners||0),0),avg:s>0?tp/s:0});
+
+    // FIX: fetch archived stats (from deleted leagues) and add to totals
+    const{data:profData}=await db.from("profiles")
+      .select("archived_profit,archived_sessions,archived_wins,archived_best_night,archived_time_seconds,archived_chicken_dinners")
+      .ilike("display_name",displayName).single();
+    const arch=profData||{};
+
+    const liveRows=rows||[];
+    const tp=liveRows.reduce((a:number,p:any)=>a+(p.total_profit||0),0)+(arch.archived_profit||0);
+    const s=liveRows.reduce((a:number,p:any)=>a+(p.session_count||0),0)+(arch.archived_sessions||0);
+    const w=liveRows.reduce((a:number,p:any)=>a+(p.wins||0),0)+(arch.archived_wins||0);
+    const best=Math.max(arch.archived_best_night||0,...liveRows.map((p:any)=>p.best_night||0));
+    const time=liveRows.reduce((a:number,p:any)=>a+(p.time_played_seconds||0),0)+(arch.archived_time_seconds||0);
+    const cd=liveRows.reduce((a:number,p:any)=>a+(p.chicken_dinners||0),0)+(arch.archived_chicken_dinners||0);
+
+    setAllStats({total_profit:tp,sessions:s,wins:w,losses:s-w,best_night:best,leagues:liveRows.length,time_seconds:time,chicken_dinners:cd,avg:s>0?tp/s:0});
     setLoading(false);
   };
+
   const handleSaveName=async()=>{if(!db||!newName.trim()||newName.trim()===profile.display_name)return;setSavingName(true);const{error}=await db.from("profiles").update({display_name:newName.trim()}).eq("id",profile.id);if(!error){bustAvatarCache(profile.display_name,profile.avatar_url);bustAvatarCache(newName.trim(),profile.avatar_url);profile.display_name=newName.trim();setMsg("Name updated!");setTimeout(()=>setMsg(""),3000);}setSavingName(false);};
   const handleAvatar=async(e:any)=>{const f=e.target.files?.[0];if(!f||!db)return;setUploadingAvatar(true);try{const ext=f.name.split('.').pop();const path=`${profile.id}/avatar.${ext}`;await db.storage.from("avatars").upload(path,f,{upsert:true});const{data:ud}=db.storage.from("avatars").getPublicUrl(path);const url=ud.publicUrl+"?t="+Date.now();await db.from("profiles").update({avatar_url:url}).eq("id",profile.id);bustAvatarCache(profile.display_name,url);profile.avatar_url=url;setMsg("Photo updated!");setTimeout(()=>setMsg(""),3000);}finally{setUploadingAvatar(false);}};
   const isUp=(allStats?.total_profit||0)>=0;
@@ -795,84 +808,63 @@ export default function HomeGameApp(){
   const showError=(m:string)=>{setError(m);setTimeout(()=>setError(""),4000);};
   const isComm=currentLeague?(authUser?.id===currentLeague.commissioner_id||profile?.display_name?.toLowerCase()===currentLeague.commissioner_name?.toLowerCase()):false;
 
-  // Check URL for ?join=CODE invite link
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     const joinCode=params.get('join');
     if(joinCode){setAutoJoinCode(joinCode.toUpperCase());window.history.replaceState({},'',window.location.pathname);}
   },[]);
 
-  // Auto-navigate to join when we have a code and user is loaded
   useEffect(()=>{
     if(autoJoinCode&&profile){setLsv('joinCreate');setActiveTab('league');}
   },[autoJoinCode,profile]);
 
-  // Track whether init has already run so onAuthStateChange doesn't double-fire
   const initRan=useRef(false);
 
   useEffect(()=>{
     if(!db){setBootstrapping(false);return;}
-
-    // Show login screen after 4 seconds max — don't leave user staring at spinner
-    const bootTimeout=setTimeout(()=>{
-      if(bootstrapping)setBootstrapping(false);
-    },4000);
-
-    // onAuthStateChange fires reliably on both desktop and mobile
-    // including when the session loads from localStorage after a slow start
+    const safetyTimer=setTimeout(()=>setBootstrapping(false),4000);
     const{data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
-      clearTimeout(bootTimeout);
       if(session?.user){
-        if(initRan.current)return; // prevent double init
+        if(initRan.current)return;
         initRan.current=true;
         setAuthUser(session.user);
         setPinnedIds(JSON.parse(localStorage.getItem(`hg_pinned_${session.user.id}`)||'[]'));
         await init(session.user);
+        clearTimeout(safetyTimer);
       }else{
         initRan.current=false;
+        clearTimeout(safetyTimer);
         setAuthUser(null);
         setProfile(null);
         setBootstrapping(false);
       }
     });
-
-    // Also try getSession immediately for fast path
     db.auth.getSession().then(({data:{session}})=>{
-      if(!session?.user){clearTimeout(bootTimeout);setBootstrapping(false);}
-      // if session exists, onAuthStateChange will fire and handle it
-    }).catch(()=>{clearTimeout(bootTimeout);setBootstrapping(false);});
-
-    return()=>{subscription.unsubscribe();clearTimeout(bootTimeout);};
+      if(!session?.user){clearTimeout(safetyTimer);setBootstrapping(false);}
+    }).catch(()=>{clearTimeout(safetyTimer);setBootstrapping(false);});
+    return()=>{subscription.unsubscribe();clearTimeout(safetyTimer);};
   },[]);
 
   const init=async(user:any)=>{
     if(!db)return;
     try{
-      const{data,error}=await db.from("profiles")
-        .select("id,display_name,email,avatar_url,opt_in_global")
-        .eq("id",user.id).single();
-
+      const fetchProfile=db.from("profiles").select("id,display_name,email,avatar_url,opt_in_global").eq("id",user.id).single();
+      const deadline=new Promise<any>((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
+      const{data,error}=await Promise.race([fetchProfile,deadline]);
       if(data&&!error){
-        // Existing user — go straight to app
         setProfile({...data,email:user.email});
         if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
         const leagues=await loadMyLeagues(data.display_name,user.id);
-        requestNotifPermission(); // don't await — don't block login for this
+        requestNotifPermission();
         if(leagues)setupRealtime(leagues,data.display_name);
-      } else if(error?.code==='PGRST116'||(!data&&!error)){
-        // No profile row — genuine new user, show nickname setup
-        // (authUser is set, profile stays null → SetupProfileView renders)
-      } else {
-        // Fetch failed — sign out and show login so user can try again
-        await db.auth.signOut();
-        setAuthUser(null);
-        initRan.current=false;
+      }else if(error?.code==='PGRST116'){
+        // new user — show nickname setup
+      }else{
+        await db.auth.signOut();setAuthUser(null);initRan.current=false;
       }
-    }catch(e){
-      // Network error — sign out cleanly
-      await db.auth.signOut();
-      setAuthUser(null);
-      initRan.current=false;
+    }catch(e:any){
+      try{await db.auth.signOut();}catch(_){}
+      setAuthUser(null);initRan.current=false;
     }
     setBootstrapping(false);
   };
@@ -897,7 +889,6 @@ export default function HomeGameApp(){
     else{setLiveSession(null);setLiveEntries([]);}
   };
 
-  // Poll live session + banner on both views
   useEffect(()=>{
     if(!currentLeague||!['leagueDetail','liveSession'].includes(lsv))return;
     const t=setInterval(async()=>{
