@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Join my Home Game league 🃏</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="You're invited to a Home Game league 🃏" />
+    <meta property="og:description" content="Join the poker league and track your wins, losses, and standings. Tap to join!" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="You're invited to a Home Game league 🃏" />
+    <meta name="twitter:description" content="Join the poker league and track your wins, losses, and standings. Tap to join!" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+  </head>
+  <body style="background:#0A0A0A;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif;">
+    <div style="text-align:center;color:#C9A84C;">
+      <div style="font-size:48px;margin-bottom:12px">♠</div>
+      <div style="font-size:22px;font-weight:700;margin-bottom:8px;color:#fff">You're invited!</div>
+      <div style="font-size:14px;color:#888">Redirecting to Home Game...</div>
+    </div>
+    <script>
+      // Grab the join code from the URL and redirect into the app
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('join');
+      if (code) {
+        window.location.replace('/?join=' + encodeURIComponent(code));
+      } else {
+        window.location.replace('/');
+      }
+    </script>
+  </body>
+</html>

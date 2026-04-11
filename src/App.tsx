@@ -321,7 +321,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   const sessionsLeft=league.season_length>0?league.season_length-sessions.length:null;
   const seasonDone=sessionsLeft!==null&&sessionsLeft<=0;
   const copyInviteLink=()=>{
-    const link=`${window.location.origin}?join=${league.code}`;
+    const link=`${window.location.origin}/invite?join=${league.code}`;
     navigator.clipboard?.writeText(link).then(()=>showToast("Invite link copied! 🔗")).catch(()=>showToast(`Share this code: ${league.code}`));
   };
   return(
