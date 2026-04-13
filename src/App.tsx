@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+​import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
@@ -380,7 +380,6 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   const [sessionPosts,setSessionPosts]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
   const [editing,setEditing]=useState(false);
-  const [chickenDinner,setChickenDinner]=useState(session.chicken_dinner_name||"");
   const [buyInAmount,setBuyInAmount]=useState(String(session.buy_in_amount||""));
   const [editedPot,setEditedPot]=useState(String(session.pot||""));
   const [notes,setNotes]=useState(session.notes||"");
@@ -417,9 +416,10 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   };
   useEffect(()=>{loadEntries();},[session.id]);
 
+  // Profit = cash_out - buy_in only. Rebuys is a count/tracking stat only.
   const getProfit=(id:string)=>{
     const e=editedEntries[id];if(!e)return 0;
-    return Number(e.cash_out||0)-(Number(e.buy_in||0)+Number(e.rebuys||0));
+    return Number(e.cash_out||0)-Number(e.buy_in||0);
   };
 
   const balance=entries.reduce((a,e)=>{
@@ -430,16 +430,17 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   const handleSave=async()=>{
     if(!db)return;setSaving(true);
     try{
-      // Compute new profits and winner
+      // Auto: winner + chicken dinner = highest profit player
       const newProfits:Record<string,number>={};
       entries.forEach(e=>{newProfits[e.id]=getProfit(e.id);});
-      const top=[...entries].sort((a,b)=>(newProfits[b.id]||0)-(newProfits[a.id]||0))[0];
-      const winnerName=top?.players?.name||session.winner_name||"";
-      const newPot=Number(editedPot)||entries.reduce((a,e)=>a+(Number(editedEntries[e.id]?.buy_in||0))+(Number(editedEntries[e.id]?.rebuys||0)),0);
+      const sorted=[...entries].sort((a,b)=>(newProfits[b.id]||0)-(newProfits[a.id]||0));
+      const topPlayer=sorted[0]?.players?.name||session.winner_name||"";
+      // Pot = sum of buy-ins only
+      const newPot=Number(editedPot)||entries.reduce((a,e)=>a+Number(editedEntries[e.id]?.buy_in||0),0);
 
       await db.from("sessions").update({
-        winner_name:winnerName,
-        chicken_dinner_name:chickenDinner||null,
+        winner_name:topPlayer,
+        chicken_dinner_name:topPlayer||null,
         buy_in_amount:Number(buyInAmount)||null,
         notes:notes||null,
         pot:newPot,
@@ -460,8 +461,9 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           let newBest=p.best_night||0;if(newProfit>newBest)newBest=newProfit;
           await db.from("players").update({total_profit:(p.total_profit||0)+diff,wins:Math.max(0,(p.wins||0)+winDiff),best_night:newBest}).eq("id",e.player_id);
         }
+        // Auto-update chicken dinners based on new top player
         const wasChicken=session.chicken_dinner_name?.toLowerCase()===e.players?.name?.toLowerCase();
-        const isChicken=chickenDinner?.toLowerCase()===e.players?.name?.toLowerCase();
+        const isChicken=topPlayer.toLowerCase()===e.players?.name?.toLowerCase();
         if(wasChicken!==isChicken&&e.players){const delta=isChicken?1:-1;await db.from("players").update({chicken_dinners:Math.max(0,(e.players.chicken_dinners||0)+delta)}).eq("id",e.player_id);}
       }
       showToast("Session updated!");setSaving(false);setEditing(false);onSaved();loadEntries();
@@ -479,16 +481,46 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       }
       if(!playerId){showError("Couldn't find or create player.");setSaving(false);return;}
       const bi=Number(newPlayerBuyIn)||0;const rb=Number(newPlayerRebuys)||0;const co=Number(newPlayerCashOut)||0;
-      const profit=co-(bi+rb);
+      // Profit = cash_out - buy_in only
+      const profit=co-bi;
       await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
       const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
       await db.from("players").update({total_profit:(p.total_profit||0)+profit,session_count:(p.session_count||0)+1,wins:(p.wins||0)+(profit>0?1:0),best_night:profit>(p.best_night||0)?profit:(p.best_night||0)}).eq("id",playerId);
-      const newPot=(session.pot||0)+bi+rb;
+      // Pot = buy-ins only
+      const newPot=(session.pot||0)+bi;
       await db.from("sessions").update({pot:newPot}).eq("id",session.id);
       setEditedPot(String(newPot));
       setNewPlayerName("");setNewPlayerBuyIn(String(session.buy_in_amount||league.buy_in||20));setNewPlayerRebuys("0");setNewPlayerCashOut("0");
       setAddingPlayer(false);showToast(`${newPlayerName.trim()} added!`);onSaved();loadEntries();
     }catch(err:any){showError(err.message||"Failed to add player");}
+    setSaving(false);
+  };
+
+  const handleRemovePlayer=async(entry:any)=>{
+    if(!db)return;
+    const name=entry.players?.name||"this player";
+    if(!window.confirm(`Remove ${name} from this session?`))return;
+    setSaving(true);
+    try{
+      const profit=entry.profit||0;
+      if(entry.players){
+        const p=entry.players;
+        const wasWin=profit>0?1:0;
+        await db.from("players").update({
+          total_profit:(p.total_profit||0)-profit,
+          session_count:Math.max(0,(p.session_count||0)-1),
+          wins:Math.max(0,(p.wins||0)-wasWin),
+        }).eq("id",entry.player_id);
+        if(session.chicken_dinner_name?.toLowerCase()===p.name.toLowerCase()){
+          await db.from("sessions").update({chicken_dinner_name:null,winner_name:null}).eq("id",session.id);
+          await db.from("players").update({chicken_dinners:Math.max(0,(p.chicken_dinners||0)-1)}).eq("id",entry.player_id);
+        }
+      }
+      await db.from("session_entries").delete().eq("id",entry.id);
+      const newPot=Math.max(0,(session.pot||0)-(entry.buy_in||0));
+      await db.from("sessions").update({pot:newPot}).eq("id",session.id);
+      showToast(`${name} removed from session.`);onSaved();loadEntries();
+    }catch(err:any){showError(err.message||"Failed to remove");}
     setSaving(false);
   };
 
@@ -560,15 +592,17 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           return<div key={e.id} style={{padding:"9px 0",borderBottom:i<entries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:editing?7:0}}>
               <Avatar name={name} size={34}/>
-              <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{name}</div>
-                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${(e.buy_in||0)+(e.rebuys||0)} · out: ${e.cash_out||0}</div>}
+              <div style={{flex:1}}>
+                <div style={{color:"#fff",fontSize:13}}>{name}</div>
+                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
               </div>
               <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{profit>=0?"+":""}${profit}</div>
+              {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
             </div>
             {editing&&<div style={{display:"flex",gap:6,marginLeft:44}}>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>BUY-IN</div><input type="number" value={ee.buy_in} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,buy_in:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>REBUYS</div><input type="number" value={ee.rebuys} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,rebuys:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>CASH-OUT</div><input type="number" value={ee.cash_out} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,cash_out:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>BUY-IN ($)</div><input type="number" value={ee.buy_in} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,buy_in:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>REBUYS (#)</div><input type="number" value={ee.rebuys} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,rebuys:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>CASH-OUT ($)</div><input type="number" value={ee.cash_out} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,cash_out:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
             </div>}
           </div>;
         })}
@@ -603,22 +637,11 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         </div>}
       </Card>
 
-      {/* Awards — chicken dinner only */}
+      {/* Awards — chicken dinner only, auto-assigned to highest profit */}
       <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>AWARDS</div>
-        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
-          <div style={{flex:1}}>
-            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:4}}>🏆 WINNER</div>
-            <div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.winner_name||"—"}</div>
-            {editing&&<div style={{color:"#444",fontSize:9,marginTop:3,fontFamily:"'Space Mono',monospace"}}>Auto: highest profit</div>}
-          </div>
-          <div style={{flex:1}}>
-            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:6}}>🍗 CHICKEN DINNER</div>
-            {editing&&canEdit
-              ?<select value={chickenDinner} onChange={e=>setChickenDinner(e.target.value)} style={{...inp,fontSize:13}}><option value="">-- none --</option>{entries.map((en:any)=><option key={en.id} value={en.players?.name}>{en.players?.name}</option>)}</select>
-              :<div style={{color:"#fff",fontSize:14,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>}
-          </div>
-        </div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>🍗 CHICKEN DINNER</div>
+        <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>
+        {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'Space Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
       </Card>
 
       {editing&&canEdit&&<button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"12px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>{saving?<><Spinner size={14}/> SAVING...</>:"SAVE CHANGES ✓"}</button>}
@@ -662,9 +685,27 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
   useEffect(()=>{if(session?.started_at){const t=setInterval(()=>setElapsed(Math.floor((Date.now()-new Date(session.started_at).getTime())/1000)),1000);return()=>clearInterval(t);}},[session]);
   useEffect(()=>{if(myEntry){setMyBuyIn(myEntry.buy_in||0);setMyRebuys(myEntry.rebuys||0);setMyCashOut(myEntry.cash_out||0);}else{setMyBuyIn(session.buy_in_amount||league.buy_in||20);}},[myEntry]);
   const fmt=(s:number)=>`${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-  const totalPot=liveEntries.reduce((a:number,e:any)=>a+(e.buy_in||0)+(e.rebuys||0),0);
+  const totalPot=liveEntries.reduce((a:number,e:any)=>a+(e.buy_in||0),0);
   const handleSubmit=async()=>{if(!myPlayer)return;setSaving(true);await onSubmitEntry({player_id:myPlayer.id,player_name:profile.display_name,buy_in:myBuyIn,rebuys:myRebuys,cash_out:myCashOut});setSaving(false);};
-  const handleEnd=async()=>{setSaving(true);const entries=liveEntries.map((e:any)=>({player_id:e.player_id,player_name:e.player_name,buy_in:e.buy_in||0,rebuys:e.rebuys||0,cash_out:isCommissioner?(cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||0)):(e.cash_out||0),profit:(isCommissioner?(cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||0)):(e.cash_out||0))-((e.buy_in||0)+(e.rebuys||0))}));await onEndSession({entries,elapsed,chickenDinner});setSaving(false);};
+  const handleEnd=async()=>{
+    setSaving(true);
+    const finalCashOuts:Record<string,number>={};
+    liveEntries.forEach((e:any)=>{finalCashOuts[e.player_id]=isCommissioner?(cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||0)):(e.cash_out||0);});
+    const entries=liveEntries.map((e:any)=>({
+      player_id:e.player_id,
+      player_name:e.player_name,
+      buy_in:e.buy_in||0,
+      rebuys:e.rebuys||0,
+      cash_out:finalCashOuts[e.player_id],
+      // Profit = cash_out - buy_in only
+      profit:finalCashOuts[e.player_id]-(e.buy_in||0),
+    }));
+    // Auto chicken dinner = highest profit
+    const top=[...entries].sort((a,b)=>b.profit-a.profit)[0];
+    const autoChicken=top?.player_name||"";
+    await onEndSession({entries,elapsed,chickenDinner:autoChicken});
+    setSaving(false);
+  };
   const notInSession=players.filter((p:any)=>!liveEntries.some((e:any)=>e.player_id===p.id));
   const ni:any={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:8,padding:"7px 9px",color:"#fff",fontSize:13,fontFamily:"'Space Mono',monospace",outline:"none",textAlign:"center",boxSizing:"border-box"};
   return(
@@ -681,7 +722,7 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>REBUYS ($)</div><input type="number" value={myRebuys||""} onChange={e=>setMyRebuys(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>CASH-OUT ($)</div><input type="number" value={myCashOut||""} onChange={e=>setMyCashOut(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
         </div>
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-(myBuyIn+myRebuys)>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{myCashOut-(myBuyIn+myRebuys)>=0?"+":""}${myCashOut-(myBuyIn+myRebuys)}</span></div>
+        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{myCashOut-myBuyIn>=0?"+":""}${myCashOut-myBuyIn}</span></div>
         <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
       </Card>}
       <Card style={{marginBottom:12}}>
@@ -701,7 +742,9 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
       {isCommissioner&&<>{!showCashout&&<button onClick={()=>setShowCashout(true)} style={{width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#5a0000,#8B1A1A)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>END GAME & FINALIZE →</button>}{showCashout&&<Card>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>VERIFY / OVERRIDE CASH-OUTS</div>
         {liveEntries.map((e:any)=><div key={e.player_id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={e.player_name} size={26}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>submitted: ${e.cash_out||0}</div></div><input type="number" value={cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||"")} onChange={ev=>setCashOuts((c:any)=>({...c,[e.player_id]:Number(ev.target.value)}))} style={{...ni,width:"72px"}}/></div>)}
-        <div style={{marginTop:11,marginBottom:3}}><div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:7}}>🍗 CHICKEN DINNER</div><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{liveEntries.map((e:any)=><button key={e.player_id} onClick={()=>setChickenDinner(e.player_name)} style={{padding:"5px 10px",borderRadius:20,background:chickenDinner===e.player_name?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${chickenDinner===e.player_name?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:chickenDinner===e.player_name?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{e.player_name}</button>)}</div></div>
+        <div style={{marginTop:9,padding:"9px 12px",background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.15)",borderRadius:9}}>
+          <div style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:9}}>🍗 Chicken dinner auto-assigned to highest profit on save</div>
+        </div>
         <button onClick={handleEnd} disabled={saving} style={{width:"100%",marginTop:13,padding:"11px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:9,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<><Spinner size={14}/> SAVING...</>:"APPROVE & SAVE SESSION ✓"}</button>
       </Card>}</>}
       {!isCommissioner&&<div style={{padding:"11px 13px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:11,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,textAlign:"center"}}>👑 Commissioner will finalize the session</div>}
@@ -756,6 +799,8 @@ function HandRankingsView({onBack}:any){
 function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted,showToast,showError}:any){
   const [buyIn,setBuyIn]=useState(String(league.buy_in));const [season,setSeason]=useState(league.season);const [seasonLength,setSeasonLength]=useState(String(league.season_length||0));const [description,setDescription]=useState(league.description||"");const [isPublic,setIsPublic]=useState(league.is_public||false);const [locationName,setLocationName]=useState(league.location_name||"");const [maxPlayers,setMaxPlayers]=useState(league.max_players||12);const [saving,setSaving]=useState(false);const [confirmDelete,setConfirmDelete]=useState(false);
   const [customCode,setCustomCode]=useState(league.code||"");const [savingCode,setSavingCode]=useState(false);
+  // Keep customCode in sync if parent updates the league (e.g. after save)
+  useEffect(()=>{setCustomCode(league.code||"");},[league.code]);
   const save=async()=>{if(!db)return;setSaving(true);const{data,error}=await db.from("leagues").update({buy_in:Number(buyIn),season,season_length:Number(seasonLength),description,is_public:isPublic,location_name:locationName||null,max_players:maxPlayers}).eq("id",league.id).select().single();if(error)showError(error.message);else{showToast("Settings saved!");onLeagueUpdated(data);}setSaving(false);};
   const saveCode=async()=>{
     if(!db)return;
@@ -1250,7 +1295,8 @@ export default function HomeGameApp(){
   const handleEndSession=async({entries,elapsed,chickenDinner}:any)=>{
     if(!db||!currentLeague||!liveSession)return;
     try{
-      const pot=entries.reduce((a:number,e:any)=>a+(e.buy_in+e.rebuys),0);
+      // Pot = sum of buy-ins only
+      const pot=entries.reduce((a:number,e:any)=>a+e.buy_in,0);
       const top=[...entries].sort((a:any,b:any)=>b.profit-a.profit)[0];
       const winnerName=players.find((p:any)=>p.id===top.player_id)?.name||top.player_name;
       await db.from("sessions").update({is_live:false,pot,winner_name:winnerName,duration_seconds:elapsed,status:"approved",chicken_dinner_name:chickenDinner||null}).eq("id",liveSession.id);
