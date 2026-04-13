@@ -70,7 +70,7 @@ function Avatar({name,url,size=40}:{name:string;url?:string|null;size?:number}){
   return<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:size*0.4,color:"#0D0D0D",flexShrink:0}}>{(name||"?")[0].toUpperCase()}</div>;
 }
 function Card({children,style={}}:any){return<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:16,padding:20,...style}}>{children}</div>;}
-function StatBox({label,value,accent="#C9A84C"}:any){return<div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,padding:"10px 10px",flex:1,minWidth:50}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,textTransform:"uppercase",marginBottom:3}}>{label}</div><div style={{color:accent,fontSize:16,fontWeight:700,fontFamily:"'Playfair Display',serif"}}>{value}</div></div>;}
+function StatBox({label,value,accent="#C9A84C",dim=false}:any){return<div style={{background:dim?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.03)",border:`1px solid ${dim?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:"10px 8px",flex:1,minWidth:50,textAlign:"center" as const,transition:"all 0.2s"}}><div style={{color:dim?"#333":"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1,textTransform:"uppercase",marginBottom:4,minHeight:22,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1.3}}>{label}</div><div style={{color:dim?"#333":accent,fontSize:15,fontWeight:700,fontFamily:"'Playfair Display',serif",lineHeight:1}}>{dim?"—":value}</div></div>;}
 function Spinner({size=24}:any){
   return<><style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style><div style={{width:size,height:size,border:`2px solid rgba(201,168,76,0.15)`,borderTopColor:"#C9A84C",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite",flexShrink:0}}/></>;
 }
@@ -307,7 +307,7 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
 
 // ─── LEAGUE DETAIL ─────────────────────────────────────
 function LeagueDetailView({league,players,sessions,profile,isCommissioner,onViewPlayer,onStartSession,onBack,onCommSettings,liveSession,onLeaveLeague,onViewHandRankings,onViewSession,onSeasonRecap,showToast}:any){
-  const [sortBy,setSortBy]=useState<'profit'|'winpct'|'sessions'|'chicken'>('profit');
+  const [sortBy,setSortBy]=useState<'profit'|'winpct'|'time'|'chicken'>('profit');
   const [search,setSearch]=useState("");
   const getSorted=()=>{
     let c=[...players];
@@ -315,7 +315,8 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
     if(sortBy==='profit')return c.sort((a:any,b:any)=>b.total_profit-a.total_profit);
     if(sortBy==='winpct')return c.sort((a:any,b:any)=>{const ar=a.session_count>0?a.wins/a.session_count:0;const br=b.session_count>0?b.wins/b.session_count:0;return br-ar;});
     if(sortBy==='chicken')return c.sort((a:any,b:any)=>(b.chicken_dinners||0)-(a.chicken_dinners||0));
-    return c.sort((a:any,b:any)=>b.session_count-a.session_count);
+    if(sortBy==='time')return c.sort((a:any,b:any)=>(b.time_played_seconds||0)-(a.time_played_seconds||0));
+    return c.sort((a:any,b:any)=>b.total_profit-a.total_profit);
   };
   const sessionsLeft=league.season_length>0?league.season_length-sessions.length:null;
   const seasonDone=sessionsLeft!==null&&sessionsLeft<=0;
@@ -326,17 +327,17 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   const getPrimaryStatValue=(p:any)=>{
     if(sortBy==='profit')return{val:`${p.total_profit>=0?"+":""}$${p.total_profit}`,color:p.total_profit>=0?"#4CAF8C":"#E05555"};
     if(sortBy==='winpct'){const pct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
-    if(sortBy==='sessions')return{val:`${p.session_count}g`,color:"#888"};
+    if(sortBy==='time')return{val:fmtSeconds(p.time_played_seconds||0)||"—",color:"#888"};
     if(sortBy==='chicken')return{val:`${p.chicken_dinners||0} 🍗`,color:"#C9A84C"};
     return{val:"—",color:"#888"};
   };
   const getSubStat=(p:any)=>{
     const winPct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;
-    if(sortBy==='profit')return`${p.session_count}g · ${winPct}% win`;
-    if(sortBy==='winpct')return`${p.session_count}g · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
-    if(sortBy==='sessions')return`${p.total_profit>=0?"+":""}$${p.total_profit} · ${winPct}% win`;
-    if(sortBy==='chicken')return`${p.session_count}g · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
-    return`${p.session_count}g`;
+    if(sortBy==='profit')return`${p.session_count} sessions · ${winPct}% win`;
+    if(sortBy==='winpct')return`${p.session_count} sessions · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
+    if(sortBy==='time')return`${p.session_count} sessions · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
+    if(sortBy==='chicken')return`${p.session_count} sessions · ${winPct}% win`;
+    return`${p.session_count} sessions`;
   };
   return(
     <div style={{maxWidth:500,margin:"0 auto"}}>
@@ -357,24 +358,28 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           <StatBox label="Last Buy-in" value={sessions[0]?.buy_in_amount?`$${sessions[0].buy_in_amount}`:`$${league.buy_in}`} accent="#4CAF8C"/>
           {sessionsLeft!==null&&<StatBox label={seasonDone?"Done":"Left"} value={seasonDone?"✓":sessionsLeft} accent={seasonDone?"#E05555":"#C9A84C"}/>}
         </div>
-        <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
-          <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>Code:</span>
-          <span style={{color:"#C9A84C",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:"rgba(201,168,76,0.1)",padding:"2px 9px",borderRadius:6}}>{league.code}</span>
-          {league.is_public&&<Badge text="PUBLIC 🌍" color="#5577CC"/>}
-          {league.location_name&&<span style={{color:"#555",fontSize:10}}>📍{league.location_name}</span>}
-          <button onClick={copyInviteLink} style={{padding:"2px 10px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>🔗 INVITE</button>
+        {/* Code / Location / Invite — evenly spaced */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
+          <span style={{color:"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:"rgba(201,168,76,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.code}</span>
+          <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league.location_name?`📍 ${league.location_name}`:(league.is_public?"🌍 Public":"")}</span>
+          <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0}}>🔗 Invite</button>
         </div>
       </div>
       <div style={{padding:"0 16px 20px"}}>
         {liveSession&&<div onClick={onStartSession} style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,padding:"13px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}><div style={{width:9,height:9,borderRadius:"50%",background:"#4CAF8C",animation:"pulse 1.5s infinite",flexShrink:0}}/><div style={{flex:1}}><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:2}}>● GAME IS LIVE</div><div style={{color:"#888",fontSize:11,marginTop:1}}>Tap to enter your stats</div></div><span style={{color:"#4CAF8C",fontSize:20}}>›</span></div>}
         {!liveSession&&<button onClick={onStartSession} style={{width:"100%",padding:"12px 0",marginBottom:12,background:"linear-gradient(135deg,#1a4a2a,#2a6a3a)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}><span style={{fontSize:17}}>♠</span> START TONIGHT'S SESSION</button>}
-        <div style={{display:"flex",gap:7,marginBottom:9,alignItems:"center"}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players..." style={{...inp,flex:1,padding:"7px 11px",fontSize:12}}/>
+        <div style={{marginBottom:9}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players..." style={{...inp,padding:"7px 11px",fontSize:12}}/>
         </div>
-        <div style={{display:"flex",gap:5,marginBottom:11,alignItems:"center",flexWrap:"wrap"}}>
-          <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginRight:3}}>SORT:</div>
-          {([['profit','$ P/L'],['winpct','WIN %'],['sessions','GAMES'],['chicken','🍗']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 10px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{l}</button>)}
-          <button onClick={onViewHandRankings} style={{marginLeft:"auto",padding:"4px 10px",borderRadius:20,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>🃏 HANDS</button>
+        {/* Sort bar: scrollable left-right, hands button fixed gold */}
+        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:11}}>
+          <div style={{display:"flex",gap:5,overflowX:"auto",flex:1,scrollbarWidth:"none",msOverflowStyle:"none",WebkitOverflowScrolling:"touch"} as any}>
+            <style>{`.sort-bar::-webkit-scrollbar{display:none}`}</style>
+            <div className="sort-bar" style={{display:"flex",gap:5,minWidth:"max-content"}}>
+              {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','🍗 DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>)}
+            </div>
+          </div>
+          <button onClick={onViewHandRankings} style={{padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>🃏</button>
         </div>
         <Card style={{padding:0,overflow:"hidden",marginBottom:12}}>
           {getSorted().length===0&&<div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12,textAlign:"center",padding:"22px 0"}}>{search?"No players match your search":"No members yet"}</div>}
@@ -397,7 +402,21 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         </Card>
         {sessions.length>0&&<Card style={{marginBottom:12}}>
           <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PAST SESSIONS</div>
-          {sessions.slice(0,6).map((s:any,i:number)=>{const d=new Date(s.created_at);return<div key={s.id} onClick={()=>onViewSession(s)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<Math.min(sessions.length,6)-1?"1px solid rgba(255,255,255,0.05)":"none",cursor:"pointer"}}><div style={{width:30,textAlign:"center",flexShrink:0}}><div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{d.getDate()}</div><div style={{color:"#555",fontSize:9}}>{d.toLocaleDateString('en-US',{month:'short'})}</div></div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12,display:"flex",alignItems:"center",gap:5}}>${s.pot} pot{s.buy_in_amount?` · $${s.buy_in_amount} buy-in`:""}{s.locked&&<span style={{fontSize:10}}>🔒</span>}{s.edit_alert&&<span style={{fontSize:10,color:"#E05555"}}>⚠</span>}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{s.chicken_dinner_name?`🍗 ${s.chicken_dinner_name}`:"No chicken dinner"}{s.notes?` · "${s.notes.slice(0,28)}…"`:""}</div></div><span style={{color:"#555",fontSize:16}}>›</span></div>;})}
+          {sessions.slice(0,6).map((s:any,i:number)=>{
+            const d=new Date(s.created_at);
+            const title=s.notes||`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · $${s.pot} pot`;
+            return<div key={s.id} onClick={()=>onViewSession(s)} style={{display:"flex",alignItems:"center",gap:9,padding:"10px 0",borderBottom:i<Math.min(sessions.length,6)-1?"1px solid rgba(255,255,255,0.05)":"none",cursor:"pointer"}}>
+              <div style={{width:32,textAlign:"center",flexShrink:0}}>
+                <div style={{color:"#C9A84C",fontSize:13,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
+                <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:5,marginBottom:2}}>{title.length>32?title.slice(0,32)+"…":title}{s.locked&&<span style={{fontSize:10}}>🔒</span>}{s.edit_alert&&<span style={{fontSize:10,color:"#E05555"}}>⚠</span>}</div>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{s.chicken_dinner_name?`🍗 ${s.chicken_dinner_name}`:"No chicken dinner"}</div>
+              </div>
+              <span style={{color:"#555",fontSize:16}}>›</span>
+            </div>;
+          })}
         </Card>}
         <button onClick={onLeaveLeague} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.12)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>LEAVE LEAGUE</button>
       </div>
@@ -417,6 +436,9 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   const [editedEntries,setEditedEntries]=useState<Record<string,{buy_in:string,rebuys:string,cash_out:string}>>({});
   const [saving,setSaving]=useState(false);
   const [isLocked,setIsLocked]=useState(!!session.locked);
+  // Anyone can rename the session
+  const [renamingTitle,setRenamingTitle]=useState(false);
+  const [titleInput,setTitleInput]=useState(session.notes||"");
 
   // Add missing player state
   const [addingPlayer,setAddingPlayer]=useState(false);
@@ -569,6 +591,12 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
     onSaved();loadEntries();
   };
 
+  const handleSaveTitle=async()=>{
+    if(!db)return;setSaving(true);
+    await db.from("sessions").update({notes:titleInput.trim()||null}).eq("id",session.id);
+    setRenamingTitle(false);setSaving(false);showToast("Session renamed!");onSaved();
+  };
+
   const canEdit=!isLocked||(isLocked&&isCommissioner);
   const d=new Date(session.created_at);
   const alreadyInSession=new Set(entries.map((e:any)=>e.players?.name?.toLowerCase()));
@@ -595,13 +623,22 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       </div>}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div>
+        <div style={{flex:1,minWidth:0,marginRight:10}}>
           <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>{d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#fff",marginTop:2}}>Session Results</div>
-          {showLockCountdown&&<div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>{daysUntilLock===0?"Locks today":"Locks in "+daysUntilLock+" day"+(daysUntilLock!==1?"s":"")}</div>}
+          {renamingTitle
+            ?<div style={{display:"flex",gap:7,alignItems:"center",marginTop:6}}>
+              <input value={titleInput} onChange={e=>setTitleInput(e.target.value)} placeholder="Name this session..." style={{...inp,fontSize:14,flex:1,padding:"7px 11px"}} autoFocus/>
+              <button onClick={handleSaveTitle} disabled={saving} style={{padding:"7px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>{saving?"...":"✓"}</button>
+              <button onClick={()=>setRenamingTitle(false)} style={{padding:"7px 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>✕</button>
+            </div>
+            :<div style={{display:"flex",alignItems:"center",gap:7,marginTop:2}}>
+              <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#fff"}}>{session.notes||"Session Results"}</div>
+              <button onClick={()=>{setTitleInput(session.notes||"");setRenamingTitle(true);}} style={{background:"none",border:"none",color:"#444",fontSize:11,cursor:"pointer",padding:"2px 4px",fontFamily:"'Space Mono',monospace"}}>✏</button>
+            </div>}
+          {showLockCountdown&&!renamingTitle&&<div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>{daysUntilLock===0?"Locks today":"Locks in "+daysUntilLock+" day"+(daysUntilLock!==1?"s":"")}</div>}
         </div>
-        <div style={{display:"flex",gap:7}}>
-          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>{isLocked?"🔓 UNLOCK":"🔒 LOCK"}</button>}
+        <div style={{display:"flex",gap:7,flexShrink:0}}>
+          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>{isLocked?"🔓":"🔒"}</button>}
           {canEdit&&<button onClick={()=>setEditing(!editing)} style={{padding:"6px 13px",background:editing?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.06)",border:`1px solid ${editing?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{editing?"CANCEL":"EDIT"}</button>}
         </div>
       </div>
@@ -984,6 +1021,36 @@ function WipeStatsButton({profile,onWiped}:any){
   return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.4)",background:"rgba(224,85,85,0.06)"}}><div style={{color:"#E05555",fontSize:13,textAlign:"center",lineHeight:1.6,marginBottom:14}}>Are you sure? This will zero out your profit, wins, sessions, and chicken dinners everywhere. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirm(false)} style={{flex:1,padding:"11px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12,cursor:"pointer"}}>CANCEL</button><button onClick={handleWipe} disabled={wiping} style={{flex:1,padding:"11px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{wiping?<Spinner size={14}/>:"WIPE STATS"}</button></div></Card>;
 }
 
+// ─── PRIVACY STAT ROW ──────────────────────────────────
+function PrivacyStatRow({stats,privacy,canEdit,profile,db,setAllStats}:any){
+  const timers=useRef<Record<string,any>>({});
+  const startPress=(key:string)=>{
+    if(!canEdit)return;
+    timers.current[key]=setTimeout(async()=>{
+      if(!db)return;
+      const np={...privacy,[key]:!privacy?.[key]};
+      await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);
+      setAllStats((s:any)=>({...s,privacy:np}));
+    },500);
+  };
+  const endPress=(key:string)=>clearTimeout(timers.current[key]);
+  return(
+    <div style={{display:"flex",gap:7,marginBottom:9}}>
+      {stats.map((s:any)=>{
+        const isDim=canEdit&&!!privacy?.[s.key];
+        return(
+          <div key={s.key}
+            style={{flex:1,userSelect:"none"}}
+            onTouchStart={()=>startPress(s.key)} onTouchEnd={()=>endPress(s.key)} onTouchCancel={()=>endPress(s.key)}
+            onMouseDown={()=>startPress(s.key)} onMouseUp={()=>endPress(s.key)} onMouseLeave={()=>endPress(s.key)}>
+            <StatBox label={s.label} value={s.val} accent={s.accent} dim={isDim}/>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── PROFILE TAB ───────────────────────────────────────
 function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest}:any){
   const [allStats,setAllStats]=useState<any>(null);const [loading,setLoading]=useState(true);
@@ -1048,29 +1115,38 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
       </div>
       {!loading&&allStats&&<>
-        {/* If viewing someone else with private stats, only show time */}
         {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0"}}>🔒 This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
-        <div style={{display:"flex",gap:7,marginBottom:9}}><StatBox label="Sessions" value={allStats.sessions}/><StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/><StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/><StatBox label="Best Night" value={`$${allStats.best_night}`}/></div>
-        <div style={{display:"flex",gap:7,marginBottom:14}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/><StatBox label="🍗 Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/><StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/><StatBox label="Avg/Game" value={allStats.sessions>0?`${allStats.avg>=0?"+":""}$${Math.abs(allStats.avg).toFixed(0)}`:"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/></div>
+        {isSelf&&editing&&<div style={{color:"#444",fontSize:10,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginBottom:8,padding:"6px 12px",background:"rgba(255,255,255,0.02)",borderRadius:8,lineHeight:1.5}}>Hold any stat to hide it from others · faded = private</div>}
+        <PrivacyStatRow stats={[
+          {key:"hide_sessions",label:"Sessions",val:allStats.sessions,accent:"#C9A84C"},
+          {key:"hide_wins",label:"Wins",val:allStats.wins,accent:"#4CAF8C"},
+          {key:"hide_winpct",label:"Win %",val:allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—",accent:"#5577CC"},
+          {key:"hide_best",label:"Best Night",val:`$${allStats.best_night}`,accent:"#C9A84C"},
+        ]} privacy={allStats.privacy} canEdit={isSelf&&editing} profile={profile} db={db} setAllStats={setAllStats}/>
+        <PrivacyStatRow stats={[
+          {key:"hide_time",label:"Time Played",val:fmtSeconds(allStats.time_seconds),accent:"#888"},
+          {key:"hide_chicken",label:"🍗 Dinners",val:allStats.chicken_dinners,accent:"#C9A84C"},
+          {key:"hide_rebuys",label:"Rebuys",val:allStats.rebuys||0,accent:"#5577CC"},
+          {key:"hide_avg",label:"Avg/Game",val:allStats.sessions>0?`${allStats.avg>=0?"+":""}$${Math.abs(allStats.avg).toFixed(0)}`:"—",accent:allStats.avg>=0?"#4CAF8C":"#E05555"},
+        ]} privacy={allStats.privacy} canEdit={isSelf&&editing} profile={profile} db={db} setAllStats={setAllStats}/>
         <Card style={{marginBottom:12}}>
           {([
             ["All-time profit",`${isUp?"+":""}$${allStats.total_profit}`,isUp?"#4CAF8C":"#E05555"],
             ["Sessions won",`${allStats.wins}`,"#4CAF8C"],
             ["Sessions lost",`${allStats.losses}`,"#E05555"],
             ["Biggest single win",`$${allStats.best_night}`,"#C9A84C"],
-            // Worst night: only show if isSelf, or if other player hasn't hidden it
             ...((isSelf||!allStats.privacy?.hide_worst_night)?[["Worst night",`$${allStats.worst_night||0}`,"#E05555"]]:[]),
             ["Chicken dinners 🍗",`${allStats.chicken_dinners}`,"#C9A84C"],
             ["All-time rebuys",`${allStats.rebuys||0}`,"#5577CC"],
             ["Time at the table",fmtSeconds(allStats.time_seconds),"#888"],
-          ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
+          ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
         </Card>
         </>}
         {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{lg.is_public?"🌍":"♠"}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<span style={{fontSize:12}}>👑</span>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
             <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>PRIVACY</div>
-            <Toggle value={!!allStats.privacy?.hide_stats} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_stats:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide my stats from others" sub="Others only see your time played"/>
+            <Toggle value={!!allStats.privacy?.hide_stats} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_stats:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide all stats from others" sub="Others only see your time played"/>
             <Toggle value={!!allStats.privacy?.hide_worst_night} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_worst_night:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide worst night" sub="Others can't see your biggest L"/>
           </Card>
           <Card style={{marginBottom:10}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>ACCOUNT</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:5}}>{profile.email}</div><div style={{color:"#444",fontSize:11,lineHeight:1.6}}>To change your password, sign out and use "Forgot password?"</div></Card>
