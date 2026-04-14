@@ -1565,67 +1565,75 @@ export default function HomeGameApp(){
 
   useEffect(()=>{
     if(!db){setBootstrapping(false);return;}
-    const safetyTimer=setTimeout(()=>setBootstrapping(false),4000);
+
+    // Kick off immediately using getSession — faster than waiting for onAuthStateChange
+    db.auth.getSession().then(async({data:{session},error})=>{
+      if(error||!session?.user){
+        // No session or error — go straight to login
+        setBootstrapping(false);
+        return;
+      }
+      if(initRan.current)return;
+      initRan.current=true;
+      setAuthUser(session.user);
+      await init(session.user);
+    }).catch(()=>{setBootstrapping(false);});
+
+    // Also listen for future auth changes (login, logout, token refresh)
     const{data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
-      if(session?.user){
+      if(event==='SIGNED_OUT'||(!session?.user)){
+        initRan.current=false;
+        setAuthUser(null);
+        setProfile(null);
+        setBootstrapping(false);
+        return;
+      }
+      if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
         if(initRan.current)return;
         initRan.current=true;
         setAuthUser(session.user);
         await init(session.user);
-        clearTimeout(safetyTimer);
-      }else{
-        initRan.current=false;
-        clearTimeout(safetyTimer);
-        setAuthUser(null);
-        setProfile(null);
-        setBootstrapping(false);
       }
     });
-    db.auth.getSession().then(({data:{session}})=>{
-      if(!session?.user){clearTimeout(safetyTimer);setBootstrapping(false);}
-    }).catch(()=>{clearTimeout(safetyTimer);setBootstrapping(false);});
-    return()=>{subscription.unsubscribe();clearTimeout(safetyTimer);};
+
+    return()=>{subscription.unsubscribe();};
   },[]);
 
-  const init=async(user:any)=>{
+  const init=async(user:any,attempt=1)=>{
     if(!db)return;
     try{
-      // Try fetching profile with a generous timeout
       const{data,error}=await db.from("profiles")
         .select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings")
         .eq("id",user.id)
         .maybeSingle();
 
       if(data&&data.display_name){
-        // Happy path — existing user with complete profile
+        // Existing user — load their data
         setProfile({...data,email:user.email});
         if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
         const leagues=await loadMyLeagues(data.display_name,user.id);
         requestNotifPermission();
         if(leagues)setupRealtime(leagues,data.display_name);
-      }else if(error){
-        // DB error — don't sign out, just show the app anyway if we can
-        // Retry once after a short delay
-        setTimeout(async()=>{
-          try{
-            const{data:retry}=await db!.from("profiles").select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings").eq("id",user.id).maybeSingle();
-            if(retry?.display_name){
-              setProfile({...retry,email:user.email});
-              const leagues=await loadMyLeagues(retry.display_name,user.id);
-              if(leagues)setupRealtime(leagues,retry.display_name);
-            }
-            // if still no profile, show nickname setup (profile stays null)
-          }catch(_){}
-          setBootstrapping(false);
-        },1500);
-        return; // don't call setBootstrapping(false) yet
+        setBootstrapping(false);
+      }else if(error&&attempt<=3){
+        // Network/DB error — retry up to 3 times with backoff
+        setTimeout(()=>init(user,attempt+1), attempt*1500);
+        // Don't set bootstrapping false yet — keep loading screen up
+      }else if(data&&!data.display_name){
+        // Profile row exists but no display_name — show nickname setup
+        setBootstrapping(false);
+      }else{
+        // No profile row at all — genuine new user
+        setBootstrapping(false);
       }
-      // else: no profile row → genuine new user → SetupProfileView renders
     }catch(e:any){
-      // Network error — don't sign out. Keep authUser set so they stay logged in.
-      // SetupProfileView or a retry will handle it.
+      if(attempt<=3){
+        setTimeout(()=>init(user,attempt+1), attempt*1500);
+      }else{
+        // Gave up after 3 retries — show nickname screen with sign out option
+        setBootstrapping(false);
+      }
     }
-    setBootstrapping(false);
   };
 
   const loadMyLeagues=async(displayName:string,userId:string)=>{
