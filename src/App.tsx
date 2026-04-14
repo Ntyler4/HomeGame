@@ -172,16 +172,43 @@ function SetupProfileView({user,onDone}:any){
     <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
       <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
-        <div style={{textAlign:"center",marginBottom:28}}><div style={{fontSize:38,marginBottom:10,color:"#C9A84C"}}>👤</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#fff"}}>One more thing</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginTop:6}}>WHAT DO THEY CALL YOU AT THE TABLE?</div></div>
+        <div style={{textAlign:"center",marginBottom:28}}><div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Icon name="person" size={38} color="#C9A84C"/></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#fff"}}>One more thing</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginTop:6}}>WHAT DO THEY CALL YOU AT THE TABLE?</div></div>
         <Card><div style={{marginBottom:14}}><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Big Stack Tyler" autoFocus style={{...inp,fontSize:18,fontFamily:"'Playfair Display',serif",textAlign:"center" as const}}/></div>{err&&<div style={{color:"#E05555",fontSize:11,marginBottom:10}}>{err}</div>}<button onClick={save} disabled={loading||!name.trim()} style={{width:"100%",padding:"13px 0",background:name.trim()&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:name.trim()&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"LET'S PLAY →"}</button></Card>
       </div>
     </div>
   );
 }
 
-// ─── POKER TICKER ──────────────────────────────────────
+// ─── SVG ICONS ─────────────────────────────────────────
+function Icon({name,size=16,color="currentColor"}:{name:string;size?:number;color?:string}){
+  const s={width:size,height:size,display:"inline-block" as const,flexShrink:0,verticalAlign:"middle" as const};
+  const icons:Record<string,any>={
+    crown:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M3 18h18M3 18l2-8 4 4 3-7 3 7 4-4 2 8H3z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round"/></svg>,
+    lock:<svg {...s} viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke={color} strokeWidth={1.8}/><path d="M8 11V7a4 4 0 018 0v4" stroke={color} strokeWidth={1.8} strokeLinecap="round"/></svg>,
+    unlock:<svg {...s} viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke={color} strokeWidth={1.8}/><path d="M8 11V7a4 4 0 018 0" stroke={color} strokeWidth={1.8} strokeLinecap="round"/></svg>,
+    trophy:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M8 21h8M12 17v4M5 3H3v4a4 4 0 004 4h0M19 3h2v4a4 4 0 01-4 4h0" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><path d="M5 3h14v8a5 5 0 01-10 0V3z" stroke={color} strokeWidth={1.8}/></svg>,
+    bell:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    globe:<svg {...s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.8}/><path d="M12 3c-2 3-3 5-3 9s1 6 3 9M12 3c2 3 3 5 3 9s-1 6-3 9M3 12h18" stroke={color} strokeWidth={1.5} strokeLinecap="round"/></svg>,
+    pin:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z" stroke={color} strokeWidth={1.8}/><circle cx="12" cy="10" r="2.5" stroke={color} strokeWidth={1.8}/></svg>,
+    link:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007.5.7l2-2a5 5 0 00-7-7l-1.1 1.1" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><path d="M14 11a5 5 0 00-7.5-.7l-2 2a5 5 0 007 7l1.1-1.1" stroke={color} strokeWidth={1.8} strokeLinecap="round"/></svg>,
+    flame:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M12 2c0 4-4 6-4 10a4 4 0 008 0c0-2-1-3-1-5 1.5 1 2 3 2 5a6 6 0 01-12 0c0-5 4-8 4-12 1 2 1 4 3 2z" stroke={color} strokeWidth={1.5} strokeLinejoin="round"/></svg>,
+    warning:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/><line x1="12" y1="9" x2="12" y2="13" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><circle cx="12" cy="17" r="1" fill={color}/></svg>,
+    card:<svg {...s} viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={color} strokeWidth={1.8}/><path d="M7 9h2M7 13h6" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><path d="M16 9l1.5 4L19 9" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    camera:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke={color} strokeWidth={1.8}/></svg>,
+    hourglass:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M5 3h14M5 21h14M6 3v3l6 6-6 6v3M18 3v3l-6 6 6 6v3" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    drumstick:<svg {...s} viewBox="0 0 24 24" fill="none"><circle cx="17" cy="7" r="4" stroke={color} strokeWidth={1.8}/><path d="M13.5 10.5L5 19a2 2 0 002.8 2.8l8.7-8.7" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><circle cx="6" cy="19" r="1.5" fill={color}/></svg>,
+    spade:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M12 2L4 10a5 5 0 007 7l-1 3h4l-1-3a5 5 0 007-7L12 2z" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/></svg>,
+    person:<svg {...s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.8}/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth={1.8} strokeLinecap="round"/></svg>,
+    pencil:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    star:<svg {...s} viewBox="0 0 24 24" fill="none"><polygon points="12,2 15.1,8.3 22,9.3 17,14.1 18.2,21 12,17.8 5.8,21 7,14.1 2,9.3 8.9,8.3" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/></svg>,
+    check:<svg {...s} viewBox="0 0 24 24" fill="none"><polyline points="20,6 9,17 4,12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  };
+  return icons[name]||<span style={{fontSize:size*0.7,color}}>{name}</span>;
+}
+
+
 const POKER_TIPS=[
-  "🍗 Chicken dinner = last player standing with profit. Winner takes the glory.",
+  "Chicken dinner = last player standing with profit. Winner takes the glory.",
   "Fold more. Seriously. Most hands aren't worth playing.",
   "Position is everything — acting last is a massive advantage.",
   "The best hand doesn't always win. The best bluff sometimes does.",
@@ -212,7 +239,7 @@ function PokerTicker(){
   },[]);
   return(
     <div style={{padding:"10px 14px",marginBottom:12,marginTop:6,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,minHeight:42,display:"flex",alignItems:"center"}}>
-      <div style={{color:"#444",fontSize:11,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0}}>{POKER_TIPS[idx]}</div>
+      <div style={{color:"#666",fontSize:11,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0}}>{POKER_TIPS[idx]}</div>
     </div>
   );
 }
@@ -248,7 +275,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
   return(
     <div style={{position:"relative"}}>
       <button onClick={handleOpen} style={{background:"none",border:"none",cursor:"pointer",position:"relative",padding:4}}>
-        <span style={{fontSize:22,color:open?"#C9A84C":"#666"}}>🔔</span>
+        <Icon name="bell" size={22} color={open?"#C9A84C":"#666"}/>
         {count>0&&<span style={{position:"absolute",top:0,right:0,background:"#E05555",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>{count>9?"9+":count}</span>}
       </button>
       {open&&<div style={{position:"absolute",top:36,right:0,width:280,background:"#141414",border:"1px solid rgba(201,168,76,0.2)",borderRadius:14,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",overflow:"hidden"}}>
@@ -261,7 +288,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
         {!loading&&notifs.map((n:any,i:number)=>(
           <div key={n.id+n.type} onClick={()=>{if(n.type==="session_edit"&&onViewNotification)onViewNotification(n);setOpen(false);}} style={{padding:"11px 14px",borderBottom:i<notifs.length-1?"1px solid rgba(255,255,255,0.04)":"none",cursor:n.type==="session_edit"?"pointer":"default",background:"rgba(255,255,255,0.01)"}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
-              <span style={{fontSize:16,marginTop:1,flexShrink:0}}>{n.type==="friend"?"👤":"⚠️"}</span>
+              <div style={{marginTop:1,flexShrink:0}}>{n.type==="friend"?<Icon name="person" size={16} color="#888"/>:<Icon name="warning" size={16} color="#E05555"/>}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:"#fff",fontSize:12,lineHeight:1.4}}>{n.text}</div>
                 {n.sub&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>{n.sub}</div>}
@@ -282,39 +309,43 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
   const hoursLeft=Math.max(0,100-hoursPlayed);
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      {/* Header: logo left, bell+name right */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div><div style={{display:"flex",gap:5,marginBottom:3}}>{["♠","♥"].map((s,i)=><span key={i} style={{color:i===0?"#C9A84C":"#E05555",fontSize:15}}>{s}</span>)}</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
-        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:2}}>
+        <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:3}}>
           <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
-          <div style={{color:"#888",fontSize:11,fontFamily:"'Space Mono',monospace"}}>{profile.display_name}</div>
+          <div style={{color:"#ddd",fontSize:14,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
         </div>
       </div>
       <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
-      {/* Worldwide leaderboard */}
-      <button onClick={onScoreboard} style={{width:"100%",padding:"12px 0",marginBottom:14,background:has100hrs?"rgba(201,168,76,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${has100hrs?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12,cursor:"pointer",textAlign:"center" as const}}>
-        <div style={{color:has100hrs?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5}}>🏆 WORLDWIDE LEADERBOARD</div>
-        {!has100hrs&&<div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9,marginTop:3,letterSpacing:1}}>{hoursLeft} hours to unlock</div>}
+      <button onClick={onScoreboard} style={{width:"100%",padding:"12px 0",marginBottom:14,background:has100hrs?"rgba(201,168,76,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${has100hrs?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12,cursor:"pointer",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:7,color:has100hrs?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5}}><Icon name="trophy" size={14} color={has100hrs?"#C9A84C":"#888"}/> WORLDWIDE LEADERBOARD</div>
+        {!has100hrs&&<div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9,letterSpacing:1}}>{hoursLeft} hours to unlock</div>}
       </button>
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner size={30}/></div>}
-      {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center"}}><div style={{padding:"18px 0"}}><div style={{fontSize:28,marginBottom:8}}>♠</div><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
+      {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center" as const}}><div style={{padding:"18px 0",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:8}}><Icon name="spade" size={28} color="#333"/><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
       {!loading&&myLeagues.map((lg:any)=>{
         const isComm=lg.commissioner_id===lg._myUserId;
         const sessionsLeft=lg.season_length>0?lg.season_length-(lg._sessionCount||0):null;
         const est=lg.created_at?new Date(lg.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):null;
         return<div key={lg.id} onClick={()=>onSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:11}}>
-            <div style={{width:40,height:40,borderRadius:10,background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{lg.is_public?"🌍":"♠"}</div>
+            <div style={{width:40,height:40,borderRadius:10,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {lg.is_public?<Icon name="globe" size={20} color="#5577CC"/>:<Icon name="spade" size={20} color="#C9A84C"/>}
+            </div>
             <div style={{flex:1,minWidth:0,textAlign:"center" as const}}>
-              <div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{lg.name} {isComm&&<span style={{fontSize:12}}>👑</span>} {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:10,color:"#E05555",fontFamily:"'Space Mono',monospace"}}>DONE</span>}</div>
+              <div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                {lg.name}
+                {isComm&&<Icon name="crown" size={13} color="#C9A84C"/>}
+                {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:10,color:"#E05555",fontFamily:"'Space Mono',monospace"}}>DONE</span>}
+              </div>
               {lg.description&&<div style={{color:"#666",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lg.description}</div>}
-              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>{est?"Est. "+est:""}{lg.location_name?" · 📍"+lg.location_name:""}</div>
+              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{est?"Est. "+est:""}{lg.location_name&&<><Icon name="pin" size={8} color="#444"/>{lg.location_name}</>}</div>
             </div>
           </div>
         </div>;
       })}
-      <PokerTicker/>
       <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
+      <PokerTicker/>
     </div>
   );
 }
@@ -342,8 +373,8 @@ function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
               {([["LEAGUE NAME",leagueName,setLeagueName,"Friday Night Poker"],["DESCRIPTION",description,setDescription,"Weekly home game"],["SEASON NAME",season,setSeason,"Season 1"]] as any[]).map(([label,val,setter,ph])=><div key={label} style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
               <div style={{display:"flex",gap:10,marginBottom:10}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} placeholder="0=unlimited" style={inp}/></div></div>
               <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"8px 0",borderRadius:9,background:maxPlayers===n?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
-              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>LOCATION</label><div style={{display:"flex",gap:8}}><input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder="e.g. San Francisco, CA" style={{...inp,flex:1}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,color:"#C9A84C",cursor:"pointer",flexShrink:0}}>{detecting?<Spinner size={13}/>:"📍"}</button></div></div>
-              <Toggle value={isPublic} onChange={setIsPublic} label="Public League 🌍" sub="Anyone can find & join without a code"/>
+              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>LOCATION</label><div style={{display:"flex",gap:8}}><input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder="e.g. San Francisco, CA" style={{...inp,flex:1}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,color:"#C9A84C",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#C9A84C"/>}</button></div></div>
+              <Toggle value={isPublic} onChange={setIsPublic} label="Public League" sub="Anyone can find & join without a code"/>
             </>
           )}
           <button onClick={()=>canSubmit&&!loading&&onEnter({tab,code,leagueName,description,buyIn:Number(buyIn),season,seasonLength:Number(seasonLength),isPublic,locationName,maxPlayers})} style={{width:"100%",padding:"12px 0",marginTop:6,background:canSubmit&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:canSubmit&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:canSubmit&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:tab==="join"?"Join League →":"Create League →"}</button>
@@ -364,11 +395,11 @@ function PublicLeaguesView({onBack,onJoin}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Public Leagues"/>
-      <div style={{display:"flex",gap:8,marginBottom:10}}><input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search name or city..." style={{...inp,flex:1,padding:"9px 12px",fontSize:13}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:10,color:"#5577CC",cursor:"pointer",flexShrink:0}}>{detecting?<Spinner size={13}/>:"📍"}</button></div>
-      {userLoc&&<div style={{color:"#5577CC",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:10}}>📍 Near {userLoc} first</div>}
+      <div style={{display:"flex",gap:8,marginBottom:10}}><input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search name or city..." style={{...inp,flex:1,padding:"9px 12px",fontSize:13}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:10,color:"#5577CC",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#5577CC"/>}</button></div>
+      {userLoc&&<div style={{color:"#5577CC",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:10,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color="#5577CC"/>Near {userLoc} first</div>}
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
       {!loading&&sorted.length===0&&<Card><div style={{textAlign:"center",padding:"22px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No public leagues found.</div></Card>}
-      {sorted.map((lg:any)=><Card key={lg.id} style={{marginBottom:11}}><div style={{display:"flex",gap:11,marginBottom:11}}><div style={{width:44,height:44,borderRadius:11,background:"rgba(85,119,204,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>♠</div><div style={{flex:1}}><div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:16}}>{lg.name}</div>{lg.description&&<div style={{color:"#666",fontSize:11,marginTop:2}}>{lg.description}</div>}<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:3}}>{lg.season} · ${lg.buy_in}{lg.location_name?<span style={{color:"#5577CC"}}> · 📍{lg.location_name}</span>:null} · {lg.max_players||12} max</div></div></div><button onClick={()=>onJoin(lg)} style={{width:"100%",padding:"10px 0",background:"rgba(85,119,204,0.15)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>JOIN LEAGUE →</button></Card>)}
+      {sorted.map((lg:any)=><Card key={lg.id} style={{marginBottom:11}}><div style={{display:"flex",gap:11,marginBottom:11}}><div style={{width:44,height:44,borderRadius:11,background:"rgba(85,119,204,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="spade" size={20} color="#5577CC"/></div><div style={{flex:1}}><div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:16}}>{lg.name}</div>{lg.description&&<div style={{color:"#666",fontSize:11,marginTop:2}}>{lg.description}</div>}<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:3,display:"flex",alignItems:"center",gap:4}}>{lg.season} · ${lg.buy_in}{lg.location_name?<><Icon name="pin" size={9} color="#5577CC"/><span style={{color:"#5577CC"}}>{lg.location_name}</span></>:null} · {lg.max_players||12} max</div></div></div><button onClick={()=>onJoin(lg)} style={{width:"100%",padding:"10px 0",background:"rgba(85,119,204,0.15)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>JOIN LEAGUE →</button></Card>)}
     </div>
   );
 }
@@ -396,8 +427,8 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
       </div>
       {sorted.length>0&&<Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>FINAL STANDINGS</div>
-        {sorted.map((p:any,i:number)=>{const medals=["🥇","🥈","🥉"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
-          <div style={{width:24,textAlign:"center",fontSize:isTop3?15:12,fontFamily:"'Space Mono',monospace",color:isTop3?"#C9A84C":"#444"}}>{isTop3?medals[i]:i+1}</div>
+        {sorted.map((p:any,i:number)=>{const medalColors=["#C9A84C","#888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+          <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
           <Avatar name={p.name} size={34}/>
           <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
           <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{p.total_profit>=0?"+":""}${p.total_profit}</div>
@@ -405,9 +436,9 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
       </Card>}
       <Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:12}}>SEASON AWARDS</div>
-        {sorted[0]&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>💰 Most Profitable</span><span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{sorted[0].name}</span></div>}
-        {topChicken&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>🍗 Most Chicken Dinners</span><span style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{topChicken[0]} ×{topChicken[1]}</span></div>}
-        {mostSessions&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>🃏 Most Sessions</span><span style={{color:"#fff",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{mostSessions.name} ({mostSessions.session_count})</span></div>}
+        {sorted[0]&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="star" size={11} color="#555"/>Most Profitable</span><span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{sorted[0].name}</span></div>}
+        {topChicken&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="drumstick" size={11} color="#555"/>Most Chicken Dinners</span><span style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{topChicken[0]} ×{topChicken[1]}</span></div>}
+        {mostSessions&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="card" size={11} color="#555"/>Most Sessions</span><span style={{color:"#fff",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{mostSessions.name} ({mostSessions.session_count})</span></div>}
       </Card>
     </div>
   );
@@ -436,7 +467,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
     if(sortBy==='profit')return{val:`${p.total_profit>=0?"+":""}$${p.total_profit}`,color:p.total_profit>=0?"#4CAF8C":"#E05555"};
     if(sortBy==='winpct'){const pct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
     if(sortBy==='time')return{val:fmtSeconds(p.time_played_seconds||0)||"—",color:"#888"};
-    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0} 🍗`,color:"#C9A84C"};
+    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
     return{val:"—",color:"#888"};
   };
   const getSubStat=(p:any)=>{
@@ -453,13 +484,13 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:12}}>
           <button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>←</button>
           <div style={{flex:1,minWidth:0}}><div style={{fontFamily:"'Playfair Display',serif",fontSize:21,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league.name}</div>{league.description&&<div style={{color:"#666",fontSize:11,marginTop:1}}>{league.description}</div>}</div>
-          {isCommissioner&&<button onClick={onCommSettings} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:20,padding:"5px 10px",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>👑 MANAGE</button>}
+          {isCommissioner&&<button onClick={onCommSettings} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:20,padding:"5px 10px",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",gap:4}}><Icon name="crown" size={11} color="#C9A84C"/> MANAGE</button>}
         </div>
         {seasonDone&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:10,padding:"9px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11}}>🏁 Season complete — {sessions.length} sessions</span>
           <button onClick={onSeasonRecap} style={{padding:"3px 10px",background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>VIEW RECAP</button>
         </div>}
-        {sessionsLeft!==null&&sessionsLeft>0&&sessionsLeft<=3&&<div style={{background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,padding:"9px 14px",marginBottom:10,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,textAlign:"center"}}>⚠ Only {sessionsLeft} session{sessionsLeft!==1?"s":""} left in the season!</div>}
+        {sessionsLeft!==null&&sessionsLeft>0&&sessionsLeft<=3&&<div style={{background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,padding:"9px 14px",marginBottom:10,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="warning" size={12} color="#C9A84C"/>Only {sessionsLeft} session{sessionsLeft!==1?"s":""} left in the season!</div>}
         <div style={{display:"flex",gap:7,marginBottom:11}}>
           <StatBox label="Members" value={`${players.length}/${league.max_players||12}`}/>
           <StatBox label="Sessions" value={sessions.length}/>
@@ -469,8 +500,8 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         {/* Code / Location / Invite — evenly spaced */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
           <span style={{color:"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:"rgba(201,168,76,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.code}</span>
-          <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league.location_name?`📍 ${league.location_name}`:(league.is_public?"🌍 Public":"")}</span>
-          <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0}}>🔗 Invite</button>
+          <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{league.location_name?<><Icon name="pin" size={10} color="#555"/>{league.location_name}</>:(league.is_public?<><Icon name="globe" size={10} color="#5577CC"/>Public</>:"")}</span>
+          <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0,display:"flex",alignItems:"center",gap:5}}><Icon name="link" size={11} color="#4CAF8C"/>Invite</button>
         </div>
       </div>
       <div style={{padding:"0 16px 20px"}}>
@@ -484,22 +515,23 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           <div style={{display:"flex",gap:5,overflowX:"auto",flex:1,scrollbarWidth:"none",msOverflowStyle:"none",WebkitOverflowScrolling:"touch"} as any}>
             <style>{`.sort-bar::-webkit-scrollbar{display:none}`}</style>
             <div className="sort-bar" style={{display:"flex",gap:5,minWidth:"max-content"}}>
-              {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','🍗 DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>)}
+              {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#C9A84C":"#555"}/>}{l}</button>)}
             </div>
           </div>
-          <button onClick={onViewHandRankings} style={{padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>🃏</button>
+          <button onClick={onViewHandRankings} style={{padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}><Icon name="card" size={13} color="#C9A84C"/></button>
         </div>
         <Card style={{padding:0,overflow:"hidden",marginBottom:12}}>
           {getSorted().length===0&&<div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12,textAlign:"center",padding:"22px 0"}}>{search?"No players match your search":"No members yet"}</div>}
           {getSorted().map((p:any,i:number)=>{
             const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();
-            const medals=["🥇","🥈","🥉"];const isTop3=i<3&&!search;
+            const medals=["1","2","3"];const isTop3=i<3&&!search;
+            const medalColors=["#C9A84C","#888","#A0714F"];
             const{val,color}=getPrimaryStatValue(p);
             return<div key={p.id} onClick={()=>onViewPlayer(p)} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",background:i===0&&!search?"rgba(201,168,76,0.03)":"transparent"}}>
-              <div style={{width:22,textAlign:"center",fontSize:isTop3?15:12,fontFamily:"'Space Mono',monospace",color:isTop3?"#C9A84C":"#444"}}>{isTop3?medals[i]:i+1}</div>
+              <div style={{width:22,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{medals[i]}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
               <Avatar name={p.name} size={38}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<span>👑</span>} {p.streak>1&&<span>🔥</span>}</div>
+                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<Icon name="crown" size={12} color="#C9A84C"/>} {p.streak>1&&<Icon name="flame" size={12} color="#E05555"/>}</div>
                 <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:1}}>{getSubStat(p)}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -520,8 +552,8 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-                  <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title.length>28?title.slice(0,28)+"…":title}{s.locked&&<span style={{fontSize:10,flexShrink:0}}>🔒</span>}{s.edit_alert&&<span style={{fontSize:10,color:"#E05555",flexShrink:0}}>⚠</span>}</div>
-                  {s.chicken_dinner_name&&<div style={{color:"#C9A84C",fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>🍗 {s.chicken_dinner_name}</div>}
+                  <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title.length>28?title.slice(0,28)+"…":title}{s.locked&&<Icon name="lock" size={11} color="#666"/>}{s.edit_alert&&<Icon name="warning" size={11} color="#E05555"/>}</div>
+                  {s.chicken_dinner_name&&<div style={{color:"#C9A84C",fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={13} color="#C9A84C"/>{s.chicken_dinner_name}</div>}
                 </div>
                 <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>${s.pot} pot{s.buy_in_amount?` · $${s.buy_in_amount} buy-in`:""}</div>
               </div>
@@ -765,7 +797,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
 
       {/* Edit alert banner for commissioner */}
       {isCommissioner&&session.edit_alert&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.35)",borderRadius:11,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-        <div><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1,marginBottom:2}}>⚠ STATS WERE EDITED</div><div style={{color:"#aaa",fontSize:11}}>{session.edit_alert.summary||`Updated by ${session.edit_alert.editor}`}</div></div>
+        <div><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1,marginBottom:2,display:"flex",alignItems:"center",gap:5}}><Icon name="warning" size={12} color="#E05555"/> STATS WERE EDITED</div><div style={{color:"#aaa",fontSize:11}}>{session.edit_alert.summary||`Updated by ${session.edit_alert.editor}`}</div></div>
         <button onClick={handleDismissAlert} style={{padding:"3px 9px",background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>DISMISS</button>
       </div>}
 
@@ -786,7 +818,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
             </div>}
         </div>
         <div style={{display:"flex",gap:7,flexShrink:0}}>
-          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>{isLocked?"🔓":"🔒"}</button>}
+          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><Icon name={isLocked?"unlock":"lock"} size={12} color={isLocked?"#C9A84C":"#666"}/>{isLocked?"UNLOCK":"LOCK"}</button>}
           {canEdit&&<button onClick={()=>setEditing(!editing)} style={{padding:"6px 13px",background:editing?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.06)",border:`1px solid ${editing?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{editing?"CANCEL":"EDIT"}</button>}
         </div>
       </div>
@@ -861,21 +893,20 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         </div>}
       </Card>
 
-      {/* Awards — chicken dinner only, auto-assigned to highest profit */}
+      {/* Awards */}
       <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>🍗 CHICKEN DINNER</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9,display:"flex",alignItems:"center",gap:6}}><Icon name="drumstick" size={12} color="#888"/> CHICKEN DINNER</div>
         <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>
         {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'Space Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
       </Card>
 
-      {/* Stats commitment status — sits below chicken dinner */}
       {isLocked
         ?<div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13}}>🔒</span>
+          <Icon name="lock" size={13} color="#4CAF8C"/>
           <span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10}}>Stats locked and committed to player profiles</span>
         </div>
         :<div style={{background:"rgba(201,168,76,0.04)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13}}>⏳</span>
+          <Icon name="hourglass" size={13} color="#666"/>
           <span style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:10}}>{isCommissioner?"Lock this session to commit stats to player profiles":"Pending — commissioner must lock to commit stats"}</span>
         </div>}
 
@@ -978,11 +1009,11 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>VERIFY / OVERRIDE CASH-OUTS</div>
         {liveEntries.map((e:any)=><div key={e.player_id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={e.player_name} size={26}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>submitted: ${e.cash_out||0}</div></div><input type="number" value={cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||"")} onChange={ev=>setCashOuts((c:any)=>({...c,[e.player_id]:Number(ev.target.value)}))} style={{...ni,width:"72px"}}/></div>)}
         <div style={{marginTop:9,padding:"9px 12px",background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.15)",borderRadius:9}}>
-          <div style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:9}}>🍗 Chicken dinner auto-assigned to highest profit on save</div>
+          <div style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:9,display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={10} color="#666"/>Chicken dinner auto-assigned to highest profit on save</div>
         </div>
         <button onClick={handleEnd} disabled={saving} style={{width:"100%",marginTop:13,padding:"11px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:9,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<><Spinner size={14}/> SAVING...</>:"APPROVE & SAVE SESSION ✓"}</button>
       </Card>}</>}
-      {!isCommissioner&&<div style={{padding:"11px 13px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:11,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,textAlign:"center"}}>👑 Commissioner will finalize the session</div>}
+      {!isCommissioner&&<div style={{padding:"11px 13px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:11,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="crown" size={12} color="#444"/>Commissioner will finalize the session</div>}
     </div>
   );
 }
@@ -1025,7 +1056,7 @@ function HandRankingsView({onBack}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Hand Rankings"/>
-      {HAND_RANKINGS.map((h,i)=><div key={h.rank} style={{display:"flex",alignItems:"center",gap:13,padding:"11px 14px",marginBottom:6,background:"rgba(255,255,255,0.03)",border:`1px solid ${h.rank<=2?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12}}><div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Space Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div><div style={{flex:1}}><div style={{color:h.color,fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{h.name}</div><div style={{color:"#666",fontSize:10,marginTop:1}}>{h.desc}</div><div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:1,letterSpacing:1}}>{h.example}</div></div>{h.rank<=3&&<div style={{fontSize:14,flexShrink:0}}>{["👑","⭐","💎"][i]}</div>}</div>)}
+      {HAND_RANKINGS.map((h,i)=><div key={h.rank} style={{display:"flex",alignItems:"center",gap:13,padding:"11px 14px",marginBottom:6,background:"rgba(255,255,255,0.03)",border:`1px solid ${h.rank<=2?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12}}><div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Space Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div><div style={{flex:1}}><div style={{color:h.color,fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{h.name}</div><div style={{color:"#666",fontSize:10,marginTop:1}}>{h.desc}</div><div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:1,letterSpacing:1}}>{h.example}</div></div>{h.rank<=3&&<Icon name={["crown","star","card"][i] as any} size={14} color={h.color}/>}</div>)}
     </div>
   );
 }
@@ -1083,12 +1114,12 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
   };
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      <BackButton onBack={onBack}/><SectionTitle text={`👑 Manage ${league.name}`}/>
+      <BackButton onBack={onBack}/><SectionTitle text={`Manage ${league.name}`}/>
       <Card style={{marginBottom:11}}>
         {([["DESCRIPTION","text",description,setDescription,"League description"],["SEASON NAME","text",season,setSeason,"Season 1"],["LOCATION","text",locationName,setLocationName,"e.g. San Francisco, CA"]] as any[]).map(([label,type,val,setter,ph])=><div key={label} style={{marginBottom:9}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input type={type} value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
         <div style={{display:"flex",gap:9,marginBottom:9}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>DEFAULT BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} style={inp}/></div></div>
         <div style={{marginBottom:11}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"7px 0",borderRadius:9,background:maxPlayers===n?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
-        <Toggle value={isPublic} onChange={setIsPublic} label="Public League 🌍" sub="Anyone can find & join without a code"/>
+        <Toggle value={isPublic} onChange={setIsPublic} label="Public League" sub="Anyone can find & join without a code"/>
         <button onClick={save} disabled={saving} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:9,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<Spinner size={14}/>:"SAVE ✓"}</button>
       </Card>
 
@@ -1101,7 +1132,7 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
         </div>
       </Card>
 
-      <Card style={{marginBottom:11}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PLAYERS ({players.length}/{maxPlayers})</div>{players.map((p:any,i:number)=>{const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();return<div key={p.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={p.name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",display:"flex",alignItems:"center",gap:4,fontSize:13}}>{p.name} {isComm&&<span>👑</span>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count} sessions</div></div>{!isComm&&<button onClick={()=>kick(p.id,p.name)} style={{padding:"3px 9px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>KICK</button>}</div>;})}
+      <Card style={{marginBottom:11}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PLAYERS ({players.length}/{maxPlayers})</div>{players.map((p:any,i:number)=>{const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();return<div key={p.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={p.name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",display:"flex",alignItems:"center",gap:4,fontSize:13}}>{p.name} {isComm&&<Icon name="crown" size={11} color="#C9A84C"/>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count} sessions</div></div>{!isComm&&<button onClick={()=>kick(p.id,p.name)} style={{padding:"3px 9px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>KICK</button>}</div>;})}
       </Card>
       <Card><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>DANGER ZONE</div>{!confirmDelete?<button onClick={()=>setConfirmDelete(true)} style={{width:"100%",padding:"11px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>DELETE THIS LEAGUE</button>:<div><div style={{color:"#E05555",fontSize:12,marginBottom:11,textAlign:"center",lineHeight:1.6}}>Permanently delete all data? Career stats will be preserved. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:"10px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button><button onClick={del} style={{flex:1,padding:"10px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer"}}>DELETE</button></div></div>}</Card>
     </div>
@@ -1144,7 +1175,7 @@ function FeedView({profile,myLeagues,isActive}:any){
     }finally{setUploading(false);}
   };
   const isCommForLeague=(lid:string)=>{const lg=myLeagues.find((l:any)=>l.id===lid);return lg&&lg.commissioner_name?.toLowerCase()===profile.display_name.toLowerCase();};
-  const fmtSessionLabel=(s:any)=>{const d=new Date(s.created_at);return`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · $${s.pot} pot${s.chicken_dinner_name?` · 🍗 ${s.chicken_dinner_name}`:""}`;};
+  const fmtSessionLabel=(s:any)=>{const d=new Date(s.created_at);return`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · $${s.pot} pot${s.chicken_dinner_name?` · ${s.chicken_dinner_name} won`:""}`;};
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff"}}>Feed</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>you + friends</div></div>
@@ -1158,7 +1189,7 @@ function FeedView({profile,myLeagues,isActive}:any){
           </select>
         </div>}
         {mediaPreview&&<div style={{position:"relative",marginBottom:9}}>{mediaFile?.type.startsWith("video")?<video src={mediaPreview} controls style={{width:"100%",borderRadius:9,maxHeight:240}}/>:<img src={mediaPreview} style={{width:"100%",borderRadius:9,maxHeight:240,objectFit:"cover"}}/>}<button onClick={()=>{setMediaFile(null);setMediaPreview(null);}} style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:24,height:24,cursor:"pointer",fontSize:12}}>×</button></div>}
-        <div style={{display:"flex",gap:7,alignItems:"center"}}><button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>📷</button><input ref={fileRef} type="file" accept="image/*,video/*" onChange={e=>{const f=e.target.files?.[0];if(f){setMediaFile(f);setMediaPreview(URL.createObjectURL(f));}}} style={{display:"none"}}/><button onClick={handlePost} disabled={uploading||(!newPost.trim()&&!mediaFile)} style={{marginLeft:"auto",padding:"5px 14px",background:(!newPost.trim()&&!mediaFile)||uploading?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:20,color:(!newPost.trim()&&!mediaFile)||uploading?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>{uploading?<Spinner size={11}/>:"POST"}</button></div>
+        <div style={{display:"flex",gap:7,alignItems:"center"}}><button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><Icon name="camera" size={12} color="#888"/></button><input ref={fileRef} type="file" accept="image/*,video/*" onChange={e=>{const f=e.target.files?.[0];if(f){setMediaFile(f);setMediaPreview(URL.createObjectURL(f));}}} style={{display:"none"}}/><button onClick={handlePost} disabled={uploading||(!newPost.trim()&&!mediaFile)} style={{marginLeft:"auto",padding:"5px 14px",background:(!newPost.trim()&&!mediaFile)||uploading?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:20,color:(!newPost.trim()&&!mediaFile)||uploading?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>{uploading?<Spinner size={11}/>:"POST"}</button></div>
       </Card>}
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
       {!loading&&posts.length===0&&<Card><div style={{textAlign:"center",padding:"24px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No posts yet.<br/>Add friends from league standings!</div></Card>}
@@ -1241,7 +1272,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
       <div style={{textAlign:"center",marginBottom:18}}>
         <div style={{position:"relative",display:"inline-block"}}>
           <Avatar name={displayName} url={isSelf?profile.avatar_url:null} size={76}/>
-          {isSelf&&editing&&<button onClick={()=>fileRef.current?.click()} style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#C9A84C",border:"2px solid #0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>{uploadingAvatar?<Spinner size={11}/>:"📷"}</button>}
+          {isSelf&&editing&&<button onClick={()=>fileRef.current?.click()} style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#C9A84C",border:"2px solid #0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{uploadingAvatar?<Spinner size={11}/>:<Icon name="camera" size={13} color="#0A0A0A"/>}</button>}
           {isSelf&&<input ref={fileRef} type="file" accept="image/*" onChange={handleAvatar} style={{display:"none"}}/>}
         </div>
         {isSelf&&editing?<div style={{marginTop:10,display:"flex",gap:7,justifyContent:"center",alignItems:"center"}}><input value={newName} onChange={e=>setNewName(e.target.value)} style={{...inp,width:200,fontSize:15,textAlign:"center" as const,fontFamily:"'Playfair Display',serif"}}/><button onClick={handleSaveName} disabled={savingName||!newName.trim()||newName.trim()===profile.display_name} style={{padding:"9px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{savingName?"...":"✓"}</button></div>:<div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginTop:10}}>{displayName}</div>}
@@ -1255,7 +1286,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
         {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
       </div>
       {!loading&&allStats&&<>
-        {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0"}}>🔒 This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
+        {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
         <div style={{display:"flex",gap:7,marginBottom:9}}>
           <StatBox label="Sessions" value={allStats.sessions}/>
           <StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/>
@@ -1264,20 +1295,20 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
         </div>
         <div style={{display:"flex",gap:7,marginBottom:14}}>
           <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
-          <StatBox label="🍗 Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
+          <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
           <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
           <StatBox label="Avg/Game" value={allStats.sessions>0?`${allStats.avg>=0?"+":""}$${Math.abs(allStats.avg).toFixed(0)}`:"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
         </div>
         <Card style={{marginBottom:12}}>
           {([
             ["All-time profit",`${isUp?"+":""}$${allStats.total_profit}`,isUp?"#4CAF8C":"#E05555"],
-            ["Worst night",`${allStats.worst_night||0}`,allStats.worst_night<0?"#E05555":"#888"],
-            ["Win streak",`${allStats.sessions>0?(allStats.wins===allStats.sessions?"Perfect":allStats.wins+" wins"):0}`,"#4CAF8C"],
-            ...((isSelf||!allStats.privacy?.hide_worst_night)?[]:[]),
+            ["Worst night",allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—",allStats.worst_night<0?"#E05555":"#555"],
+            ["Win streak",`${allStats.wins||0}`,"#4CAF8C"],
+            ["Loss streak",`${allStats.losses||0}`,"#E05555"],
           ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
         </Card>
         </>}
-        {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{lg.is_public?"🌍":"♠"}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<span style={{fontSize:12}}>👑</span>}</div>)}</Card>}
+        {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
             <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>PRIVACY</div>
@@ -1319,14 +1350,14 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
 function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
   if(!player)return null;
   const isUp=player.total_profit>=0;const isSelf=player.name.toLowerCase()===profile.display_name.toLowerCase();const winRate=player.session_count>0?((player.wins/player.session_count)*100).toFixed(0):0;
-  const badges:any[]=([player.session_count>=10&&{icon:"🃏",label:"10 Sessions"},player.wins>=3&&{icon:"🏆",label:"3x Winner"},player.total_profit>200&&{icon:"💰",label:"High Roller"},player.streak>1&&{icon:"🔥",label:`${player.streak} Streak`},(player.chicken_dinners||0)>0&&{icon:"🍗",label:`${player.chicken_dinners}× Chicken`}]).filter(Boolean) as any[];
+  const badges:any[]=([player.session_count>=10&&{icon:"card",label:"10 Sessions"},player.wins>=3&&{icon:"trophy",label:"3x Winner"},player.total_profit>200&&{icon:"star",label:"High Roller"},player.streak>1&&{icon:"flame",label:`${player.streak} Streak`},(player.chicken_dinners||0)>0&&{icon:"drumstick",label:`${player.chicken_dinners}× Chicken`}]).filter(Boolean) as any[];
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/>
       <div style={{textAlign:"center",marginBottom:18}}><Avatar name={player.name} size={68}/><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginTop:9}}>{player.name}</div><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:26,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:3}}>{isUp?"+":""}${player.total_profit}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in this league</div>{!isSelf&&<button onClick={()=>onSendFriendRequest(player.name)} style={{marginTop:10,padding:"6px 18px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}</div>
       <div style={{display:"flex",gap:7,marginBottom:12}}><StatBox label="Sessions" value={player.session_count}/><StatBox label="Wins" value={player.wins} accent="#4CAF8C"/><StatBox label="Win %" value={`${winRate}%`} accent="#5577CC"/><StatBox label="Best" value={`$${player.best_night}`}/></div>
-      {badges.length>0&&<Card style={{marginBottom:11}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{badges.map((b:any,i:number)=><div key={i} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:9,padding:"5px 10px",display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:13}}>{b.icon}</span><span style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{b.label}</span></div>)}</div></Card>}
-      <Card>{([["Avg/session",`${isUp?"+":""}$${player.session_count>0?(player.total_profit/player.session_count).toFixed(0):0}`,isUp?"#4CAF8C":"#E05555"],["Biggest win",`$${player.best_night}`,"#C9A84C"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}${player.streak>1?" 🔥":""}`, "#fff"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace"}}>{val}</span></div>)}</Card>
+      {badges.length>0&&<Card style={{marginBottom:11}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{badges.map((b:any,i:number)=><div key={i} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:9,padding:"5px 10px",display:"flex",alignItems:"center",gap:5}}><Icon name={b.icon} size={12} color="#C9A84C"/><span style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{b.label}</span></div>)}</div></Card>}
+      <Card>{([["Avg/session",`${isUp?"+":""}$${player.session_count>0?(player.total_profit/player.session_count).toFixed(0):0}`,isUp?"#4CAF8C":"#E05555"],["Biggest win",`$${player.best_night}`,"#C9A84C"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}`,"#4CAF8C"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace"}}>{val}</span></div>)}</Card>
     </div>
   );
 }
@@ -1362,7 +1393,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
   const getStatValue=(p:any)=>{
     if(sortBy==='profit'){const v=p.global_total_profit||0;return{val:`${v>=0?"+":""}$${v}`,color:v>=0?"#4CAF8C":"#E05555"};}
     if(sortBy==='winpct'){const pct=p.global_sessions>0?((p.global_wins/p.global_sessions)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
-    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0} 🍗`,color:"#C9A84C"};
+    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
     if(sortBy==='rebuys')return{val:`${p.total_rebuys||0}`,color:"#5577CC"};
     if(sortBy==='time')return{val:fmtSeconds(p.global_time_seconds||0),color:"#888"};
     return{val:"—",color:"#888"};
@@ -1372,7 +1403,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/>
       <div style={{marginBottom:16}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#C9A84C",marginBottom:3}}>🏆 Worldwide</div>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}><Icon name="trophy" size={22} color="#C9A84C"/><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#C9A84C"}}>Worldwide</div></div>
         <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5}}>TOP 100 · 100+ HOURS PLAYED</div>
       </div>
 
@@ -1387,7 +1418,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
 
       {/* Sort tabs */}
       <div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>
-        {([['profit','$ PROFIT'],['winpct','WIN %'],['chicken','🍗'],['rebuys','REBUYS'],['time','TIME']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"5px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{l}</button>)}
+        {([['profit','$ PROFIT'],['winpct','WIN %'],['chicken','DINNERS'],['rebuys','REBUYS'],['time','TIME']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"5px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#C9A84C":"#555"}/>}{l}</button>)}
       </div>
 
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
@@ -1395,11 +1426,13 @@ function WorldwideLeaderboardView({profile,onBack}:any){
       {!loading&&top100.length>0&&<Card style={{padding:0,overflow:"hidden"}}>
         {top100.map((p:any,i:number)=>{
           const isMe=p.display_name.toLowerCase()===profile.display_name.toLowerCase();
-          const medals=["🥇","🥈","🥉"];
+          const medalColors2=["#C9A84C","#888","#A0714F"];
           const{val,color}=getStatValue(p);
           const subLine=`${fmtSeconds(p.global_time_seconds||0)} · ${p.global_sessions||0} sessions`;
           return<div key={p.display_name} style={{display:"flex",alignItems:"center",gap:11,padding:"11px 16px",borderBottom:i<top100.length-1?"1px solid rgba(255,255,255,0.05)":"none",background:isMe?"rgba(201,168,76,0.05)":"transparent"}}>
-            <div style={{width:24,textAlign:"center",fontSize:i<3?15:11,fontFamily:"'Space Mono',monospace",color:i<3?"#C9A84C":"#444",flexShrink:0}}>{i<3?medals[i]:i+1}</div>
+            <div style={{width:24,flexShrink:0,display:"flex",justifyContent:"center"}}>
+              {i<3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors2[i]}22`,border:`1px solid ${medalColors2[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors2[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}
+            </div>
             <Avatar name={p.display_name} url={p.avatar_url} size={34}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:isMe?"#C9A84C":"#fff",fontSize:13}}>{p.display_name}{isMe&&<span style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace"}}> (you)</span>}</div>
