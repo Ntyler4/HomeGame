@@ -1566,49 +1566,46 @@ export default function HomeGameApp(){
   useEffect(()=>{
     if(!db){setBootstrapping(false);return;}
 
-    // Kick off immediately using getSession — faster than waiting for onAuthStateChange
-    db.auth.getSession().then(async({data:{session},error})=>{
-      if(error||!session?.user){
-        // No session or error — go straight to login
-        setBootstrapping(false);
-        return;
-      }
-      if(initRan.current)return;
-      initRan.current=true;
-      setAuthUser(session.user);
-      await init(session.user);
-    }).catch(()=>{setBootstrapping(false);});
+    // Hard fallback — if nothing resolves in 10s, show login page
+    const fallback=setTimeout(()=>{
+      if(!initRan.current)setBootstrapping(false);
+    },10000);
 
-    // Also listen for future auth changes (login, logout, token refresh)
+    // onAuthStateChange is the primary driver — fires INITIAL_SESSION on load
     const{data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
-      if(event==='SIGNED_OUT'||(!session?.user)){
+      if(event==='SIGNED_OUT'||!session?.user){
+        clearTimeout(fallback);
         initRan.current=false;
         setAuthUser(null);
         setProfile(null);
         setBootstrapping(false);
         return;
       }
-      if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
-        if(initRan.current)return;
-        initRan.current=true;
-        setAuthUser(session.user);
-        await init(session.user);
-      }
+      // Covers INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED
+      if(initRan.current)return;
+      initRan.current=true;
+      clearTimeout(fallback);
+      setAuthUser(session.user);
+      await init(session.user);
     });
 
-    return()=>{subscription.unsubscribe();};
+    return()=>{subscription.unsubscribe();clearTimeout(fallback);};
   },[]);
 
   const init=async(user:any,attempt=1)=>{
     if(!db)return;
     try{
-      const{data,error}=await db.from("profiles")
+      // Timeout the fetch after 6 seconds so we never hang
+      const fetchPromise=db.from("profiles")
         .select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings")
         .eq("id",user.id)
         .maybeSingle();
+      const timeout=new Promise<{data:null,error:Error}>(res=>
+        setTimeout(()=>res({data:null,error:new Error("timeout")}),6000)
+      );
+      const{data,error}=await Promise.race([fetchPromise,timeout]) as any;
 
-      if(data&&data.display_name){
-        // Existing user — load their data
+      if(data?.display_name){
         setProfile({...data,email:user.email});
         if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
         const leagues=await loadMyLeagues(data.display_name,user.id);
@@ -1616,21 +1613,17 @@ export default function HomeGameApp(){
         if(leagues)setupRealtime(leagues,data.display_name);
         setBootstrapping(false);
       }else if(error&&attempt<=3){
-        // Network/DB error — retry up to 3 times with backoff
-        setTimeout(()=>init(user,attempt+1), attempt*1500);
-        // Don't set bootstrapping false yet — keep loading screen up
-      }else if(data&&!data.display_name){
-        // Profile row exists but no display_name — show nickname setup
-        setBootstrapping(false);
+        // Retry with backoff — keep showing loading screen
+        setTimeout(()=>init(user,attempt+1),attempt*1500);
       }else{
-        // No profile row at all — genuine new user
+        // No profile found or gave up retrying → show nickname screen (new user)
+        // or login screen if we somehow lost auth
         setBootstrapping(false);
       }
     }catch(e:any){
       if(attempt<=3){
-        setTimeout(()=>init(user,attempt+1), attempt*1500);
+        setTimeout(()=>init(user,attempt+1),attempt*1500);
       }else{
-        // Gave up after 3 retries — show nickname screen with sign out option
         setBootstrapping(false);
       }
     }
