@@ -179,6 +179,44 @@ function SetupProfileView({user,onDone}:any){
   );
 }
 
+// ─── POKER TICKER ──────────────────────────────────────
+const POKER_TIPS=[
+  "🍗 Chicken dinner = last player standing with profit. Winner takes the glory.",
+  "Fold more. Seriously. Most hands aren't worth playing.",
+  "Position is everything — acting last is a massive advantage.",
+  "The best hand doesn't always win. The best bluff sometimes does.",
+  "If you can't spot the fish at the table, it's probably you.",
+  "Slow playing a monster hand is how fish become sharks.",
+  "Never go broke on one hand. Patience is a strategy.",
+  "A good fold is just as important as a good call.",
+  "Poker is 100% skill and 100% luck. Simultaneously.",
+  "The money you save by folding counts as profit.",
+  "Re-buying doesn't reset bad decisions — it funds them.",
+  "Don't tap the glass. Let the bad players stay comfortable.",
+  "If you're tilting, stand up. Take a breath. Come back.",
+  "Pay attention even when you're not in the hand.",
+  "Winning a big pot feels great. Building one slowly feels better.",
+  "Everyone runs bad. The best players run bad less often.",
+  "Variance is real. Your edge is also real. Play enough to find out which wins.",
+  "Home games are about more than money. But the money still matters.",
+];
+function PokerTicker(){
+  const [idx,setIdx]=useState(()=>Math.floor(Math.random()*POKER_TIPS.length));
+  const [fade,setFade]=useState(true);
+  useEffect(()=>{
+    const t=setInterval(()=>{
+      setFade(false);
+      setTimeout(()=>{setIdx(i=>(i+1)%POKER_TIPS.length);setFade(true);},400);
+    },12000);
+    return()=>clearInterval(t);
+  },[]);
+  return(
+    <div style={{padding:"10px 14px",marginBottom:12,marginTop:6,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,minHeight:42,display:"flex",alignItems:"center"}}>
+      <div style={{color:"#444",fontSize:11,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0}}>{POKER_TIPS[idx]}</div>
+    </div>
+  );
+}
+
 // ─── NOTIFICATION BELL ─────────────────────────────────
 function NotificationBell({profile,myLeagues,onViewNotification}:any){
   const [count,setCount]=useState(0);const [open,setOpen]=useState(false);
@@ -275,6 +313,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
           </div>
         </div>;
       })}
+      <PokerTicker/>
       <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
     </div>
   );
@@ -997,7 +1036,16 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
   const [customCode,setCustomCode]=useState(league.code||"");const [savingCode,setSavingCode]=useState(false);
   // Keep customCode in sync if parent updates the league (e.g. after save)
   useEffect(()=>{setCustomCode(league.code||"");},[league.code]);
-  const save=async()=>{if(!db)return;setSaving(true);const{data,error}=await db.from("leagues").update({buy_in:Number(buyIn),season,season_length:Number(seasonLength),description,is_public:isPublic,location_name:locationName||null,max_players:maxPlayers}).eq("id",league.id).select().single();if(error)showError(error.message);else{showToast("Settings saved!");onLeagueUpdated(data);}setSaving(false);};
+  const save=async()=>{
+    if(!db)return;setSaving(true);
+    const{error}=await db.from("leagues").update({buy_in:Number(buyIn),season,season_length:Number(seasonLength),description,is_public:isPublic,location_name:locationName||null,max_players:maxPlayers}).eq("id",league.id);
+    if(error){showError(error.message);}else{
+      const{data:fresh}=await db.from("leagues").select("*").eq("id",league.id).single();
+      showToast("Settings saved!");
+      if(fresh)onLeagueUpdated(fresh);
+    }
+    setSaving(false);
+  };
   const saveCode=async()=>{
     if(!db)return;
     const c=customCode.trim().toUpperCase();
@@ -1142,7 +1190,7 @@ function WipeStatsButton({profile,onWiped}:any){
 }
 
 // ─── PROFILE TAB ───────────────────────────────────────
-function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest}:any){
+function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest,onBack}:any){
   const [allStats,setAllStats]=useState<any>(null);const [loading,setLoading]=useState(true);
   const [friendCount,setFriendCount]=useState(0);const [editing,setEditing]=useState(false);
   const [newName,setNewName]=useState(profile?.display_name||"");const [savingName,setSavingName]=useState(false);
@@ -1181,6 +1229,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
   const isUp=(allStats?.total_profit||0)>=0;
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
+      {!isSelf&&onBack&&<BackButton onBack={onBack}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff"}}>Profile</div>
         {isSelf&&<div style={{display:"flex",gap:7}}>
@@ -1222,13 +1271,9 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
         <Card style={{marginBottom:12}}>
           {([
             ["All-time profit",`${isUp?"+":""}$${allStats.total_profit}`,isUp?"#4CAF8C":"#E05555"],
-            ["Sessions won",`${allStats.wins}`,"#4CAF8C"],
-            ["Sessions lost",`${allStats.losses}`,"#E05555"],
-            ["Biggest single win",`$${allStats.best_night}`,"#C9A84C"],
-            ...((isSelf||!allStats.privacy?.hide_worst_night)?[["Worst night",`$${allStats.worst_night||0}`,"#E05555"]]:[]),
-            ["Chicken dinners 🍗",`${allStats.chicken_dinners}`,"#C9A84C"],
-            ["All-time rebuys",`${allStats.rebuys||0}`,"#5577CC"],
-            ["Time at the table",fmtSeconds(allStats.time_seconds),"#888"],
+            ["Worst night",`${allStats.worst_night||0}`,allStats.worst_night<0?"#E05555":"#888"],
+            ["Win streak",`${allStats.sessions>0?(allStats.wins===allStats.sessions?"Perfect":allStats.wins+" wins"):0}`,"#4CAF8C"],
+            ...((isSelf||!allStats.privacy?.hide_worst_night)?[]:[]),
           ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
         </Card>
         </>}
@@ -1370,10 +1415,16 @@ function WorldwideLeaderboardView({profile,onBack}:any){
 }
 
 // ─── BOTTOM NAV ────────────────────────────────────────
-function BottomNav({activeTab,onTab}:{activeTab:Tab;onTab:(t:Tab)=>void}){
+function BottomNav({activeTab,onTab,profile}:{activeTab:Tab;onTab:(t:Tab)=>void;profile:any}){
   return(
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,10,10,0.97)",borderTop:"1px solid rgba(201,168,76,0.15)",display:"flex",padding:"10px 0 20px",zIndex:100}}>
-      {([{key:'league' as Tab,icon:'⬡',label:'League'},{key:'feed' as Tab,icon:'◈',label:'Feed'},{key:'profile' as Tab,icon:'👤',label:'Profile'}]).map(t=><button key={t.key} onClick={()=>onTab(t.key)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab===t.key?"#C9A84C":"#444"}}><span style={{fontSize:20}}>{t.icon}</span><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>{t.label}</span></button>)}
+      {([{key:'league' as Tab,icon:'⬡',label:'League'},{key:'feed' as Tab,icon:'◈',label:'Feed'}]).map(t=><button key={t.key} onClick={()=>onTab(t.key)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab===t.key?"#C9A84C":"#444"}}><span style={{fontSize:20}}>{t.icon}</span><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>{t.label}</span></button>)}
+      <button onClick={()=>onTab('profile')} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab==='profile'?"#C9A84C":"#444"}}>
+        <div style={{width:24,height:24,borderRadius:"50%",overflow:"hidden",border:`2px solid ${activeTab==='profile'?"#C9A84C":"#333"}`,flexShrink:0}}>
+          <Avatar name={profile?.display_name||"?"} url={profile?.avatar_url} size={24}/>
+        </div>
+        <span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>Profile</span>
+      </button>
     </div>
   );
 }
@@ -1616,7 +1667,7 @@ export default function HomeGameApp(){
 
   const renderProfile=()=>{
     if(psv==='friends')return<FriendsView profile={profile} onBack={()=>setPsv('self')} onViewFriendProfile={(n:string)=>{setViewingFriend(n);setPsv('friendProfile');}}/>;
-    if(psv==='friendProfile')return<ProfileTabView profile={profile} myLeagues={myLeagues} isSelf={false} externalName={viewingFriend} onFriends={()=>setPsv('friends')} onLogout={handleLogout} onSendFriendRequest={sendFriendRequest}/>;
+    if(psv==='friendProfile')return<ProfileTabView profile={profile} myLeagues={myLeagues} isSelf={false} externalName={viewingFriend} onFriends={()=>setPsv('friends')} onLogout={handleLogout} onSendFriendRequest={sendFriendRequest} onBack={()=>setPsv('friends')}/>;
     return<ProfileTabView profile={profile} myLeagues={myLeagues} isSelf={true} onFriends={()=>setPsv('friends')} onLogout={handleLogout} onSendFriendRequest={sendFriendRequest}/>;
   };
 
@@ -1640,7 +1691,7 @@ export default function HomeGameApp(){
         {activeTab==='league'&&renderLeague()}
         {activeTab==='feed'&&<FeedView profile={profile} myLeagues={myLeagues} isActive={activeTab==='feed'}/>}
         {activeTab==='profile'&&renderProfile()}
-        <BottomNav activeTab={activeTab} onTab={t=>{setActiveTab(t);if(t==='profile')setPsv('self');}}/>
+        <BottomNav activeTab={activeTab} onTab={t=>{setActiveTab(t);if(t==='profile')setPsv('self');}} profile={profile}/>
       </div>
     </>
   );
