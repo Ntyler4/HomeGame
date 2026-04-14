@@ -157,10 +157,18 @@ function SetupProfileView({user,onDone}:any){
   const [name,setName]=useState("");const [loading,setLoading]=useState(false);const [err,setErr]=useState("");
   const save=async()=>{
     if(!db||!name.trim())return;
-    setLoading(true);
+    setLoading(true);setErr("");
     try{
-      const{error}=await db.from("profiles").upsert({id:user.id,display_name:name.trim(),email:user.email,opt_in_global:false,global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0});
-      if(error){setErr(error.message);return;}
+      // Try upsert first (new user or profile without display_name)
+      const{error:uErr}=await db.from("profiles").upsert(
+        {id:user.id,display_name:name.trim(),email:user.email,opt_in_global:false,global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0},
+        {onConflict:"id"}
+      );
+      if(uErr){
+        // Upsert failed — try plain update (profile exists, just missing display_name)
+        const{error:updErr}=await db.from("profiles").update({display_name:name.trim()}).eq("id",user.id);
+        if(updErr){setErr("Couldn't save name. Try signing out and back in.");return;}
+      }
       onDone({id:user.id,display_name:name.trim(),email:user.email,avatar_url:null,opt_in_global:false});
     }catch(e:any){
       setErr(e.message||"Something went wrong. Check your connection.");
@@ -168,12 +176,18 @@ function SetupProfileView({user,onDone}:any){
       setLoading(false);
     }
   };
+  const signOut=async()=>{if(db)await db.auth.signOut();window.location.reload();};
   return(
     <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
       <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
         <div style={{textAlign:"center",marginBottom:28}}><div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Icon name="person" size={38} color="#C9A84C"/></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#fff"}}>One more thing</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginTop:6}}>WHAT DO THEY CALL YOU AT THE TABLE?</div></div>
-        <Card><div style={{marginBottom:14}}><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Big Stack Tyler" autoFocus style={{...inp,fontSize:18,fontFamily:"'Playfair Display',serif",textAlign:"center" as const}}/></div>{err&&<div style={{color:"#E05555",fontSize:11,marginBottom:10}}>{err}</div>}<button onClick={save} disabled={loading||!name.trim()} style={{width:"100%",padding:"13px 0",background:name.trim()&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:name.trim()&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"LET'S PLAY →"}</button></Card>
+        <Card>
+          <div style={{marginBottom:14}}><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Big Stack Tyler" autoFocus style={{...inp,fontSize:18,fontFamily:"'Playfair Display',serif",textAlign:"center" as const}}/></div>
+          {err&&<div style={{color:"#E05555",fontSize:11,marginBottom:10}}>{err}</div>}
+          <button onClick={save} disabled={loading||!name.trim()} style={{width:"100%",padding:"13px 0",background:name.trim()&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:name.trim()&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:10}}>{loading?<Spinner size={16}/>:"LET'S PLAY →"}</button>
+          <button onClick={signOut} style={{width:"100%",padding:"9px 0",background:"none",border:"none",color:"#333",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>wrong account? sign out</button>
+        </Card>
       </div>
     </div>
   );
@@ -726,45 +740,98 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
     const newLocked=!isLocked;
 
     if(newLocked){
-      // Committing stats — only if not already committed
+      // Recompute stats from scratch for all players in this session
+      // This prevents drift from multiple lock/unlock cycles
       const{data:sessionRow}=await db.from("sessions").select("stats_committed,duration_seconds,chicken_dinner_name").eq("id",session.id).single();
-      if(!sessionRow?.stats_committed){
-        const elapsed=sessionRow?.duration_seconds||0;
-        const chickenDinner=sessionRow?.chicken_dinner_name||"";
-        // Fetch fresh entries with player data
-        const{data:freshEntries}=await db.from("session_entries").select("*, players(id,name,total_profit,wins,best_night,worst_night,session_count,chicken_dinners,time_played_seconds)").eq("session_id",session.id);
-        for(const e of (freshEntries||[])){
-          const p=e.players;if(!p)continue;
-          const profit=e.profit||0;
-          const won=profit>0?1:0;
-          const isC=chickenDinner.toLowerCase()===p.name.toLowerCase()?1:0;
-          const newWorst=profit<(p.worst_night||0)?profit:(p.worst_night||0);
-          await db.from("players").update({
-            total_profit:(p.total_profit||0)+profit,
-            session_count:(p.session_count||0)+1,
-            wins:(p.wins||0)+won,
-            best_night:profit>(p.best_night||0)?profit:(p.best_night||0),
-            worst_night:newWorst,
-            streak:won?(p.streak||0)+1:0,
-            chicken_dinners:(p.chicken_dinners||0)+isC,
-            time_played_seconds:(p.time_played_seconds||0)+elapsed,
-          }).eq("id",e.player_id);
-          // Update global profile stats
-          const{data:profRow}=await db.from("profiles").select("id,opt_in_global,global_time_seconds,global_total_profit,global_sessions,global_wins,chicken_dinners,total_rebuys").ilike("display_name",p.name).maybeSingle();
-          if(profRow){
-            const upd:any={global_time_seconds:(profRow.global_time_seconds||0)+elapsed,total_rebuys:(profRow.total_rebuys||0)+(e.rebuys||0)};
-            if(profRow.opt_in_global){upd.global_total_profit=(profRow.global_total_profit||0)+profit;upd.global_sessions=(profRow.global_sessions||0)+1;upd.global_wins=(profRow.global_wins||0)+won;if(isC)upd.chicken_dinners=(profRow.chicken_dinners||0)+1;}
-            await db.from("profiles").update(upd).eq("id",profRow.id);
+      const elapsed=sessionRow?.duration_seconds||0;
+      const chickenDinner=(sessionRow?.chicken_dinner_name||"").toLowerCase();
+
+      const{data:freshEntries}=await db.from("session_entries")
+        .select("*, players(id,name)")
+        .eq("session_id",session.id);
+
+      for(const e of (freshEntries||[])){
+        const playerName=e.players?.name||"";
+        if(!playerName)continue;
+
+        // Fetch ALL committed session entries for this player (excluding current session)
+        const{data:allEntries}=await db.from("session_entries").select(`
+          profit, rebuys, buy_in,
+          sessions!inner(duration_seconds, chicken_dinner_name, stats_committed, id)
+        `).eq("player_id",e.player_id);
+
+        // Include only locked+committed sessions (excluding current which we're about to commit)
+        const otherCommitted=(allEntries||[]).filter((ae:any)=>
+          ae.sessions?.stats_committed===true && ae.sessions?.id!==session.id
+        );
+
+        // Compute totals from other committed sessions
+        let tp=0,sc=0,wins=0,bestN=0,worstN=0,cds=0,timeSec=0,totalRebuys=0;
+        for(const ae of otherCommitted){
+          tp+=ae.profit||0;
+          sc+=1;
+          if((ae.profit||0)>0)wins+=1;
+          if((ae.profit||0)>(bestN))bestN=ae.profit||0;
+          if((ae.profit||0)<worstN)worstN=ae.profit||0;
+          if((ae.sessions?.chicken_dinner_name||"").toLowerCase()===playerName.toLowerCase())cds+=1;
+          timeSec+=ae.sessions?.duration_seconds||0;
+          totalRebuys+=ae.rebuys||0;
+        }
+
+        // Add this session
+        const thisProfit=e.profit||0;
+        tp+=thisProfit;sc+=1;
+        if(thisProfit>0)wins+=1;
+        if(thisProfit>bestN)bestN=thisProfit;
+        if(thisProfit<worstN)worstN=thisProfit;
+        if(chickenDinner===playerName.toLowerCase())cds+=1;
+        timeSec+=elapsed;
+        totalRebuys+=e.rebuys||0;
+
+        // Compute streak separately (needs ordering)
+        const{data:streakData}=await db.from("session_entries").select(`
+          profit,
+          sessions!inner(created_at,stats_committed,id)
+        `).eq("player_id",e.player_id).order("sessions(created_at)",{ascending:false});
+        let streak=0;
+        for(const sd of (streakData||[])){
+          if(!sd.sessions?.stats_committed&&sd.sessions?.id!==session.id)continue;
+          if(sd.sessions?.id===session.id&&thisProfit<=0)break;
+          if((sd.profit||0)>0)streak++;else break;
+        }
+
+        await db.from("players").update({
+          total_profit:tp,session_count:sc,wins,
+          best_night:bestN,worst_night:worstN,streak,
+          chicken_dinners:cds,time_played_seconds:timeSec,
+        }).eq("id",e.player_id);
+
+        // Update profile global stats
+        const{data:profRow}=await db.from("profiles").select("id,opt_in_global,archived_profit,archived_sessions,archived_wins,archived_time_seconds,archived_chicken_dinners,archived_rebuys").ilike("display_name",playerName).maybeSingle();
+        if(profRow){
+          const arch={profit:profRow.archived_profit||0,sessions:profRow.archived_sessions||0,wins:profRow.archived_wins||0,time:profRow.archived_time_seconds||0,cds:profRow.archived_chicken_dinners||0,rebuys:profRow.archived_rebuys||0};
+          const upd:any={
+            global_time_seconds:timeSec+arch.time,
+            total_rebuys:totalRebuys+arch.rebuys,
+          };
+          if(profRow.opt_in_global){
+            upd.global_total_profit=tp+arch.profit;
+            upd.global_sessions=sc+arch.sessions;
+            upd.global_wins=wins+arch.wins;
+            upd.chicken_dinners=cds+arch.cds;
           }
+          await db.from("profiles").update(upd).eq("id",profRow.id);
         }
       }
+
       await db.from("sessions").update({locked:true,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:true}).eq("id",session.id);
       setIsLocked(true);
-      showToast("Session locked 🔒 — stats committed to profiles!");
+      showToast("Session locked — stats committed to profiles");
     }else{
-      await db.from("sessions").update({locked:false,locked_at:new Date().toISOString(),edit_alert:null}).eq("id",session.id);
+      // Unlock: mark as not committed so re-lock will recompute
+      await db.from("sessions").update({locked:false,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:false}).eq("id",session.id);
       setIsLocked(false);
-      showToast("Session unlocked 🔓 — stats not reversed, edit carefully");
+      showToast("Session unlocked — stats rolled back, edits are safe");
     }
     onSaved();
   };
@@ -1522,26 +1589,40 @@ export default function HomeGameApp(){
   const init=async(user:any)=>{
     if(!db)return;
     try{
-      const fetchProfile=db.from("profiles").select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings").eq("id",user.id).maybeSingle();
-      const deadline=new Promise<any>((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000));
-      const{data,error}=await Promise.race([fetchProfile,deadline]);
+      // Try fetching profile with a generous timeout
+      const{data,error}=await db.from("profiles")
+        .select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings")
+        .eq("id",user.id)
+        .maybeSingle();
+
       if(data&&data.display_name){
-        // Existing user with a real profile — go to app
+        // Happy path — existing user with complete profile
         setProfile({...data,email:user.email});
         if(data.avatar_url)bustAvatarCache(data.display_name,data.avatar_url);
         const leagues=await loadMyLeagues(data.display_name,user.id);
         requestNotifPermission();
         if(leagues)setupRealtime(leagues,data.display_name);
-      }else if(!data||!data.display_name){
-        // No profile or no display_name — genuine new user, show nickname setup
-        // authUser is set, profile stays null → SetupProfileView renders
-      }else{
-        // Unexpected error — sign out cleanly
-        await db.auth.signOut();setAuthUser(null);initRan.current=false;
+      }else if(error){
+        // DB error — don't sign out, just show the app anyway if we can
+        // Retry once after a short delay
+        setTimeout(async()=>{
+          try{
+            const{data:retry}=await db!.from("profiles").select("id,display_name,email,avatar_url,opt_in_global,global_time_seconds,privacy_settings").eq("id",user.id).maybeSingle();
+            if(retry?.display_name){
+              setProfile({...retry,email:user.email});
+              const leagues=await loadMyLeagues(retry.display_name,user.id);
+              if(leagues)setupRealtime(leagues,retry.display_name);
+            }
+            // if still no profile, show nickname setup (profile stays null)
+          }catch(_){}
+          setBootstrapping(false);
+        },1500);
+        return; // don't call setBootstrapping(false) yet
       }
+      // else: no profile row → genuine new user → SetupProfileView renders
     }catch(e:any){
-      try{await db.auth.signOut();}catch(_){}
-      setAuthUser(null);initRan.current=false;
+      // Network error — don't sign out. Keep authUser set so they stay logged in.
+      // SetupProfileView or a retry will handle it.
     }
     setBootstrapping(false);
   };
