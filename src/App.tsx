@@ -52,6 +52,7 @@ function setupRealtime(leagues:any[], displayName:string){
 }
 
 function fmtSeconds(s:number){ if(!s||s<=0)return"—"; const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); if(h>0)return`${h}h ${m}m`; return`${m}m`; }
+function fmtProfit(n:number){return`${n>=0?"+$":"-$"}${Math.abs(n)}`;}
 
 // ─── SHARED UI ─────────────────────────────────────────
 function Avatar({name,url,size=40}:{name:string;url?:string|null;size?:number}){
@@ -445,7 +446,7 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
           <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
           <Avatar name={p.name} size={34}/>
           <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
-          <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{p.total_profit>=0?"+":""}${p.total_profit}</div>
+          <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(p.total_profit)}</div>
         </div>;})}
       </Card>}
       <Card style={{marginBottom:12}}>
@@ -478,7 +479,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
     navigator.clipboard?.writeText(link).then(()=>showToast("Invite link copied! 🔗")).catch(()=>showToast(`Share this code: ${league.code}`));
   };
   const getPrimaryStatValue=(p:any)=>{
-    if(sortBy==='profit')return{val:`${p.total_profit>=0?"+":""}$${p.total_profit}`,color:p.total_profit>=0?"#4CAF8C":"#E05555"};
+    if(sortBy==='profit')return{val:`${fmtProfit(p.total_profit)}`,color:p.total_profit>=0?"#4CAF8C":"#E05555"};
     if(sortBy==='winpct'){const pct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
     if(sortBy==='time')return{val:fmtSeconds(p.time_played_seconds||0)||"—",color:"#888"};
     if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
@@ -487,8 +488,8 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   const getSubStat=(p:any)=>{
     const winPct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;
     if(sortBy==='profit')return`${p.session_count} sessions · ${winPct}% win`;
-    if(sortBy==='winpct')return`${p.session_count} sessions · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
-    if(sortBy==='time')return`${p.session_count} sessions · ${p.total_profit>=0?"+":""}$${p.total_profit}`;
+    if(sortBy==='winpct')return`${p.session_count} sessions · ${fmtProfit(p.total_profit)}`;
+    if(sortBy==='time')return`${p.session_count} sessions · ${fmtProfit(p.total_profit)}`;
     if(sortBy==='chicken')return`${p.session_count} sessions · ${winPct}% win`;
     return`${p.session_count} sessions`;
   };
@@ -919,7 +920,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
                 <div style={{color:"#fff",fontSize:13}}>{name}</div>
                 {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
               </div>
-              <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{profit>=0?"+":""}${profit}</div>
+              <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(profit)}</div>
               {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
             </div>
             {editing&&<div style={{display:"flex",gap:6,marginLeft:44}}>
@@ -952,7 +953,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
             <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>REBUYS ($)</label><input type="number" value={newPlayerRebuys} onChange={e=>setNewPlayerRebuys(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
             <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>CASH-OUT ($)</label><input type="number" value={newPlayerCashOut} onChange={e=>setNewPlayerCashOut(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
           </div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"+":""}${Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))}</span></div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys)))}</span></div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{flex:1,padding:"9px 0",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button>
             <button onClick={handleAddPlayer} disabled={saving||!newPlayerName.trim()} style={{flex:2,padding:"9px 0",background:newPlayerName.trim()&&!saving?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${newPlayerName.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:newPlayerName.trim()?"#5577CC":"#555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:"ADD TO SESSION →"}</button>
@@ -1055,7 +1056,7 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>REBUYS ($)</div><input type="number" value={myRebuys||""} onChange={e=>setMyRebuys(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>CASH-OUT ($)</div><input type="number" value={myCashOut||""} onChange={e=>setMyCashOut(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
         </div>
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{myCashOut-myBuyIn>=0?"+":""}${myCashOut-myBuyIn}</span></div>
+        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(myCashOut-myBuyIn)}</span></div>
         <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
       </Card>}
       <Card style={{marginBottom:12}}>
@@ -1111,7 +1112,7 @@ function NewSessionView({league,players,sessions,onStart,onBack}:any){
       </Card>
       <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>WHO'S PLAYING</div>
       <Card style={{marginBottom:14}}>
-        {players.map((p:any)=>{const sel=selectedIds.includes(p.id);return<div key={p.id} onClick={()=>setSelectedIds(sel?selectedIds.filter(x=>x!==p.id):[...selectedIds,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",opacity:sel?1:0.5}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${sel?"#C9A84C":"#333"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{sel?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{flex:1}}><div style={{color:"#fff"}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.wins}W · {p.total_profit>=0?"+":""}${p.total_profit}</div></div></div>;})}
+        {players.map((p:any)=>{const sel=selectedIds.includes(p.id);return<div key={p.id} onClick={()=>setSelectedIds(sel?selectedIds.filter(x=>x!==p.id):[...selectedIds,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",opacity:sel?1:0.5}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${sel?"#C9A84C":"#333"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{sel?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{flex:1}}><div style={{color:"#fff"}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.wins}W · {fmtProfit(p.total_profit)}</div></div></div>;})}
       </Card>
       <button disabled={selectedIds.length<2||loading} onClick={async()=>{setLoading(true);await onStart({selectedIds,sessionBuyIn,sessionNotes});setLoading(false);}} style={{width:"100%",padding:"13px 0",background:selectedIds.length>=2&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:selectedIds.length>=2&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:selectedIds.length>=2&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:`START WITH ${selectedIds.length} PLAYERS →`}</button>
     </div>
@@ -1348,7 +1349,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{allStats?.leagues||0} leagues</div>
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{friendCount} friends</div>
         </div>
-        {!loading&&allStats&&<><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>{isUp?"+":""}${allStats.total_profit}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>all-time profit</div></>}
+        {!loading&&allStats&&<><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>{fmtProfit(allStats.total_profit)}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>all-time profit</div></>}
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
         {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
       </div>
@@ -1364,11 +1365,11 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
           <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
           <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
-          <StatBox label="Avg/Game" value={allStats.sessions>0?`${allStats.avg>=0?"+":""}$${Math.abs(allStats.avg).toFixed(0)}`:"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
+          <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
         </div>
         <Card style={{marginBottom:12}}>
           {([
-            ["All-time profit",`${isUp?"+":""}$${allStats.total_profit}`,isUp?"#4CAF8C":"#E05555"],
+            ["All-time profit",fmtProfit(allStats.total_profit),isUp?"#4CAF8C":"#E05555"],
             ["Worst night",allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—",allStats.worst_night<0?"#E05555":"#555"],
             ["Win streak",`${allStats.wins||0}`,"#4CAF8C"],
             ["Loss streak",`${allStats.losses||0}`,"#E05555"],
@@ -1424,7 +1425,7 @@ function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
       <div style={{textAlign:"center",marginBottom:18}}><Avatar name={player.name} size={68}/><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginTop:9}}>{player.name}</div><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:26,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:3}}>{isUp?"+":""}${player.total_profit}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in this league</div>{!isSelf&&<button onClick={()=>onSendFriendRequest(player.name)} style={{marginTop:10,padding:"6px 18px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}</div>
       <div style={{display:"flex",gap:7,marginBottom:12}}><StatBox label="Sessions" value={player.session_count}/><StatBox label="Wins" value={player.wins} accent="#4CAF8C"/><StatBox label="Win %" value={`${winRate}%`} accent="#5577CC"/><StatBox label="Best" value={`$${player.best_night}`}/></div>
       {badges.length>0&&<Card style={{marginBottom:11}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{badges.map((b:any,i:number)=><div key={i} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:9,padding:"5px 10px",display:"flex",alignItems:"center",gap:5}}><Icon name={b.icon} size={12} color="#C9A84C"/><span style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{b.label}</span></div>)}</div></Card>}
-      <Card>{([["Avg/session",`${isUp?"+":""}$${player.session_count>0?(player.total_profit/player.session_count).toFixed(0):0}`,isUp?"#4CAF8C":"#E05555"],["Biggest win",`$${player.best_night}`,"#C9A84C"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}`,"#4CAF8C"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace"}}>{val}</span></div>)}</Card>
+      <Card>{([["Avg/session",fmtProfit(player.session_count>0?Math.round(player.total_profit/player.session_count):0),isUp?"#4CAF8C":"#E05555"],["Biggest win",`$${player.best_night}`,"#C9A84C"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}`,"#4CAF8C"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace"}}>{val}</span></div>)}</Card>
     </div>
   );
 }
@@ -1458,7 +1459,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
   const top100=getSorted().slice(0,100);
 
   const getStatValue=(p:any)=>{
-    if(sortBy==='profit'){const v=p.global_total_profit||0;return{val:`${v>=0?"+":""}$${v}`,color:v>=0?"#4CAF8C":"#E05555"};}
+    if(sortBy==='profit'){const v=p.global_total_profit||0;return{val:fmtProfit(v),color:v>=0?"#4CAF8C":"#E05555"};}
     if(sortBy==='winpct'){const pct=p.global_sessions>0?((p.global_wins/p.global_sessions)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
     if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
     if(sortBy==='rebuys')return{val:`${p.total_rebuys||0}`,color:"#5577CC"};
