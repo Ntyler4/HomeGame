@@ -179,29 +179,99 @@ function SetupProfileView({user,onDone}:any){
   );
 }
 
+// ─── NOTIFICATION BELL ─────────────────────────────────
+function NotificationBell({profile,myLeagues,onViewNotification}:any){
+  const [count,setCount]=useState(0);const [open,setOpen]=useState(false);
+  const [notifs,setNotifs]=useState<any[]>([]);const [loading,setLoading]=useState(false);
+  useEffect(()=>{if(!db||!profile)return;loadCount();},[profile,myLeagues]);
+  const loadCount=async()=>{
+    if(!db)return;
+    const name=profile.display_name;
+    const[{data:fr},{data:ea}]=await Promise.all([
+      db.from("friends").select("id").eq("recipient_name",name).eq("status","pending"),
+      myLeagues.length>0?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",myLeagues.filter((l:any)=>l.commissioner_id===profile.id||l.commissioner_name?.toLowerCase()===name.toLowerCase()).map((l:any)=>l.id)):Promise.resolve({data:[]}),
+    ]);
+    setCount(((fr||[]).length)+((ea||[]).length));
+  };
+  const loadNotifs=async()=>{
+    if(!db||loading)return;setLoading(true);
+    const name=profile.display_name;
+    const[{data:fr},{data:ea}]=await Promise.all([
+      db.from("friends").select("*").eq("recipient_name",name).eq("status","pending"),
+      myLeagues.length>0?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",myLeagues.filter((l:any)=>l.commissioner_id===profile.id||l.commissioner_name?.toLowerCase()===name.toLowerCase()).map((l:any)=>l.id)):Promise.resolve({data:[]}),
+    ]);
+    const items:any[]=[];
+    (fr||[]).forEach((f:any)=>items.push({type:"friend",id:f.id,text:`${f.requester_name} sent a friend request`,ts:f.created_at}));
+    (ea||[]).forEach((s:any)=>items.push({type:"session_edit",id:s.id,text:s.edit_alert?.summary||"Stats were edited",sub:s.notes||new Date(s.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}),ts:s.edit_alert?.ts||s.created_at,sessionId:s.id,leagueId:s.league_id}));
+    items.sort((a,b)=>new Date(b.ts).getTime()-new Date(a.ts).getTime());
+    setNotifs(items);setLoading(false);
+  };
+  const handleOpen=()=>{setOpen(o=>!o);if(!open)loadNotifs();};
+  return(
+    <div style={{position:"relative"}}>
+      <button onClick={handleOpen} style={{background:"none",border:"none",cursor:"pointer",position:"relative",padding:4}}>
+        <span style={{fontSize:22,color:open?"#C9A84C":"#666"}}>🔔</span>
+        {count>0&&<span style={{position:"absolute",top:0,right:0,background:"#E05555",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>{count>9?"9+":count}</span>}
+      </button>
+      {open&&<div style={{position:"absolute",top:36,right:0,width:280,background:"#141414",border:"1px solid rgba(201,168,76,0.2)",borderRadius:14,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",overflow:"hidden"}}>
+        <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{color:"#888",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5}}>NOTIFICATIONS</span>
+          <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"#444",fontSize:14,cursor:"pointer"}}>✕</button>
+        </div>
+        {loading&&<div style={{display:"flex",justifyContent:"center",padding:20}}><Spinner size={18}/></div>}
+        {!loading&&notifs.length===0&&<div style={{padding:"18px 14px",color:"#444",fontFamily:"'Space Mono',monospace",fontSize:11,textAlign:"center"}}>No new notifications</div>}
+        {!loading&&notifs.map((n:any,i:number)=>(
+          <div key={n.id+n.type} onClick={()=>{if(n.type==="session_edit"&&onViewNotification)onViewNotification(n);setOpen(false);}} style={{padding:"11px 14px",borderBottom:i<notifs.length-1?"1px solid rgba(255,255,255,0.04)":"none",cursor:n.type==="session_edit"?"pointer":"default",background:"rgba(255,255,255,0.01)"}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
+              <span style={{fontSize:16,marginTop:1,flexShrink:0}}>{n.type==="friend"?"👤":"⚠️"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:"#fff",fontSize:12,lineHeight:1.4}}>{n.text}</div>
+                {n.sub&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>{n.sub}</div>}
+                {n.type==="session_edit"&&<div style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>tap to view →</div>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
 // ─── LEAGUE HOME ───────────────────────────────────────
-function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard}:any){
+function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification}:any){
   const has100hrs=(profile?.global_time_seconds||0)>=360000;
+  const hoursPlayed=Math.floor((profile?.global_time_seconds||0)/3600);
+  const hoursLeft=Math.max(0,100-hoursPlayed);
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
+      {/* Header: logo left, bell+name right */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div><div style={{display:"flex",gap:5,marginBottom:3}}>{["♠","♥"].map((s,i)=><span key={i} style={{color:i===0?"#C9A84C":"#E05555",fontSize:15}}>{s}</span>)}</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
-        <div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",textAlign:"right"}}><div style={{color:"#fff",fontSize:14}}>{profile.display_name}</div>{myLeagues.length} league{myLeagues.length!==1?"s":""}</div>
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:2}}>
+          <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
+          <div style={{color:"#888",fontSize:11,fontFamily:"'Space Mono',monospace"}}>{profile.display_name}</div>
+        </div>
       </div>
       <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
-      {/* Worldwide leaderboard at the top */}
-      <button onClick={onScoreboard} style={{width:"100%",padding:"11px 0",marginBottom:14,background:has100hrs?"rgba(201,168,76,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${has100hrs?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12,color:has100hrs?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>🏆 WORLDWIDE LEADERBOARD{!has100hrs&&<span style={{fontSize:9,color:"#444",fontFamily:"'Space Mono',monospace"}}> · 100hrs to join</span>}</button>
+      {/* Worldwide leaderboard */}
+      <button onClick={onScoreboard} style={{width:"100%",padding:"12px 0",marginBottom:14,background:has100hrs?"rgba(201,168,76,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${has100hrs?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12,cursor:"pointer",textAlign:"center" as const}}>
+        <div style={{color:has100hrs?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5}}>🏆 WORLDWIDE LEADERBOARD</div>
+        {!has100hrs&&<div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9,marginTop:3,letterSpacing:1}}>{hoursLeft} hours to unlock</div>}
+      </button>
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner size={30}/></div>}
       {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center"}}><div style={{padding:"18px 0"}}><div style={{fontSize:28,marginBottom:8}}>♠</div><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
       {!loading&&myLeagues.map((lg:any)=>{
         const isComm=lg.commissioner_id===lg._myUserId;
         const sessionsLeft=lg.season_length>0?lg.season_length-(lg._sessionCount||0):null;
-        return<div key={lg.id} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"13px 14px",marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
-          <div onClick={()=>onSelectLeague(lg)} style={{width:42,height:42,borderRadius:11,background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,cursor:"pointer"}}>{lg.is_public?"🌍":"♠"}</div>
-          <div onClick={()=>onSelectLeague(lg)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
-            <div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:16,display:"flex",alignItems:"center",gap:5}}>{lg.name} {isComm&&<span style={{fontSize:12}}>👑</span>} {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:11,color:"#E05555",fontFamily:"'Space Mono',monospace"}}>DONE</span>}</div>
-            {lg.description&&<div style={{color:"#666",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lg.description}</div>}
-            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>{lg.season}{lg.location_name?` · 📍${lg.location_name}`:""} · <span style={{color:"#C9A84C",letterSpacing:2}}>{lg.code}</span></div>
+        const est=lg.created_at?new Date(lg.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):null;
+        return<div key={lg.id} onClick={()=>onSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
+          <div style={{display:"flex",alignItems:"center",gap:11}}>
+            <div style={{width:40,height:40,borderRadius:10,background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{lg.is_public?"🌍":"♠"}</div>
+            <div style={{flex:1,minWidth:0,textAlign:"center" as const}}>
+              <div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{lg.name} {isComm&&<span style={{fontSize:12}}>👑</span>} {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:10,color:"#E05555",fontFamily:"'Space Mono',monospace"}}>DONE</span>}</div>
+              {lg.description&&<div style={{color:"#666",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lg.description}</div>}
+              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>{est?"Est. "+est:""}{lg.location_name?" · 📍"+lg.location_name:""}</div>
+            </div>
           </div>
         </div>;
       })}
@@ -460,10 +530,11 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
     e.forEach((en:any)=>{edited[en.id]={buy_in:String(en.buy_in||0),rebuys:String(en.rebuys||0),cash_out:String(en.cash_out||0)};});
     setEditedEntries(edited);setLoading(false);
 
-    // Auto-lock if session is older than 7 days and not already locked
+    // Auto-lock if 24hrs since last unlock (or creation) and not already locked
     if(!session.locked){
-      const age=(Date.now()-new Date(session.created_at).getTime())/(1000*60*60*24);
-      if(age>7){
+      const anchor=session.locked_at?new Date(session.locked_at):new Date(session.created_at);
+      const ageHrs=(Date.now()-anchor.getTime())/(1000*60*60);
+      if(ageHrs>24){
         setIsLocked(true);
         await db.from("sessions").update({locked:true,locked_at:new Date().toISOString()}).eq("id",session.id);
       }
@@ -620,7 +691,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       setIsLocked(true);
       showToast("Session locked 🔒 — stats committed to profiles!");
     }else{
-      await db.from("sessions").update({locked:false,locked_at:null,edit_alert:null}).eq("id",session.id);
+      await db.from("sessions").update({locked:false,locked_at:new Date().toISOString(),edit_alert:null}).eq("id",session.id);
       setIsLocked(false);
       showToast("Session unlocked 🔓 — stats not reversed, edit carefully");
     }
@@ -643,10 +714,11 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   const d=new Date(session.created_at);
   const alreadyInSession=new Set(entries.map((e:any)=>e.players?.name?.toLowerCase()));
   const missingPlayers=players.filter((p:any)=>!alreadyInSession.has(p.name.toLowerCase()));
-  // Lock countdown
-  const ageInDays=(Date.now()-new Date(session.created_at).getTime())/(1000*60*60*24);
-  const daysUntilLock=Math.max(0,Math.ceil(7-ageInDays));
-  const showLockCountdown=!isLocked&&daysUntilLock<=7;
+  // Lock countdown — 24hrs since last unlock (or creation)
+  const lockAnchor=session.locked_at?new Date(session.locked_at):new Date(session.created_at);
+  const ageInHours=(Date.now()-lockAnchor.getTime())/(1000*60*60);
+  const hoursUntilLock=Math.max(0,Math.ceil(24-ageInHours));
+  const showLockCountdown=!isLocked&&hoursUntilLock<=24;
 
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
@@ -658,31 +730,21 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         <button onClick={handleDismissAlert} style={{padding:"3px 9px",background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>DISMISS</button>
       </div>}
 
-      {/* Stats commitment status banner */}
-      {isLocked
-        ?<div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13}}>🔒</span>
-          <span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10}}>Stats locked and committed to player profiles</span>
-        </div>
-        :<div style={{background:"rgba(201,168,76,0.04)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13}}>⏳</span>
-          <span style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:10}}>{isCommissioner?"Lock this session to commit stats to player profiles · edits won't affect profiles until locked":"Pending — commissioner must lock to commit stats to profiles"}</span>
-        </div>}
-
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
         <div style={{flex:1,minWidth:0,marginRight:10}}>
-          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>{d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
           {renamingTitle
-            ?<div style={{display:"flex",gap:7,alignItems:"center",marginTop:6}}>
+            ?<div style={{display:"flex",gap:7,alignItems:"center"}}>
               <input value={titleInput} onChange={e=>setTitleInput(e.target.value)} placeholder="Name this session..." style={{...inp,fontSize:14,flex:1,padding:"7px 11px"}} autoFocus/>
               <button onClick={handleSaveTitle} disabled={saving} style={{padding:"7px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>{saving?"...":"✓"}</button>
               <button onClick={()=>setRenamingTitle(false)} style={{padding:"7px 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>✕</button>
             </div>
-            :<div style={{display:"flex",alignItems:"center",gap:7,marginTop:2}}>
-              <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#fff"}}>{session.notes||"Session Results"}</div>
-              <button onClick={()=>{setTitleInput(session.notes||"");setRenamingTitle(true);}} style={{background:"none",border:"none",color:"#444",fontSize:11,cursor:"pointer",padding:"2px 4px",fontFamily:"'Space Mono',monospace"}}>✏</button>
+            :<div style={{display:"flex",alignItems:"baseline",gap:9,flexWrap:"wrap"}}>
+              <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1,flexShrink:0}}>{d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}{showLockCountdown&&<span style={{color:"#333",marginLeft:7}}>{hoursUntilLock===0?"locks soon":`locks in ${hoursUntilLock}h`}</span>}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#fff"}}>{session.notes||"Session Results"}</div>
+                <button onClick={()=>{setTitleInput(session.notes||"");setRenamingTitle(true);}} style={{background:"none",border:"none",color:"#333",fontSize:11,cursor:"pointer",padding:"2px 4px",fontFamily:"'Space Mono',monospace"}}>✏</button>
+              </div>
             </div>}
-          {showLockCountdown&&!renamingTitle&&<div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>{daysUntilLock===0?"Locks today":"Locks in "+daysUntilLock+" day"+(daysUntilLock!==1?"s":"")}</div>}
         </div>
         <div style={{display:"flex",gap:7,flexShrink:0}}>
           {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>{isLocked?"🔓":"🔒"}</button>}
@@ -766,6 +828,17 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>
         {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'Space Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
       </Card>
+
+      {/* Stats commitment status — sits below chicken dinner */}
+      {isLocked
+        ?<div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13}}>🔒</span>
+          <span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10}}>Stats locked and committed to player profiles</span>
+        </div>
+        :<div style={{background:"rgba(201,168,76,0.04)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13}}>⏳</span>
+          <span style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:10}}>{isCommissioner?"Lock this session to commit stats to player profiles":"Pending — commissioner must lock to commit stats"}</span>
+        </div>}
 
       {editing&&canEdit&&<button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"12px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>{saving?<><Spinner size={14}/> SAVING...</>:"SAVE CHANGES ✓"}</button>}
 
@@ -1396,7 +1469,7 @@ export default function HomeGameApp(){
       const dbIds=(rows||[]).map((r:any)=>r.league_id);
       const stored=JSON.parse(localStorage.getItem(`hg_leagues_${userId}`)||'[]');
       const allIds=[...new Set([...dbIds,...stored])];
-      if(allIds.length>0){const{data:lgs}=await db.from("leagues").select("id,name,description,code,season,season_length,buy_in,is_public,location_name,commissioner_id,commissioner_name,max_players").in("id",allIds);const mapped=(lgs||[]).map((lg:any)=>({...lg,_myUserId:userId}));setMyLeagues(mapped);return mapped;}
+      if(allIds.length>0){const{data:lgs}=await db.from("leagues").select("id,name,description,code,season,season_length,buy_in,is_public,location_name,commissioner_id,commissioner_name,max_players,created_at").in("id",allIds);const mapped=(lgs||[]).map((lg:any)=>({...lg,_myUserId:userId}));setMyLeagues(mapped);return mapped;}
       else{setMyLeagues([]);return[];}
     }finally{setLoadingLeagues(false);}
   };
@@ -1531,7 +1604,14 @@ export default function HomeGameApp(){
     if(lsv==='liveSession'&&currentLeague&&liveSession)return<LiveSessionView session={liveSession} liveEntries={liveEntries} players={players} profile={profile} isCommissioner={isComm} league={currentLeague} onBack={()=>setLsv('leagueDetail')} onSubmitEntry={handleSubmitEntry} onEndSession={handleEndSession}/>;
     if(lsv==='commSettings'&&currentLeague&&isComm)return<CommSettingsView league={currentLeague} players={players} onBack={()=>setLsv('leagueDetail')} onLeagueUpdated={(lg:any)=>{setCurrentLeague({...lg,_myUserId:authUser?.id});loadLeagueData(lg.id);}} onLeagueDeleted={()=>{setCurrentLeague(null);loadMyLeagues(profile.display_name,authUser.id);setLsv('home');}} showToast={showToast} showError={showError}/>;
     if(lsv==='transferComm'&&currentLeague)return<TransferCommView league={currentLeague} players={players} profile={profile} onBack={()=>setLsv('leagueDetail')} onTransferred={handleTransferAndLeave}/>;
-    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')}/>;
+    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewNotification={async(n:any)=>{
+      if(n.type==='session_edit'&&n.leagueId&&n.sessionId){
+        const lg=myLeagues.find((l:any)=>l.id===n.leagueId);
+        if(lg){setCurrentLeague(lg);await loadLeagueData(lg.id);}
+        const{data:sRow}=await db!.from("sessions").select("*").eq("id",n.sessionId).single();
+        if(sRow){setSelectedSession(sRow);setLsv('sessionDetail');}
+      }
+    }}/>;
   };
 
   const renderProfile=()=>{
