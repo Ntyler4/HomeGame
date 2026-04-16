@@ -55,7 +55,7 @@ function fmtSeconds(s:number){ if(!s||s<=0)return"—"; const h=Math.floor(s/360
 function fmtProfit(n:number){return`${n>=0?"+$":"-$"}${Math.abs(n)}`;}
 
 // ─── SHARED UI ─────────────────────────────────────────
-function Avatar({name,url,size=40}:{name:string;url?:string|null;size?:number}){
+function Avatar({name,url,size=40,streak=0}:{name:string;url?:string|null;size?:number;streak?:number}){
   const [src,setSrc]=useState<string|null>(url||null);
   useEffect(()=>{
     if(url!==undefined){setSrc(url);if(name)avatarCache[name.toLowerCase()]=url;return;}
@@ -67,8 +67,18 @@ function Avatar({name,url,size=40}:{name:string;url?:string|null;size?:number}){
   },[name,url]);
   const colors=["#C9A84C","#4CAF8C","#E05555","#5577CC","#CC55AA"];
   const bg=colors[(name||"?").charCodeAt(0)%colors.length];
-  if(src)return<img src={src} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:"2px solid rgba(201,168,76,0.3)"}}/>;
-  return<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:size*0.4,color:"#0D0D0D",flexShrink:0}}>{(name||"?")[0].toUpperCase()}</div>;
+  const onFire=streak>=3;
+  const inner=src
+    ?<img src={src} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover" as const,flexShrink:0,display:"block"}}/>
+    :<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:size*0.4,color:"#0D0D0D",flexShrink:0}}>{(name||"?")[0].toUpperCase()}</div>;
+  if(!onFire)return<div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,border:"2px solid rgba(201,168,76,0.3)",display:"inline-flex"}}>{inner}</div>;
+  return(
+    <div style={{position:"relative",display:"inline-flex",flexShrink:0,width:size+6,height:size+6,alignItems:"center",justifyContent:"center"}}>
+      <style>{`@keyframes fireRing{0%,100%{opacity:1;box-shadow:0 0 4px 1px rgba(255,107,53,0.6);}50%{opacity:0.7;box-shadow:0 0 8px 2px rgba(255,140,85,0.8),0 0 14px 3px rgba(255,69,0,0.3);}}`}</style>
+      <div style={{position:"absolute",inset:0,borderRadius:"50%",border:"2px solid #FF6B35",animation:"fireRing 1.8s ease-in-out infinite",pointerEvents:"none"}}/>
+      <div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,border:"1.5px solid rgba(255,107,53,0.4)"}}>{inner}</div>
+    </div>
+  );
 }
 function Card({children,style={}}:any){return<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:16,padding:20,...style}}>{children}</div>;}
 function StatBox({label,value,accent="#C9A84C",dim=false}:any){return<div style={{background:dim?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.03)",border:`1px solid ${dim?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:"10px 8px",flex:1,minWidth:50,textAlign:"center" as const,transition:"all 0.2s"}}><div style={{color:dim?"#333":"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1,textTransform:"uppercase",marginBottom:4,minHeight:22,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1.3}}>{label}</div><div style={{color:dim?"#333":accent,fontSize:15,fontWeight:700,fontFamily:"'Playfair Display',serif",lineHeight:1}}>{dim?"—":value}</div></div>;}
@@ -495,7 +505,7 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>FINAL STANDINGS</div>
         {sorted.map((p:any,i:number)=>{const medalColors=["#C9A84C","#888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
           <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
-          <Avatar name={p.name} size={34}/>
+          <Avatar name={p.name} size={34} streak={p.streak||0}/>
           <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
           <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(p.total_profit)}</div>
         </div>;})}
@@ -597,7 +607,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
               <div style={{width:22,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{medals[i]}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
               <Avatar name={p.name} size={38}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<Icon name="crown" size={12} color="#C9A84C"/>} {p.streak>1&&<Icon name="flame" size={12} color="#E05555"/>}</div>
+                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>
                 <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:1}}>{getSubStat(p)}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -989,7 +999,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           const ee=editedEntries[e.id]||{buy_in:String(e.buy_in||0),rebuys:String(e.rebuys||0),cash_out:String(e.cash_out||0)};
           return<div key={e.id} style={{padding:"9px 0",borderBottom:i<entries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:editing?7:0}}>
-              <Avatar name={name} size={34}/>
+              <Avatar name={name} size={34} streak={e.players?.streak||0}/>
               <div style={{flex:1}}>
                 <div style={{color:"#fff",fontSize:13}}>{name}</div>
                 {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${(e.buy_in||0)*(1+(e.rebuys||0))} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
@@ -1028,34 +1038,6 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           <button onClick={()=>setAddingPlayer(true)} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD PLAYER</button>
           <button onClick={()=>{setNewPlayerName("(guest)");setAddingPlayer(true);}} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="person" size={11} color="#5577CC"/>+ GUEST</button>
         </div>}
-
-        {/* GUEST PLAYERS — commissioner only, max 3, tracked in session notes as metadata */}
-        {isCommissioner&&!isLocked&&<div style={{marginTop:11}}>
-          {guestNames.map((g,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"7px 10px",background:"rgba(85,119,204,0.05)",border:"1px solid rgba(85,119,204,0.15)",borderRadius:9}}>
-              <div style={{flex:1}}>
-                {editingGuestIdx===i
-                  ?<input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){const n=guestInput.trim();if(n){const ng=[...guestNames];ng[i]=n;setGuestNames(ng);}setEditingGuestIdx(null);}} } style={{...inp,padding:"4px 7px",fontSize:12,width:"100%"}}/>
-                  :<span style={{color:"#aaa",fontSize:12}}>{g} <span style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace"}}>(guest)</span></span>
-                }
-              </div>
-              {editingGuestIdx===i
-                ?<button onClick={()=>{const n=guestInput.trim();if(n){const ng=[...guestNames];ng[i]=n;setGuestNames(ng);}setEditingGuestIdx(null);}} style={{padding:"3px 8px",background:"rgba(76,175,140,0.15)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:7,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>SAVE</button>
-                :<><button onClick={()=>{setGuestInput(g);setEditingGuestIdx(i);}} style={{padding:"3px 7px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:7,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
-                  <button onClick={()=>setGuestNames(guestNames.filter((_,j)=>j!==i))} style={{padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:7,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>✕</button></>
-              }
-            </div>
-          ))}
-          {guestNames.length<3&&!addingGuest&&<button onClick={()=>{setAddingGuest(true);setGuestInput("");}} style={{width:"100%",padding:"7px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-            <Icon name="person" size={11} color="#5577CC"/>+ ADD GUEST ({guestNames.length}/3)
-          </button>}
-          {addingGuest&&<div style={{display:"flex",gap:7,marginTop:6}}>
-            <input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);setGuestInput("");}}} placeholder="Guest name..." style={{...inp,flex:1,fontSize:13}}/>
-            <button onClick={()=>{if(guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);}setAddingGuest(false);setGuestInput("");}} disabled={!guestInput.trim()} style={{padding:"0 12px",background:guestInput.trim()?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${guestInput.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:guestInput.trim()?"#5577CC":"#444",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>ADD</button>
-            <button onClick={()=>{setAddingGuest(false);setGuestInput("");}} style={{padding:"0 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>✕</button>
-          </div>}
-          {guestNames.length>0&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:6,textAlign:"center"}}>Guests appear in session results but don't affect league standings</div>}
-        </div>}
         {isCommissioner&&!isLocked&&addingPlayer&&<div style={{marginTop:11,paddingTop:11,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
           <div style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>ADD PLAYER TO THIS SESSION</div>
           <div style={{marginBottom:8}}>
@@ -1077,9 +1059,9 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       </Card>
 
       {/* Awards */}
-      <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9,display:"flex",alignItems:"center",gap:6}}><Icon name="drumstick" size={12} color="#888"/> CHICKEN DINNER</div>
-        <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif"}}>{session.chicken_dinner_name||"—"}</div>
+      <Card style={{marginBottom:12,textAlign:"center" as const}}>
+        <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="drumstick" size={11} color="#888"/> WINNER WINNER CHICKEN DINNER</div>
+        <div style={{color:"#C9A84C",fontSize:22,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{session.chicken_dinner_name||"—"}</div>
         {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'Space Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
       </Card>
 
@@ -1264,10 +1246,99 @@ function NewSessionView({league,players,sessions,onStart,onBack}:any){
 
 // ─── HAND RANKINGS ─────────────────────────────────────
 function HandRankingsView({onBack}:any){
+  const [flipped,setFlipped]=useState<number|null>(null);
+  const [dealtCards,setDealtCards]=useState<number[]>([]);
+
+  const playDealSound=()=>{
+    try{
+      const ctx=new (window.AudioContext||(window as any).webkitAudioContext)();
+      // iOS Safari requires resume() after creation
+      const play=()=>{
+        [0,1,2,3,4].forEach(i=>{
+          const t=ctx.currentTime+i*0.08;
+          const osc=ctx.createOscillator();const gain=ctx.createGain();
+          osc.connect(gain);gain.connect(ctx.destination);
+          osc.frequency.setValueAtTime(800+i*60,t);
+          gain.gain.setValueAtTime(0.06,t);gain.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+          osc.start(t);osc.stop(t+0.07);
+        });
+      };
+      if(ctx.state==='suspended'){ctx.resume().then(play);}else{play();}
+    }catch(_){}
+  };
+
+  const handleFlip=(rank:number)=>{
+    if(flipped===rank){setFlipped(null);setDealtCards([]);return;}
+    setFlipped(rank);setDealtCards([]);
+    playDealSound();
+    const h=HAND_RANKINGS.find(x=>x.rank===rank)!;
+    const cards=h.example.split(' ');
+    cards.forEach((_,i)=>setTimeout(()=>setDealtCards(prev=>[...prev,i]),i*110+50));
+  };
+
+  const getSuit=(card:string)=>{
+    if(card.includes('♠'))return{s:'♠',c:'#e8e8e8'};
+    if(card.includes('♥'))return{s:'♥',c:'#E05555'};
+    if(card.includes('♦'))return{s:'♦',c:'#E05555'};
+    if(card.includes('♣'))return{s:'♣',c:'#e8e8e8'};
+    return{s:'',c:'#fff'};
+  };
+  const getVal=(card:string)=>card.replace(/[♠♥♦♣]/g,'');
+
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Hand Rankings"/>
-      {HAND_RANKINGS.map((h,i)=><div key={h.rank} style={{display:"flex",alignItems:"center",gap:13,padding:"11px 14px",marginBottom:6,background:"rgba(255,255,255,0.03)",border:`1px solid ${h.rank<=2?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12}}><div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Space Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div><div style={{flex:1}}><div style={{color:h.color,fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{h.name}</div><div style={{color:"#666",fontSize:10,marginTop:1}}>{h.desc}</div><div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:1,letterSpacing:1}}>{h.example}</div></div>{h.rank<=3&&<Icon name={["crown","star","card"][i] as any} size={14} color={h.color}/>}</div>)}
+      {HAND_RANKINGS.map((h)=>{
+        const isFlipped=flipped===h.rank;
+        const cards=h.example.split(' ');
+        return(
+          <div key={h.rank} onClick={()=>handleFlip(h.rank)} style={{
+            marginBottom:8,borderRadius:14,cursor:"pointer",
+            border:`1px solid ${h.rank<=2?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,
+            overflow:"hidden",
+            background:isFlipped?"rgba(10,10,10,0.98)":"rgba(255,255,255,0.03)",
+            transition:"background 0.2s",
+          }}>
+            {/* Front row — always visible */}
+            <div style={{display:"flex",alignItems:"center",gap:13,padding:"11px 14px"}}>
+              <div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Space Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div>
+              <div style={{flex:1}}>
+                <div style={{color:h.color,fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{h.name}</div>
+                <div style={{color:"#666",fontSize:10,marginTop:1}}>{h.desc}</div>
+              </div>
+              <div style={{color:"#333",fontSize:14,transition:"transform 0.2s",transform:isFlipped?"rotate(90deg)":"rotate(0deg)"}}>›</div>
+            </div>
+            {/* Card deal area */}
+            {isFlipped&&(
+              <div style={{padding:"0 14px 14px",display:"flex",gap:6,justifyContent:"center"}}>
+                {cards.map((card,ci)=>{
+                  const{s,c}=getSuit(card);
+                  const val=getVal(card);
+                  const visible=dealtCards.includes(ci);
+                  return(
+                    <div key={ci} style={{
+                      width:42,height:62,borderRadius:7,
+                      background:visible?"#1a1a1a":"rgba(255,255,255,0.06)",
+                      border:`1.5px solid ${visible?h.color:"rgba(255,255,255,0.1)"}`,
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                      transition:"all 0.15s",
+                      transform:visible?"translateY(0) scale(1)":"translateY(8px) scale(0.9)",
+                      opacity:visible?1:0,
+                      boxShadow:visible?`0 2px 12px rgba(0,0,0,0.5)`:undefined,
+                      flexShrink:0,
+                    }}>
+                      {visible&&<>
+                        <div style={{color:c,fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:15,lineHeight:1}}>{val}</div>
+                        <div style={{color:c,fontSize:16,lineHeight:1,marginTop:2}}>{s}</div>
+                      </>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1432,6 +1503,24 @@ function WipeStatsButton({profile,onWiped}:any){
 }
 
 // ─── PROFILE TAB ───────────────────────────────────────
+// Count-up animation hook
+function useCountUp(target:number,duration=900,enabled=true){
+  const [val,setVal]=useState(0);
+  useEffect(()=>{
+    if(!enabled||target===0){setVal(target);return;}
+    const start=Date.now();const from=0;
+    const tick=()=>{
+      const elapsed=Date.now()-start;
+      const progress=Math.min(elapsed/duration,1);
+      const ease=1-Math.pow(1-progress,3); // ease-out cubic
+      setVal(Math.round(from+(target-from)*ease));
+      if(progress<1)requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  },[target,enabled]);
+  return val;
+}
+
 function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest,onBack}:any){
   const [allStats,setAllStats]=useState<any>(null);const [loading,setLoading]=useState(true);
   const [friendCount,setFriendCount]=useState(0);const [editing,setEditing]=useState(false);
@@ -1464,19 +1553,36 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     const rebuys=(arch.total_rebuys||0)+(arch.archived_rebuys||0);
     const privacy=arch.privacy_settings||{};
     setAllStats({total_profit:tp,sessions:s,wins:w,losses:s-w,best_night:best,worst_night:worst,leagues:liveRows.length,time_seconds:time,chicken_dinners:cd,avg:s>0?tp/s:0,rebuys,privacy});
-    // Fetch session entries for badge computation
-    const playerIds=liveRows.map((_:any,i:number)=>i); // placeholder — fetch by name
+    // Fetch session entries for badge/achievement computation
+    const playerIdRows=(await db.from("players").select("id").ilike("name",displayName)).data||[];
+    const playerIds=playerIdRows.map((p:any)=>p.id);
     const{data:seData}=await db.from("session_entries")
-      .select("profit,rebuys,sessions!inner(stats_committed)")
+      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name)")
       .eq("sessions.stats_committed",true)
-      .in("player_id",(await db.from("players").select("id").ilike("name",displayName)).data?.map((p:any)=>p.id)||[]);
-    setSessionEntries(seData||[]);
+      .in("player_id",playerIds);
+    setSessionEntries((seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime()));
     setLoading(false);
   };
 
   const handleSaveName=async()=>{if(!db||!newName.trim()||newName.trim()===profile.display_name)return;setSavingName(true);const{error}=await db.from("profiles").update({display_name:newName.trim()}).eq("id",profile.id);if(!error){bustAvatarCache(profile.display_name,profile.avatar_url);bustAvatarCache(newName.trim(),profile.avatar_url);profile.display_name=newName.trim();setMsg("Name updated!");setTimeout(()=>setMsg(""),3000);}setSavingName(false);};
   const handleAvatar=async(e:any)=>{const f=e.target.files?.[0];if(!f||!db)return;setUploadingAvatar(true);try{const ext=f.name.split('.').pop();const path=`${profile.id}/avatar.${ext}`;await db.storage.from("avatars").upload(path,f,{upsert:true});const{data:ud}=db.storage.from("avatars").getPublicUrl(path);const url=ud.publicUrl+"?t="+Date.now();await db.from("profiles").update({avatar_url:url}).eq("id",profile.id);bustAvatarCache(profile.display_name,url);profile.avatar_url=url;setMsg("Photo updated!");setTimeout(()=>setMsg(""),3000);}finally{setUploadingAvatar(false);}};
   const isUp=(allStats?.total_profit||0)>=0;
+  // Count-up values — always called at top level (hooks rule)
+  const cuSessions=  useCountUp(allStats?.sessions||0,700,!loading&&!!allStats);
+  const cuWins=      useCountUp(allStats?.wins||0,750,!loading&&!!allStats);
+  const cuBestN=     useCountUp(allStats?.best_night||0,800,!loading&&!!allStats);
+  const cuWorstN=    useCountUp(Math.abs(allStats?.worst_night||0),800,!loading&&!!allStats);
+  const cuWinPct=    useCountUp(allStats?.sessions>0?Math.round((allStats.wins/allStats.sessions)*100):0,750,!loading&&!!allStats);
+  const cuWinStreak= useCountUp(allStats?.wins||0,700,!loading&&!!allStats);
+  const cuPL=        useCountUp(Math.abs(Math.round(allStats?.total_profit||0)),900,!loading&&!!allStats);
+  const cuAvg=       useCountUp(Math.abs(Math.round(allStats?.avg||0)),800,!loading&&!!allStats);
+  const cuHrs=       useCountUp(Math.floor((allStats?.time_seconds||0)/3600),900,!loading&&!!allStats);
+  const cuDinners=   useCountUp(allStats?.chicken_dinners||0,700,!loading&&!!allStats);
+  const cuRebuys=    useCountUp(allStats?.rebuys||0,700,!loading&&!!allStats);
+  const cuTotalWin=  useCountUp(Math.round((sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0)),1000,!loading&&sessionEntries.length>0);
+  const cuHrRate=    useCountUp(Math.abs(Math.round(allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0)),800,!loading&&!!allStats);
+  const hourlyRate=  allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0;
+  const cuMins=      Math.floor(((allStats?.time_seconds||0)%3600)/60);
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       {!isSelf&&onBack&&<BackButton onBack={onBack}/>}
@@ -1501,9 +1607,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{friendCount} friends</div>
         </div>
         {!loading&&allStats&&<>
-          <div style={{color:"#4CAF8C",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>
-            +${(sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0).toFixed(2).replace(/\.00$/,"")}
-          </div>
+          <div style={{color:"#4CAF8C",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>+${cuTotalWin}</div>
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>total winnings</div>
         </>}
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
@@ -1512,27 +1616,21 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
       {!loading&&allStats&&<>
         {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-          {(()=>{
-            const hoursPlayed=(allStats.time_seconds||0)/3600;
-            const hourlyRate=hoursPlayed>0?(allStats.total_profit/hoursPlayed):0;
-            return<>
-              <StatBox label="Sessions" value={allStats.sessions}/>
-              <StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/>
-              <StatBox label="Best Night" value={`$${allStats.best_night}`} accent="#C9A84C"/>
-              <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
-              <StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/>
-              <StatBox label="Win Streak" value={allStats.wins||0} accent="#4CAF8C"/>
-              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
-              <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
-              <StatBox label="$/Hour" value={hoursPlayed>0?fmtProfit(Math.round(hourlyRate)):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
-              <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
-              <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
-              <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
-            </>;
-          })()}
+          <StatBox label="Sessions" value={cuSessions}/>
+          <StatBox label="Wins" value={cuWins} accent="#4CAF8C"/>
+          <StatBox label="Best Night" value={`$${cuBestN}`} accent="#C9A84C"/>
+          <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${cuWorstN}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
+          <StatBox label="Win %" value={allStats.sessions>0?`${cuWinPct}%`:"—"} accent="#5577CC"/>
+          <StatBox label="Win Streak" value={cuWinStreak} accent="#4CAF8C"/>
+          <StatBox label="All-Time P/L" value={allStats.total_profit>=0?`+$${cuPL}`:`-$${cuPL}`} accent={isUp?"#4CAF8C":"#E05555"}/>
+          <StatBox label="Avg/Game" value={allStats.sessions>0?(allStats.avg>=0?`+$${cuAvg}`:`-$${cuAvg}`):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
+          <StatBox label="$/Hour" value={allStats.time_seconds>0?(hourlyRate>=0?`+$${cuHrRate}`:`-$${cuHrRate}`):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
+          <StatBox label="Time Played" value={cuHrs>0?`${cuHrs}h ${cuMins}m`:"—"} accent="#888"/>
+          <StatBox label="Dinners" value={cuDinners} accent="#C9A84C"/>
+          <StatBox label="Rebuys" value={cuRebuys} accent="#5577CC"/>
         </div>
         </>}
-        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries}/>}
+        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries} friendCount={friendCount}/>}
         {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
@@ -1591,6 +1689,17 @@ function getRWNext(sessions:number){
   return null;
 }
 
+// The Collector — chicken dinner progression
+const COLLECTOR_TIERS=[
+  {dinners:1,  name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {dinners:5,  name:"Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {dinners:15, name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {dinners:30, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {dinners:50, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
+];
+function getCollectorTier(dinners:number){let t=null;for(const tier of COLLECTOR_TIERS){if(dinners>=tier.dinners)t=tier;}return t;}
+function getCollectorNext(dinners:number){for(const t of COLLECTOR_TIERS){if(dinners<t.dinners)return t;}return null;}
+
 const BADGE_DEFS=[
   {
     id:"dinner_bell", name:"Dinner Bell", repeatable:false,
@@ -1625,7 +1734,7 @@ const BADGE_DEFS=[
   },
   {
     id:"road_warrior", name:"Punt Artist", repeatable:false,
-    desc:"Session milestone badge. Levels up as you play.",
+    desc:"Session Legacy Badge. Levels up as you play.",
     progression:true,
     icon:(earned:boolean,size=36,tierColor="#A0714F")=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
@@ -1685,16 +1794,147 @@ const BADGE_DEFS=[
       </svg>
     ),
   },
+  // ─── COLLECTOR — progressive badge ───────────────────
+  {
+    id:"collector", name:"Hungry", repeatable:false,
+    desc:"Chicken Dinner Legacy Badge. Levels up as you rack up wins.",
+    progression:true,
+    icon:(earned:boolean,size=36,tierColor="#A0714F")=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Plate */}
+        <ellipse cx="24" cy="34" rx="16" ry="4" fill={earned?`${tierColor}33`:"#1a1a1a"}/>
+        <ellipse cx="24" cy="32" rx="16" ry="5" fill={earned?"#0A0A0A":"#111"} stroke={earned?tierColor:"#333"} strokeWidth="1.5"/>
+        {/* Drumstick bone */}
+        <path d="M18 28 C16 22 14 16 17 12 C19 9 23 9 25 12 C27 15 26 20 28 24" stroke={earned?tierColor:"#444"} strokeWidth="3" strokeLinecap="round"/>
+        {/* Meat at top */}
+        <ellipse cx="23" cy="11" rx="6" ry="5" fill={earned?tierColor:"#2a2a2a"} stroke={earned?"#E8C56A":"#333"} strokeWidth="1"/>
+        {/* Bone knob at bottom */}
+        <circle cx="28" cy="25" r="4" fill={earned?"#0A0A0A":"#111"} stroke={earned?tierColor:"#333"} strokeWidth="1.5"/>
+        <circle cx="28" cy="25" r="2" fill={earned?tierColor:"#2a2a2a"}/>
+        {earned&&<circle cx="23" cy="11" r="2" fill="#E8C56A" opacity="0.7"/>}
+      </svg>
+    ),
+  },
+  // ─── 6 NEW ACHIEVEMENTS ───────────────────────────────
+  {
+    id:"bring_a_friend", name:"Bring a Friend", repeatable:false,
+    desc:"Add at least one friend on Home Game. The table's better with people you know.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <circle cx="17" cy="16" r="7" fill={earned?"rgba(85,119,204,0.3)":"#1a1a1a"} stroke={earned?"#5577CC":"#333"} strokeWidth="1.5"/>
+        <path d="M5 36 C5 28 10 24 17 24 C24 24 29 28 29 36" stroke={earned?"#5577CC":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <circle cx="33" cy="16" r="6" fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        <path d="M27 36 C27 29 31 25 37 25 C42 25 44 28 44 34" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M24 20 L28 20" stroke={earned?"#4CAF8C":"#333"} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id:"last_man_standing", name:"Last Man Standing", repeatable:true,
+    desc:"Take the chicken dinner without a single rebuy. You came, you saw, you conquered.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Podium */}
+        <rect x="18" y="28" width="12" height="14" rx="2" fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        {/* Person */}
+        <circle cx="24" cy="15" r="6" fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        <path d="M16 26 C16 20 19 18 24 18 C29 18 32 20 32 26" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        {/* Arms up */}
+        <path d="M16 22 L10 18 M32 22 L38 18" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" strokeLinecap="round"/>
+        {/* Crown */}
+        <path d="M18 12 L20 8 L24 11 L28 8 L30 12" stroke={earned?"#E8C56A":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      </svg>
+    ),
+  },
+  {
+    id:"the_whale", name:"The Whale", repeatable:true,
+    desc:"Spend $200 or more in a single session between buy-ins and rebuys. Go big or go home.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Whale body */}
+        <path d="M6 26 C6 18 12 12 22 12 C34 12 44 18 44 26 C44 32 38 36 28 36 L8 36 Z" fill={earned?"rgba(85,119,204,0.25)":"#1a1a1a"} stroke={earned?"#5577CC":"#333"} strokeWidth="1.5"/>
+        {/* Tail */}
+        <path d="M8 36 C6 38 4 42 8 42 C10 42 10 38 12 38 C14 38 14 42 16 42 C20 42 18 38 8 36Z" fill={earned?"#5577CC":"#333"} opacity={earned?0.8:0.5}/>
+        {/* Eye */}
+        <circle cx="34" cy="22" r="2.5" fill={earned?"#5577CC":"#333"}/>
+        <circle cx="35" cy="21" r="1" fill={earned?"#fff":"#444"}/>
+        {/* Spout */}
+        <path d="M28 12 C28 8 26 4 24 6 C22 4 20 8 20 12" stroke={earned?"#5577CC":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        {/* Dollar */}
+        <text x="18" y="30" fill={earned?"#E8C56A":"#444"} fontSize="10" fontFamily="monospace" fontWeight="bold">$</text>
+      </svg>
+    ),
+  },
+  {
+    id:"ice_cold", name:"Ice Cold", repeatable:true,
+    desc:"Cash out at exactly $0. Broke even. Not a win, not a loss — pure poker purgatory.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Snowflake */}
+        <path d="M24 6 L24 42 M6 24 L42 24 M10 10 L38 38 M38 10 L10 38" stroke={earned?"#5BCFED":"#333"} strokeWidth="2" strokeLinecap="round"/>
+        <circle cx="24" cy="24" r="3" fill={earned?"#5BCFED":"#333"}/>
+        {/* Branch tips */}
+        {[[24,6],[24,42],[6,24],[42,24],[10,10],[38,38],[38,10],[10,38]].map(([x,y],i)=>(
+          <circle key={i} cx={x} cy={y} r={2} fill={earned?"#5BCFED":"#333"}/>
+        ))}
+        {/* Mid-arm crossbars */}
+        <path d="M18 12 L24 18 L30 12 M18 36 L24 30 L30 36 M12 18 L18 24 L12 30 M36 18 L30 24 L36 30" stroke={earned?"#5BCFED":"#444"} strokeWidth="1.2" strokeLinecap="round" fill="none" opacity={earned?0.6:0.3}/>
+      </svg>
+    ),
+  },
+  {
+    id:"robbery", name:"Robbery", repeatable:true,
+    desc:"Win a session where your profit is at least double your buy-in. You took everyone's money.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Bag */}
+        <path d="M16 20 C16 14 19 10 24 10 C29 10 32 14 32 20 L34 36 C34 38 32 40 30 40 L18 40 C16 40 14 38 14 36 Z" fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        {/* Bag tie */}
+        <path d="M20 10 C20 6 28 6 28 10" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" fill="none" strokeLinecap="round"/>
+        {/* Dollar sign */}
+        <text x="19" y="32" fill={earned?"#E8C56A":"#444"} fontSize="14" fontFamily="monospace" fontWeight="bold">$</text>
+        {/* Speed lines */}
+        <path d="M35 18 L42 16 M35 24 L43 24 M35 30 L41 32" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinecap="round" opacity={earned?0.6:0.3}/>
+      </svg>
+    ),
+  },
+  {
+    id:"bounce_back", name:"Bounce Back", repeatable:true,
+    desc:"Win a session immediately after a loss. You took the hit and came back swinging.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Down arrow (loss) */}
+        <path d="M14 10 L14 28" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M8 22 L14 30 L20 22" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        {/* Up arrow (win) */}
+        <path d="M34 38 L34 20" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M28 26 L34 18 L40 26" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        {/* Bounce connector */}
+        <path d="M14 30 C14 38 34 38 34 30" stroke={earned?"#888":"#333"} strokeWidth="1.5" strokeLinecap="round" fill="none" strokeDasharray="3 2"/>
+      </svg>
+    ),
+  },
 ];
 
-function BadgeCard({b,count,sessions,flipped,onFlip}:any){
+function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
   const earned=count>0;
-  const rwTier=b.id==='road_warrior'?getRWTier(sessions):null;
-  const rwNext=b.id==='road_warrior'?getRWNext(sessions):null;
-  const tierColor=rwTier?.color||"#C9A84C";
-  const tierGlow=rwTier?.glow||"rgba(201,168,76,0.3)";
-  const isFire=rwTier?.label==='FIRE';
-  const displayName=b.id==='road_warrior'?(isFire&&!earned?"???":rwTier?.name||b.name):b.name;
+  const isRW=b.id==='road_warrior';
+  const isCollector=b.id==='collector';
+  const rwTier=isRW?getRWTier(sessions):null;
+  const rwNext=isRW?getRWNext(sessions):null;
+  const collTier=isCollector?getCollectorTier(dinners):null;
+  const collNext=isCollector?getCollectorNext(dinners):null;
+  const activeTier=rwTier||collTier;
+  const activeNext=rwNext||collNext;
+  const activeTiers=isRW?RW_TIERS:isCollector?COLLECTOR_TIERS:null;
+  const activeVal=isRW?sessions:isCollector?dinners:0;
+  const activeKey=isRW?'sessions':'dinners';
+  const tierColor=activeTier?.color||"#C9A84C";
+  const tierGlow=activeTier?.glow||"rgba(201,168,76,0.3)";
+  const isFire=activeTier?.label==='FIRE';
+  const displayName=(isRW||isCollector)
+    ?(isFire&&!earned?"???":activeTier?.name||b.name)
+    :b.name;
 
   return(
     <>
@@ -1755,54 +1995,54 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
             {/* Description */}
             <div style={{color:"#aaa",fontSize:13,lineHeight:1.7,marginBottom:b.id==='road_warrior'?16:0}}>{b.desc}</div>
 
-            {/* Road Warrior progression */}
-            {b.id==='road_warrior'&&(
+            {/* Progression — road_warrior or collector */}
+            {(isRW||isCollector)&&activeTiers&&(
               <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:16}}>
                 <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginBottom:14}}>PROGRESSION</div>
-                <div style={{position:"relative",marginBottom:8}}>
-                  <div style={{display:"flex",alignItems:"center"}}>
-                    {RW_TIERS.map((t,i)=>{
-                      const done=sessions>=t.sessions;
-                      const current=done&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
-                      const isFireTier=t.label==="FIRE";
-                      return(
-                        <div key={t.label} style={{display:"contents"}}>
-                          <div style={{
-                            width:current?16:12,height:current?16:12,borderRadius:"50%",flexShrink:0,zIndex:1,
-                            background:done?t.color:"#1a1a1a",
-                            border:`2px solid ${done?t.color:"#2a2a2a"}`,
-                            boxShadow:current?`0 0 8px ${t.color}`:undefined,
-                            animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,
-                          }}/>
-                          {i<RW_TIERS.length-1&&<div style={{
-                            flex:1,height:3,borderRadius:2,
-                            background:sessions>=RW_TIERS[i+1].sessions
-                              ?`linear-gradient(90deg,${t.color},${RW_TIERS[i+1].color})`
-                              :sessions>=t.sessions
-                                ?`linear-gradient(90deg,${t.color},#1a1a1a)`
-                                :"#1a1a1a",
-                            transition:"background 0.4s",
-                          }}/>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div style={{display:"flex",marginTop:8}}>
-                  {RW_TIERS.map((t,i)=>{
-                    const done=sessions>=t.sessions;
-                    const isFireTier=t.label==="FIRE";
-                    return(
-                      <div key={t.label} style={{flex:i<RW_TIERS.length-1?1:0,display:"flex",flexDirection:"column",alignItems:i===0?"flex-start":i===RW_TIERS.length-1?"flex-end":"center",minWidth:0}}>
-                        <div style={{color:done?t.color:"#333",fontSize:8,fontFamily:"'Space Mono',monospace",fontWeight:done?700:400,animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,whiteSpace:"nowrap"}}>
-                          {!isFireTier||done?t.name:"????"}
-                        </div>
-                        <div style={{color:done?t.color+"88":"#222",fontSize:7,fontFamily:"'Space Mono',monospace"}}>{t.sessions}</div>
+                {activeTiers.map((t:any,i:number)=>{
+                  const tVal=(t as any)[activeKey];
+                  const done=activeVal>=tVal;
+                  const nextTVal=i<activeTiers.length-1?(activeTiers[i+1] as any)[activeKey]:null;
+                  const current=done&&(i===activeTiers.length-1||activeVal<nextTVal);
+                  const isFireTier=t.label==="FIRE";
+                  return(
+                    <div key={t.label} style={{display:"flex",alignItems:"center",gap:12,marginBottom:0}}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:20,flexShrink:0}}>
+                        <div style={{
+                          width:current?16:11,height:current?16:11,borderRadius:"50%",
+                          background:done?t.color:"#1a1a1a",
+                          border:`2px solid ${done?t.color:"#2a2a2a"}`,
+                          boxShadow:current?`0 0 8px ${t.color}`:undefined,
+                          animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,
+                          flexShrink:0,transition:"all 0.3s",
+                        }}/>
+                        {i<activeTiers.length-1&&<div style={{
+                          width:2,height:28,borderRadius:1,
+                          background:nextTVal&&activeVal>=nextTVal
+                            ?`linear-gradient(180deg,${t.color},${(activeTiers[i+1] as any).color})`
+                            :done?`linear-gradient(180deg,${t.color},#1a1a1a)`:"#1a1a1a",
+                          transition:"background 0.3s",marginTop:2,
+                        }}/>}
                       </div>
-                    );
-                  })}
-                </div>
-                {rwNext&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",textAlign:"center",marginTop:10}}>{rwNext.sessions-sessions} sessions until {(rwNext as any).hidden&&!earned?"????":rwNext.name}</div>}
+                      <div style={{flex:1,paddingBottom:i<activeTiers.length-1?14:0}}>
+                        <div style={{
+                          color:done?t.color:"#333",
+                          fontSize:current?13:11,
+                          fontFamily:current?"'Playfair Display',serif":"'Space Mono',monospace",
+                          fontWeight:current?700:400,
+                          animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,
+                        }}>
+                          {(!isFireTier||done)?t.name:"????"}
+                          {current&&<span style={{color:t.color,fontSize:9,fontFamily:"'Space Mono',monospace",marginLeft:8,background:`${t.color}22`,padding:"1px 6px",borderRadius:4}}>CURRENT</span>}
+                        </div>
+                        <div style={{color:done?t.color+"66":"#222",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:1}}>
+                          {tVal} {activeKey} · {isFireTier&&!done?"????":t.label}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {activeNext&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:8,textAlign:"center" as const}}>{(activeNext as any)[activeKey]-activeVal} to go until {(activeNext as any).hidden&&!earned?"????":activeNext.name}</div>}
               </div>
             )}
             <div style={{marginTop:16,textAlign:"center" as const}}>
@@ -1815,30 +2055,52 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
   );
 }
 
-function BadgeRow({allStats,sessionEntries}:any){
+function BadgeRow({allStats,sessionEntries,friendCount}:any){
   const [flipped,setFlipped]=useState<string|null>(null);
   if(!allStats)return null;
   const sessions=allStats.sessions||0;
+  const dinners=allStats.chicken_dinners||0;
+  const hoursPlayed=Math.floor((allStats.time_seconds||0)/3600);
+
+  // Existing achievement counts
   const highRollerCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=100).length;
   const comebackCount=(sessionEntries||[]).filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length;
   const sharkCount=Math.floor((allStats.wins||0)/5);
-  const hoursPlayed=Math.floor((allStats.time_seconds||0)/3600);
+
+  // New achievement counts
+  const whaleCount=(sessionEntries||[]).filter((e:any)=>(e.buy_in||0)*(1+(e.rebuys||0))>=200).length;
+  const iceColdCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)===0).length;
+  const robberyCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=(e.buy_in||0)*2&&(e.buy_in||0)>0).length;
+  const lastManCount=(sessionEntries||[]).filter((e:any)=>{
+    const isWinner=e.sessions?.chicken_dinner_name&&dinners>0;
+    return (e.rebuys||0)===0&&(e.profit||0)>0&&isWinner;
+  }).length;
+  // Bounce back: win following a loss (sessionEntries sorted by created_at already)
+  let bounceBackCount=0;
+  for(let i=1;i<(sessionEntries||[]).length;i++){
+    if((sessionEntries[i-1].profit||0)<0&&(sessionEntries[i].profit||0)>0)bounceBackCount++;
+  }
+
   const counts:Record<string,number>={
-    dinner_bell:allStats.chicken_dinners>=1?1:0,
+    dinner_bell:dinners>=1?1:0,
     high_roller:highRollerCount,
     road_warrior:sessions>=10?1:0,
+    collector:dinners>=1?1:0,
     comeback_kid:comebackCount,
     shark:sharkCount,
     degenerate:hoursPlayed>=1000?1:0,
+    bring_a_friend:(friendCount||0)>=1?1:0,
+    last_man_standing:lastManCount,
+    the_whale:whaleCount,
+    ice_cold:iceColdCount,
+    robbery:robberyCount,
+    bounce_back:bounceBackCount,
   };
 
-  // Separate: progressive badges vs one-time/repeat achievements
-  const BADGE_IDS=['road_warrior'];
-  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate'];
+  const BADGE_IDS=['road_warrior','collector'];
+  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate','bring_a_friend','last_man_standing','the_whale','ice_cold','robbery','bounce_back'];
   const badgeDefs=BADGE_DEFS.filter(b=>BADGE_IDS.includes(b.id));
   const achievementDefs=BADGE_DEFS.filter(b=>ACHIEVEMENT_IDS.includes(b.id));
-
-  // Achievements: 3 per row
   const achRows:any[][]=[];
   for(let i=0;i<achievementDefs.length;i+=3)achRows.push(achievementDefs.slice(i,i+3));
 
@@ -1849,25 +2111,24 @@ function BadgeRow({allStats,sessionEntries}:any){
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           {badgeDefs.map(b=>(
-            <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions}
+            <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions} dinners={dinners}
               flipped={flipped===b.id}
               onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
             />
           ))}
-          {/* Placeholders for future badges */}
           {Array(3-badgeDefs.length).fill(0).map((_,i)=>(
             <div key={i} style={{borderRadius:16,paddingBottom:"115%",background:"rgba(255,255,255,0.01)",border:"1px dashed rgba(255,255,255,0.04)"}}/>
           ))}
         </div>
       </Card>
 
-      {/* ACHIEVEMENTS — one-time + repeatable */}
+      {/* ACHIEVEMENTS */}
       <Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>ACHIEVEMENTS</div>
         {achRows.map((row,ri)=>(
           <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<achRows.length-1?10:0}}>
             {row.map(b=>(
-              <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions}
+              <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions} dinners={dinners}
                 flipped={flipped===b.id}
                 onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
               />
