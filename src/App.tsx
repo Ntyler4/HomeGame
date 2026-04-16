@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
@@ -379,7 +379,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
         <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:3}}>
           <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
-          <div style={{color:"#ddd",fontSize:14,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
+          <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
         </div>
       </div>
       <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
@@ -747,26 +747,31 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
 
   const handleAddPlayer=async()=>{
     if(!db||!newPlayerName.trim())return;setSaving(true);
+    const isGuest=newPlayerName.trim().startsWith("(guest)");
     try{
-      const{data:playerRows}=await db.from("players").select("*").eq("league_id",league.id).ilike("name",newPlayerName.trim());
-      let playerId=playerRows?.[0]?.id;
-      if(!playerId){
-        const{data:np}=await db.from("players").insert({league_id:league.id,name:newPlayerName.trim(),total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).select().single();
-        playerId=np?.id;
-      }
-      if(!playerId){showError("Couldn't find or create player.");setSaving(false);return;}
       const bi=Number(newPlayerBuyIn)||0;const rb=Number(newPlayerRebuys)||0;const co=Number(newPlayerCashOut)||0;
-      // Profit = cash_out - buy_in - (rebuys * buy_in)
       const profit=co-bi-(rb*bi);
-      await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
-      const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
-      await db.from("players").update({total_profit:(p.total_profit||0)+profit,session_count:(p.session_count||0)+1,wins:(p.wins||0)+(profit>0?1:0),best_night:profit>(p.best_night||0)?profit:(p.best_night||0)}).eq("id",playerId);
-      // Pot = buy-in + rebuys
+      if(isGuest){
+        // Guest — insert with null player_id, name only, no profile/standings impact
+        const guestName=newPlayerName.trim()==="(guest)"?`Guest`:newPlayerName.trim();
+        await db.from("session_entries").insert({session_id:session.id,player_id:null,buy_in:bi,rebuys:rb,cash_out:co,profit,notes:`guest:${guestName}`});
+      }else{
+        const{data:playerRows}=await db.from("players").select("*").eq("league_id",league.id).ilike("name",newPlayerName.trim());
+        let playerId=playerRows?.[0]?.id;
+        if(!playerId){
+          const{data:np}=await db.from("players").insert({league_id:league.id,name:newPlayerName.trim(),total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).select().single();
+          playerId=np?.id;
+        }
+        if(!playerId){showError("Couldn't find or create player.");setSaving(false);return;}
+        await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
+        const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
+        await db.from("players").update({total_profit:(p.total_profit||0)+profit,session_count:(p.session_count||0)+1,wins:(p.wins||0)+(profit>0?1:0),best_night:profit>(p.best_night||0)?profit:(p.best_night||0)}).eq("id",playerId);
+      }
       const newPot=(session.pot||0)+bi+(rb*bi);
       await db.from("sessions").update({pot:newPot}).eq("id",session.id);
       setEditedPot(String(newPot));
       setNewPlayerName("");setNewPlayerBuyIn(String(session.buy_in_amount||league.buy_in||20));setNewPlayerRebuys("0");setNewPlayerCashOut("0");
-      setAddingPlayer(false);showToast(`${newPlayerName.trim()} added!`);onSaved();loadEntries();
+      setAddingPlayer(false);showToast(`${isGuest?"Guest":"Player"} added!`);onSaved();loadEntries();
     }catch(err:any){showError(err.message||"Failed to add player");}
     setSaving(false);
   };
@@ -1019,7 +1024,10 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         </div>}
 
         {/* Add missing player */}
-        {isCommissioner&&!isLocked&&!addingPlayer&&<button onClick={()=>setAddingPlayer(true)} style={{width:"100%",marginTop:11,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD MISSING PLAYER</button>}
+        {isCommissioner&&!isLocked&&!addingPlayer&&<div style={{display:"flex",gap:7,marginTop:11}}>
+          <button onClick={()=>setAddingPlayer(true)} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD PLAYER</button>
+          <button onClick={()=>{setNewPlayerName("(guest)");setAddingPlayer(true);}} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="person" size={11} color="#5577CC"/>+ GUEST</button>
+        </div>}
 
         {/* GUEST PLAYERS — commissioner only, max 3, tracked in session notes as metadata */}
         {isCommissioner&&!isLocked&&<div style={{marginTop:11}}>
@@ -1503,20 +1511,20 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
       </div>
       {!loading&&allStats&&<>
         {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
           {(()=>{
             const hoursPlayed=(allStats.time_seconds||0)/3600;
             const hourlyRate=hoursPlayed>0?(allStats.total_profit/hoursPlayed):0;
             return<>
               <StatBox label="Sessions" value={allStats.sessions}/>
               <StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/>
-              <StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/>
               <StatBox label="Best Night" value={`$${allStats.best_night}`} accent="#C9A84C"/>
               <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
-              <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
-              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
-              <StatBox label="$/Hour" value={hoursPlayed>0?fmtProfit(Math.round(hourlyRate)):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
+              <StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/>
               <StatBox label="Win Streak" value={allStats.wins||0} accent="#4CAF8C"/>
+              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
+              <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
+              <StatBox label="$/Hour" value={hoursPlayed>0?fmtProfit(Math.round(hourlyRate)):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
               <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
               <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
               <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
@@ -1567,11 +1575,11 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
 
 // Road Warrior progression tiers
 const RW_TIERS=[
-  {sessions:10,  name:"Punt Artist",     color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
-  {sessions:50,  name:"Table Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {sessions:100, name:"Full-Time",        color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
-  {sessions:500, name:"Chip Whisperer",  color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
-  {sessions:1000,name:"The Gambler",     color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE"},
+  {sessions:10,  name:"Punt Artist",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {sessions:50,  name:"Table Regular",  color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {sessions:100, name:"Full-Time",       color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {sessions:500, name:"Chip Whisperer", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {sessions:1000,name:"The Gambler",    color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE",  hidden:true},
 ];
 function getRWTier(sessions:number){
   let tier=null;
@@ -1685,17 +1693,18 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
   const rwNext=b.id==='road_warrior'?getRWNext(sessions):null;
   const tierColor=rwTier?.color||"#C9A84C";
   const tierGlow=rwTier?.glow||"rgba(201,168,76,0.3)";
-  const displayName=b.id==='road_warrior'?(rwTier?.name||b.name):b.name;
+  const isFire=rwTier?.label==='FIRE';
+  const displayName=b.id==='road_warrior'?(isFire&&!earned?"???":rwTier?.name||b.name):b.name;
 
   return(
     <>
       {/* Small front-face card always in grid */}
       <div onClick={onFlip} style={{cursor:"pointer",width:"100%",borderRadius:16,
-        background:earned?`linear-gradient(145deg,rgba(0,0,0,0.9),rgba(20,15,5,0.95))`:"rgba(255,255,255,0.02)",
+        background:isFire&&earned?"linear-gradient(145deg,rgba(20,5,0,0.95),rgba(0,0,0,0.98))":earned?`linear-gradient(145deg,rgba(0,0,0,0.9),rgba(20,15,5,0.95))`:"rgba(255,255,255,0.02)",
         border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.07)"}`,
-        boxShadow:earned?`0 0 16px ${tierGlow}`:undefined,
         paddingBottom:"115%",position:"relative",
-        opacity:earned?1:0.4,transition:"transform 0.15s",
+        opacity:earned?1:0.4,transition:"all 0.2s",
+        animation:isFire&&earned?"fireFlicker 2s ease-in-out infinite, fireBorder 2s ease-in-out infinite":undefined,
       }}>
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 4px"}}>
           {b.icon(earned,38,tierColor)}
@@ -1704,9 +1713,9 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
               <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
             </div>
           )}
-          {b.id==='road_warrior'&&rwTier&&(
-            <div style={{position:"absolute",top:5,left:5,background:tierColor,borderRadius:5,padding:"1px 4px"}}>
-              <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{rwTier.label}</span>
+          {b.id==='road_warrior'&&rwTier&&earned&&(
+            <div style={{position:"absolute",top:5,left:5,background:isFire?"#FF6B35":tierColor,borderRadius:5,padding:"1px 4px"}}>
+              <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{isFire?"🔥":rwTier.label}</span>
             </div>
           )}
           <div style={{color:earned?tierColor:"#444",fontSize:8,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700,paddingBottom:2}}>{displayName}</div>
@@ -1725,11 +1734,12 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
           <div onClick={e=>e.stopPropagation()} style={{
             width:"100%",maxWidth:340,
             borderRadius:20,
-            background:earned?`linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))`:"rgba(10,10,10,0.99)",
+            background:isFire&&earned?"rgba(12,4,0,0.99)":earned?`linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))`:"rgba(10,10,10,0.99)",
             border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.12)"}`,
-            boxShadow:earned?`0 0 40px ${tierGlow},0 20px 60px rgba(0,0,0,0.8)`:undefined,
             padding:24,
-            animation:"slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            animation:isFire&&earned
+              ?"slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1), fireFlicker 2s ease-in-out 0.3s infinite, fireBorder 2s ease-in-out 0.3s infinite"
+              :"slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)",
           }}>
             {/* Header */}
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
@@ -1748,24 +1758,51 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
             {/* Road Warrior progression */}
             {b.id==='road_warrior'&&(
               <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:16}}>
-                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginBottom:12}}>PROGRESSION</div>
-                {RW_TIERS.map((t,i)=>{
-                  const done=sessions>=t.sessions;
-                  const current=done&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
-                  return(
-                    <div key={t.label} style={{display:"flex",alignItems:"center",gap:12,marginBottom:i<RW_TIERS.length-1?10:0,opacity:done?1:0.35}}>
-                      <div style={{width:28,height:28,borderRadius:8,background:done?`${t.color}22`:"rgba(255,255,255,0.03)",border:`2px solid ${done?t.color:"rgba(255,255,255,0.08)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:current?`0 0 10px ${t.color}`:undefined}}>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:done?t.color:"#333"}}/>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginBottom:14}}>PROGRESSION</div>
+                <div style={{position:"relative",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center"}}>
+                    {RW_TIERS.map((t,i)=>{
+                      const done=sessions>=t.sessions;
+                      const current=done&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
+                      const isFireTier=t.label==="FIRE";
+                      return(
+                        <div key={t.label} style={{display:"contents"}}>
+                          <div style={{
+                            width:current?16:12,height:current?16:12,borderRadius:"50%",flexShrink:0,zIndex:1,
+                            background:done?t.color:"#1a1a1a",
+                            border:`2px solid ${done?t.color:"#2a2a2a"}`,
+                            boxShadow:current?`0 0 8px ${t.color}`:undefined,
+                            animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,
+                          }}/>
+                          {i<RW_TIERS.length-1&&<div style={{
+                            flex:1,height:3,borderRadius:2,
+                            background:sessions>=RW_TIERS[i+1].sessions
+                              ?`linear-gradient(90deg,${t.color},${RW_TIERS[i+1].color})`
+                              :sessions>=t.sessions
+                                ?`linear-gradient(90deg,${t.color},#1a1a1a)`
+                                :"#1a1a1a",
+                            transition:"background 0.4s",
+                          }}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={{display:"flex",marginTop:8}}>
+                  {RW_TIERS.map((t,i)=>{
+                    const done=sessions>=t.sessions;
+                    const isFireTier=t.label==="FIRE";
+                    return(
+                      <div key={t.label} style={{flex:i<RW_TIERS.length-1?1:0,display:"flex",flexDirection:"column",alignItems:i===0?"flex-start":i===RW_TIERS.length-1?"flex-end":"center",minWidth:0}}>
+                        <div style={{color:done?t.color:"#333",fontSize:8,fontFamily:"'Space Mono',monospace",fontWeight:done?700:400,animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,whiteSpace:"nowrap"}}>
+                          {!isFireTier||done?t.name:"????"}
+                        </div>
+                        <div style={{color:done?t.color+"88":"#222",fontSize:7,fontFamily:"'Space Mono',monospace"}}>{t.sessions}</div>
                       </div>
-                      <div style={{flex:1}}>
-                        <div style={{color:done?t.color:"#444",fontSize:12,fontWeight:600}}>{t.name}</div>
-                        <div style={{color:"#444",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{t.sessions} sessions · {t.label}</div>
-                      </div>
-                      {current&&<div style={{color:t.color,fontSize:9,fontFamily:"'Space Mono',monospace",background:`${t.color}22`,padding:"2px 7px",borderRadius:6}}>CURRENT</div>}
-                      {!done&&i===RW_TIERS.findIndex(x=>x.sessions>sessions)&&<div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{t.sessions-sessions} left</div>}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                {rwNext&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",textAlign:"center",marginTop:10}}>{rwNext.sessions-sessions} sessions until {(rwNext as any).hidden&&!earned?"????":rwNext.name}</div>}
               </div>
             )}
             <div style={{marginTop:16,textAlign:"center" as const}}>
@@ -1794,24 +1831,52 @@ function BadgeRow({allStats,sessionEntries}:any){
     shark:sharkCount,
     degenerate:hoursPlayed>=1000?1:0,
   };
-  // 3 per row
-  const rows:any[][]=[];
-  for(let i=0;i<BADGE_DEFS.length;i+=3)rows.push(BADGE_DEFS.slice(i,i+3));
+
+  // Separate: progressive badges vs one-time/repeat achievements
+  const BADGE_IDS=['road_warrior'];
+  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate'];
+  const badgeDefs=BADGE_DEFS.filter(b=>BADGE_IDS.includes(b.id));
+  const achievementDefs=BADGE_DEFS.filter(b=>ACHIEVEMENT_IDS.includes(b.id));
+
+  // Achievements: 3 per row
+  const achRows:any[][]=[];
+  for(let i=0;i<achievementDefs.length;i+=3)achRows.push(achievementDefs.slice(i,i+3));
+
   return(
-    <Card style={{marginBottom:12}}>
-      <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
-      {rows.map((row,ri)=>(
-        <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<rows.length-1?10:0}}>
-          {row.map(b=>(
+    <>
+      {/* BADGES — progressive */}
+      <Card style={{marginBottom:12}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {badgeDefs.map(b=>(
             <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions}
               flipped={flipped===b.id}
               onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
             />
           ))}
-          {row.length<3&&Array(3-row.length).fill(0).map((_,i)=><div key={i}/>)}
+          {/* Placeholders for future badges */}
+          {Array(3-badgeDefs.length).fill(0).map((_,i)=>(
+            <div key={i} style={{borderRadius:16,paddingBottom:"115%",background:"rgba(255,255,255,0.01)",border:"1px dashed rgba(255,255,255,0.04)"}}/>
+          ))}
         </div>
-      ))}
-    </Card>
+      </Card>
+
+      {/* ACHIEVEMENTS — one-time + repeatable */}
+      <Card style={{marginBottom:12}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>ACHIEVEMENTS</div>
+        {achRows.map((row,ri)=>(
+          <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<achRows.length-1?10:0}}>
+            {row.map(b=>(
+              <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions}
+                flipped={flipped===b.id}
+                onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
+              />
+            ))}
+            {row.length<3&&Array(3-row.length).fill(0).map((_,i)=><div key={i}/>)}
+          </div>
+        ))}
+      </Card>
+    </>
   );
 }
 
@@ -1920,7 +1985,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
 function BottomNav({activeTab,onTab,profile}:{activeTab:Tab;onTab:(t:Tab)=>void;profile:any}){
   return(
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,10,10,0.97)",borderTop:"1px solid rgba(201,168,76,0.15)",display:"flex",padding:"10px 0 20px",zIndex:100}}>
-      {([{key:'league' as Tab,icon:'⬡',label:'League'},{key:'feed' as Tab,icon:'◈',label:'Feed'}]).map(t=><button key={t.key} onClick={()=>onTab(t.key)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab===t.key?"#C9A84C":"#444"}}><span style={{fontSize:20}}>{t.icon}</span><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>{t.label}</span></button>)}
+      {([{key:'feed' as Tab,icon:'◈',label:'Feed'},{key:'league' as Tab,icon:'⬡',label:'League'}]).map(t=><button key={t.key} onClick={()=>onTab(t.key)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab===t.key?"#C9A84C":"#444"}}><span style={{fontSize:20}}>{t.icon}</span><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>{t.label}</span></button>)}
       <button onClick={()=>onTab('profile')} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab==='profile'?"#C9A84C":"#444"}}>
         <div style={{width:24,height:24,borderRadius:"50%",overflow:"hidden",border:`2px solid ${activeTab==='profile'?"#C9A84C":"#333"}`,flexShrink:0}}>
           <Avatar name={profile?.display_name||"?"} url={profile?.avatar_url} size={24}/>
@@ -2211,6 +2276,8 @@ export default function HomeGameApp(){
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
         @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
         @keyframes slideUp{from{transform:translateY(30px) scale(0.95);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
+        @keyframes fireFlicker{0%,100%{box-shadow:0 0 8px #FF6B35,0 0 16px rgba(255,107,53,0.4);}25%{box-shadow:0 0 12px #FF8C55,0 0 24px rgba(255,140,85,0.5);}50%{box-shadow:0 0 6px #FF4500,0 0 20px rgba(255,69,0,0.6);}75%{box-shadow:0 0 14px #FFA040,0 0 28px rgba(255,160,64,0.4);}}
+        @keyframes fireBorder{0%,100%{border-color:#FF6B35;}33%{border-color:#FF8C55;}66%{border-color:#FF4500;}}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
       `}</style>
       <div style={{background:"#0A0A0A",minHeight:"100vh",paddingBottom:80}}>
