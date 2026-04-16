@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABA
 const db = (SUPABASE_URL !== 'YOUR_SUPABASE_URL') ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 type Tab = 'league' | 'feed' | 'profile';
-type LSV = 'home'|'joinCreate'|'publicLeagues'|'worldwideLeaderboard'|'leagueDetail'|'newSession'|'liveSession'|'commSettings'|'transferComm'|'handRankings'|'playerProfile'|'sessionDetail'|'seasonRecap';
+type LSV = 'home'|'joinCreate'|'publicLeagues'|'worldwideLeaderboard'|'leagueDetail'|'newSession'|'liveSession'|'commSettings'|'transferComm'|'handRankings'|'playerProfile'|'sessionDetail'|'seasonRecap'|'seasonArchive'|'archivedSeason';
 type PSV = 'self'|'friends'|'friendProfile';
 
 const HAND_RANKINGS = [
@@ -379,7 +379,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
 }
 
 // ─── LEAGUE HOME ───────────────────────────────────────
-function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification}:any){
+function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification,onViewHandRankings}:any){
   const has100hrs=(profile?.global_time_seconds||0)>=360000;
   const hoursPlayed=Math.floor((profile?.global_time_seconds||0)/3600);
   const hoursLeft=Math.max(0,100-hoursPlayed);
@@ -422,6 +422,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
       })}
       <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
       <PokerTicker/>
+      <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:4}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
     </div>
   );
 }
@@ -521,7 +522,7 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
 }
 
 // ─── LEAGUE DETAIL ─────────────────────────────────────
-function LeagueDetailView({league,players,sessions,profile,isCommissioner,onViewPlayer,onStartSession,onBack,onCommSettings,liveSession,onLeaveLeague,onViewHandRankings,onViewSession,onSeasonRecap,showToast}:any){
+function LeagueDetailView({league,players,sessions,profile,isCommissioner,onViewPlayer,onStartSession,onBack,onCommSettings,liveSession,onLeaveLeague,onViewHandRankings,onViewSession,onSeasonRecap,onEndSeason,onViewSeasonArchive,showToast}:any){
   const [sortBy,setSortBy]=useState<'profit'|'winpct'|'time'|'chicken'>('profit');
   const [search,setSearch]=useState("");
   const getSorted=()=>{
@@ -581,12 +582,13 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         </div>
       </div>
       <div style={{padding:"0 16px 20px"}}>
+        <SeasonCountdown league={league} isCommissioner={isCommissioner} onEndSeason={onEndSeason}/>
         {liveSession&&<div onClick={onStartSession} style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,padding:"13px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}><div style={{width:9,height:9,borderRadius:"50%",background:"#4CAF8C",animation:"pulse 1.5s infinite",flexShrink:0}}/><div style={{flex:1}}><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:2}}>● GAME IS LIVE</div><div style={{color:"#888",fontSize:11,marginTop:1}}>Tap to enter your stats</div></div><span style={{color:"#4CAF8C",fontSize:20}}>›</span></div>}
         {!liveSession&&<button onClick={onStartSession} style={{width:"100%",padding:"12px 0",marginBottom:12,background:"linear-gradient(135deg,#1a4a2a,#2a6a3a)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}><span style={{fontSize:17}}>♠</span> START TONIGHT'S SESSION</button>}
         <div style={{marginBottom:9}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players..." style={{...inp,padding:"7px 11px",fontSize:12}}/>
         </div>
-        {/* Sort bar: scrollable left-right, hands button fixed gold */}
+        {/* Sort bar */}
         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:11}}>
           <div style={{display:"flex",gap:5,overflowX:"auto",flex:1,scrollbarWidth:"none",msOverflowStyle:"none",WebkitOverflowScrolling:"touch"} as any}>
             <style>{`.sort-bar::-webkit-scrollbar{display:none}`}</style>
@@ -594,7 +596,6 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
               {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#C9A84C":"#555"}/>}{l}</button>)}
             </div>
           </div>
-          <button onClick={onViewHandRankings} style={{padding:"4px 10px",borderRadius:20,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}><Icon name="card" size={13} color="#C9A84C"/></button>
         </div>
         <Card style={{padding:0,overflow:"hidden",marginBottom:12}}>
           {getSorted().length===0&&<div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12,textAlign:"center",padding:"22px 0"}}>{search?"No players match your search":"No members yet"}</div>}
@@ -637,13 +638,142 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
             </div>;
           })}
         </Card>}
+        <button onClick={onViewSeasonArchive} style={{width:"100%",padding:"9px 0",marginBottom:9,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:11,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="trophy" size={11} color="#555"/>SEASON ARCHIVE</button>
         <button onClick={onLeaveLeague} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.12)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>LEAVE LEAGUE</button>
       </div>
     </div>
   );
 }
 
-// ─── SESSION DETAIL ─────────────────────────────────────
+// ─── SEASON COUNTDOWN ───────────────────────────────────
+function SeasonCountdown({league,isCommissioner,onEndSeason}:any){
+  const [now,setNow]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(t);},[]);
+
+  // Season = 91 days (quarterly). Use season_start_date if available, else created_at
+  const SEASON_DAYS=91;
+  const startRaw=league.season_start_date||league.created_at;
+  const start=new Date(startRaw);
+  const end=new Date(start.getTime()+SEASON_DAYS*24*60*60*1000);
+  const msLeft=end.getTime()-now.getTime();
+  const daysLeft=Math.max(0,Math.ceil(msLeft/(1000*60*60*24)));
+  const pct=Math.min(100,Math.max(0,((now.getTime()-start.getTime())/(SEASON_DAYS*24*60*60*1000))*100));
+  const seasonOver=msLeft<=0;
+  const seasonNum=league.season_number||1;
+
+  const seasonName=()=>{
+    const m=start.getMonth();
+    if(m<3)return`Winter ${start.getFullYear()}`;
+    if(m<6)return`Spring ${start.getFullYear()}`;
+    if(m<9)return`Summer ${start.getFullYear()}`;
+    return`Fall ${start.getFullYear()}`;
+  };
+
+  return(
+    <div style={{marginBottom:12,background:seasonOver?"rgba(224,85,85,0.06)":"rgba(201,168,76,0.04)",border:`1px solid ${seasonOver?"rgba(224,85,85,0.25)":"rgba(201,168,76,0.15)"}`,borderRadius:13,padding:"11px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+        <div>
+          <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>SEASON {seasonNum} · {seasonName()}</div>
+          <div style={{color:seasonOver?"#E05555":"#C9A84C",fontSize:13,fontFamily:"'Playfair Display',serif",fontWeight:700,marginTop:2}}>
+            {seasonOver?"Season Complete":`${daysLeft} day${daysLeft!==1?"s":""} remaining`}
+          </div>
+        </div>
+        {isCommissioner&&seasonOver&&(
+          <button onClick={onEndSeason} style={{padding:"5px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>END SEASON →</button>
+        )}
+      </div>
+      {/* Progress bar */}
+      <div style={{height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,#C9A84C,#E8C56A)",borderRadius:2,transition:"width 0.3s"}}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── SEASON ARCHIVE VIEW ─────────────────────────────────
+function SeasonArchiveView({league,onBack,onViewArchive}:any){
+  const [archives,setArchives]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{
+    if(!db)return;
+    db.from("season_archives").select("*").eq("league_id",league.id).order("season_number",{ascending:false}).then(({data})=>{setArchives(data||[]);setLoading(false);});
+  },[league.id]);
+  return(
+    <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
+      <BackButton onBack={onBack}/>
+      <SectionTitle text="Season Archive"/>
+      {loading&&<div style={{display:"flex",justifyContent:"center",padding:32}}><Spinner/></div>}
+      {!loading&&archives.length===0&&<Card><div style={{textAlign:"center" as const,padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No completed seasons yet.</div></Card>}
+      {archives.map((a:any)=>(
+        <Card key={a.id} style={{marginBottom:10,cursor:"pointer"}} onClick={()=>onViewArchive(a)}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:36,height:36,borderRadius:9,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <span style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,fontWeight:700}}>S{a.season_number}</span>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{color:"#fff",fontSize:13,fontFamily:"'Playfair Display',serif"}}>{a.season_name||`Season ${a.season_number}`}</div>
+              <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>
+                {a.ended_at?new Date(a.ended_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):""}
+                {a.winner_name&&<span style={{color:"#C9A84C",marginLeft:8}}>🏆 {a.winner_name}</span>}
+              </div>
+            </div>
+            <span style={{color:"#444",fontSize:17}}>›</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── ARCHIVED SEASON SESSIONS VIEW ───────────────────────
+function ArchivedSeasonView({archive,league,onBack}:any){
+  const snap=archive.snapshot||{};
+  const players=(snap.players||[]).sort((a:any,b:any)=>b.total_profit-a.total_profit);
+  const sessions=snap.sessions||[];
+  return(
+    <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
+      <BackButton onBack={onBack}/>
+      <div style={{textAlign:"center" as const,marginBottom:18}}>
+        <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:4}}>{league.name}</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C9A84C"}}>{archive.season_name||`Season ${archive.season_number}`}</div>
+        {archive.winner_name&&<div style={{color:"#4CAF8C",fontSize:12,fontFamily:"'Space Mono',monospace",marginTop:4}}>🏆 {archive.winner_name}</div>}
+        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:4}}>{sessions.length} sessions played</div>
+      </div>
+      {players.length>0&&<Card style={{marginBottom:12}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>FINAL STANDINGS</div>
+        {players.map((p:any,i:number)=>{
+          const medal=["#C9A84C","#888","#A0714F"][i];
+          return<div key={p.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+            <div style={{width:22,flexShrink:0,textAlign:"center" as const}}>
+              {i<3?<div style={{width:18,height:18,borderRadius:"50%",background:`${medal}22`,border:`1px solid ${medal}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medal,fontSize:8,fontFamily:"'Space Mono',monospace",fontWeight:700,margin:"0 auto"}}>{i+1}</div>
+              :<span style={{color:"#333",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{i+1}</span>}
+            </div>
+            <Avatar name={p.name} size={30}/>
+            <div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{p.name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count}G · {p.wins}W</div></div>
+            <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{fmtProfit(p.total_profit)}</div>
+          </div>;
+        })}
+      </Card>}
+      {sessions.length>0&&<Card style={{marginBottom:12}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>SESSIONS</div>
+        {sessions.map((s:any,i:number)=>{
+          const d=new Date(s.created_at);
+          return<div key={s.id||i} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 0",borderBottom:i<sessions.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+            <div style={{width:32,textAlign:"center" as const,flexShrink:0}}>
+              <div style={{color:"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
+              <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{color:"#fff",fontSize:12}}>{s.notes||`$${s.pot} pot`}</div>
+              {s.chicken_dinner_name&&<div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}><Icon name="drumstick" size={9} color="#C9A84C"/> {s.chicken_dinner_name}</div>}
+            </div>
+            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>${s.pot}</div>
+          </div>;
+        })}
+      </Card>}
+    </div>
+  );
+}
 function SessionDetailView({session,league,players,profile,isCommissioner,onBack,onSaved,showToast,showError}:any){
   const [entries,setEntries]=useState<any[]>([]);
   const [sessionPosts,setSessionPosts]=useState<any[]>([]);
@@ -1557,7 +1687,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     const playerIdRows=(await db.from("players").select("id").ilike("name",displayName)).data||[];
     const playerIds=playerIdRows.map((p:any)=>p.id);
     const{data:seData}=await db.from("session_entries")
-      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name)")
+      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot)")
       .eq("sessions.stats_committed",true)
       .in("player_id",playerIds);
     setSessionEntries((seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime()));
@@ -1568,19 +1698,19 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
   const handleAvatar=async(e:any)=>{const f=e.target.files?.[0];if(!f||!db)return;setUploadingAvatar(true);try{const ext=f.name.split('.').pop();const path=`${profile.id}/avatar.${ext}`;await db.storage.from("avatars").upload(path,f,{upsert:true});const{data:ud}=db.storage.from("avatars").getPublicUrl(path);const url=ud.publicUrl+"?t="+Date.now();await db.from("profiles").update({avatar_url:url}).eq("id",profile.id);bustAvatarCache(profile.display_name,url);profile.avatar_url=url;setMsg("Photo updated!");setTimeout(()=>setMsg(""),3000);}finally{setUploadingAvatar(false);}};
   const isUp=(allStats?.total_profit||0)>=0;
   // Count-up values — always called at top level (hooks rule)
-  const cuSessions=  useCountUp(allStats?.sessions||0,700,!loading&&!!allStats);
-  const cuWins=      useCountUp(allStats?.wins||0,750,!loading&&!!allStats);
-  const cuBestN=     useCountUp(allStats?.best_night||0,800,!loading&&!!allStats);
-  const cuWorstN=    useCountUp(Math.abs(allStats?.worst_night||0),800,!loading&&!!allStats);
-  const cuWinPct=    useCountUp(allStats?.sessions>0?Math.round((allStats.wins/allStats.sessions)*100):0,750,!loading&&!!allStats);
-  const cuWinStreak= useCountUp(allStats?.wins||0,700,!loading&&!!allStats);
-  const cuPL=        useCountUp(Math.abs(Math.round(allStats?.total_profit||0)),900,!loading&&!!allStats);
-  const cuAvg=       useCountUp(Math.abs(Math.round(allStats?.avg||0)),800,!loading&&!!allStats);
-  const cuHrs=       useCountUp(Math.floor((allStats?.time_seconds||0)/3600),900,!loading&&!!allStats);
-  const cuDinners=   useCountUp(allStats?.chicken_dinners||0,700,!loading&&!!allStats);
-  const cuRebuys=    useCountUp(allStats?.rebuys||0,700,!loading&&!!allStats);
-  const cuTotalWin=  useCountUp(Math.round((sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0)),1000,!loading&&sessionEntries.length>0);
-  const cuHrRate=    useCountUp(Math.abs(Math.round(allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0)),800,!loading&&!!allStats);
+  const cuSessions=  useCountUp(allStats?.sessions||0,950,!loading&&!!allStats);
+  const cuWins=      useCountUp(allStats?.wins||0,1000,!loading&&!!allStats);
+  const cuBestN=     useCountUp(allStats?.best_night||0,1050,!loading&&!!allStats);
+  const cuWorstN=    useCountUp(Math.abs(allStats?.worst_night||0),1050,!loading&&!!allStats);
+  const cuWinPct=    useCountUp(allStats?.sessions>0?Math.round((allStats.wins/allStats.sessions)*100):0,1000,!loading&&!!allStats);
+  const cuWinStreak= useCountUp(allStats?.wins||0,950,!loading&&!!allStats);
+  const cuPL=        useCountUp(Math.abs(Math.round(allStats?.total_profit||0)),1150,!loading&&!!allStats);
+  const cuAvg=       useCountUp(Math.abs(Math.round(allStats?.avg||0)),1050,!loading&&!!allStats);
+  const cuHrs=       useCountUp(Math.floor((allStats?.time_seconds||0)/3600),1150,!loading&&!!allStats);
+  const cuDinners=   useCountUp(allStats?.chicken_dinners||0,950,!loading&&!!allStats);
+  const cuRebuys=    useCountUp(allStats?.rebuys||0,950,!loading&&!!allStats);
+  const cuTotalWin=  useCountUp(Math.round((sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0)),1300,!loading&&sessionEntries.length>0);
+  const cuHrRate=    useCountUp(Math.abs(Math.round(allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0)),1050,!loading&&!!allStats);
   const hourlyRate=  allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0;
   const cuMins=      Math.floor(((allStats?.time_seconds||0)%3600)/60);
   return(
@@ -1691,11 +1821,11 @@ function getRWNext(sessions:number){
 
 // The Collector — chicken dinner progression
 const COLLECTOR_TIERS=[
-  {dinners:1,  name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
-  {dinners:5,  name:"Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {dinners:15, name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
-  {dinners:30, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
-  {dinners:50, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
+  {dinners:5,   name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {dinners:10,  name:"Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {dinners:50,  name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {dinners:100, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {dinners:500, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
 ];
 function getCollectorTier(dinners:number){let t=null;for(const tier of COLLECTOR_TIERS){if(dinners>=tier.dinners)t=tier;}return t;}
 function getCollectorNext(dinners:number){for(const t of COLLECTOR_TIERS){if(dinners<t.dinners)return t;}return null;}
@@ -1903,14 +2033,24 @@ const BADGE_DEFS=[
     desc:"Win a session immediately after a loss. You took the hit and came back swinging.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        {/* Down arrow (loss) */}
         <path d="M14 10 L14 28" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
         <path d="M8 22 L14 30 L20 22" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        {/* Up arrow (win) */}
         <path d="M34 38 L34 20" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
         <path d="M28 26 L34 18 L40 26" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        {/* Bounce connector */}
         <path d="M14 30 C14 38 34 38 34 30" stroke={earned?"#888":"#333"} strokeWidth="1.5" strokeLinecap="round" fill="none" strokeDasharray="3 2"/>
+      </svg>
+    ),
+  },
+  {
+    id:"get_wrecked", name:"Get Wrecked", repeatable:true,
+    desc:"Win 80% or more of the entire pot in a single session. You didn't just win — you wrecked them.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <path d="M24 6 L28 19 L40 15 L32 24 L42 28 L30 29 L35 41 L24 33 L13 41 L18 29 L6 28 L16 24 L8 15 L20 19 Z"
+          fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
+        <circle cx="24" cy="24" r="5" fill={earned?"#C9A84C":"#2a2a2a"}/>
+        <text x="21.5" y="28" fill={earned?"#0A0A0A":"#444"} fontSize="7" fontFamily="monospace" fontWeight="bold">80</text>
+        {earned&&<circle cx="24" cy="24" r="9" fill="none" stroke="#E8C56A" strokeWidth="0.8" opacity="0.5"/>}
       </svg>
     ),
   },
@@ -2072,14 +2212,20 @@ function BadgeRow({allStats,sessionEntries,friendCount}:any){
   const iceColdCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)===0).length;
   const robberyCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=(e.buy_in||0)*2&&(e.buy_in||0)>0).length;
   const lastManCount=(sessionEntries||[]).filter((e:any)=>{
-    const isWinner=e.sessions?.chicken_dinner_name&&dinners>0;
-    return (e.rebuys||0)===0&&(e.profit||0)>0&&isWinner;
+    // Must be THE winner of that specific session (chicken_dinner_name matches this player) AND no rebuys
+    const wonSession=(e.sessions?.chicken_dinner_name||"").toLowerCase()===displayName.toLowerCase();
+    return (e.rebuys||0)===0&&wonSession;
   }).length;
   // Bounce back: win following a loss (sessionEntries sorted by created_at already)
   let bounceBackCount=0;
   for(let i=1;i<(sessionEntries||[]).length;i++){
     if((sessionEntries[i-1].profit||0)<0&&(sessionEntries[i].profit||0)>0)bounceBackCount++;
   }
+
+  const getWreckedCount=(sessionEntries||[]).filter((e:any)=>{
+    const pot=e.sessions?.pot||0;
+    return pot>0&&(e.profit||0)>=pot*0.8;
+  }).length;
 
   const counts:Record<string,number>={
     dinner_bell:dinners>=1?1:0,
@@ -2095,10 +2241,11 @@ function BadgeRow({allStats,sessionEntries,friendCount}:any){
     ice_cold:iceColdCount,
     robbery:robberyCount,
     bounce_back:bounceBackCount,
+    get_wrecked:getWreckedCount,
   };
 
   const BADGE_IDS=['road_warrior','collector'];
-  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate','bring_a_friend','last_man_standing','the_whale','ice_cold','robbery','bounce_back'];
+  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate','bring_a_friend','last_man_standing','the_whale','ice_cold','robbery','bounce_back','get_wrecked'];
   const badgeDefs=BADGE_DEFS.filter(b=>BADGE_IDS.includes(b.id));
   const achievementDefs=BADGE_DEFS.filter(b=>ACHIEVEMENT_IDS.includes(b.id));
   const achRows:any[][]=[];
@@ -2266,6 +2413,8 @@ export default function HomeGameApp(){
   const [loadingLeagues,setLoadingLeagues]=useState(false);
   const [activeTab,setActiveTab]=useState<Tab>('league');
   const [lsv,setLsv]=useState<LSV>('home');
+  const [badgePopup,setBadgePopup]=useState<any[]>([]);
+  const [selectedArchive,setSelectedArchive]=useState<any>(null);
   const [currentLeague,setCurrentLeague]=useState<any>(null);
   const [players,setPlayers]=useState<any[]>([]);const [sessions,setSessions]=useState<any[]>([]);
   const [liveSession,setLiveSession]=useState<any>(null);const [liveEntries,setLiveEntries]=useState<any[]>([]);
@@ -2338,6 +2487,8 @@ export default function HomeGameApp(){
         const leagues=await loadMyLeagues(data.display_name,user.id);
         requestNotifPermission();
         if(leagues)setupRealtime(leagues,data.display_name);
+        // Check for newly earned badges after a short delay
+        setTimeout(()=>checkNewBadges(data.display_name,user.id),2000);
         setBootstrapping(false);
       }else if(error&&attempt<=3){
         // Retry with backoff — keep showing loading screen
@@ -2363,9 +2514,59 @@ export default function HomeGameApp(){
       const dbIds=(rows||[]).map((r:any)=>r.league_id);
       const stored=JSON.parse(localStorage.getItem(`hg_leagues_${userId}`)||'[]');
       const allIds=[...new Set([...dbIds,...stored])];
-      if(allIds.length>0){const{data:lgs}=await db.from("leagues").select("id,name,description,code,season,season_length,buy_in,is_public,location_name,commissioner_id,commissioner_name,max_players,created_at").in("id",allIds);const mapped=(lgs||[]).map((lg:any)=>({...lg,_myUserId:userId}));setMyLeagues(mapped);return mapped;}
+      if(allIds.length>0){const{data:lgs}=await db.from("leagues").select("id,name,description,code,season,season_length,season_start_date,season_number,buy_in,is_public,location_name,commissioner_id,commissioner_name,max_players,created_at").in("id",allIds);const mapped=(lgs||[]).map((lg:any)=>({...lg,_myUserId:userId}));setMyLeagues(mapped);return mapped;}
       else{setMyLeagues([]);return[];}
     }finally{setLoadingLeagues(false);}
+  };
+
+  // Check for newly earned badges/achievements since last login
+  const checkNewBadges=async(displayName:string,userId:string)=>{
+    if(!db)return;
+    try{
+      // Fetch player stats
+      const[{data:plRows},{data:fdRows}]=await Promise.all([
+        db.from("players").select("total_profit,session_count,wins,chicken_dinners,time_played_seconds").ilike("name",displayName),
+        db.from("friends").select("id").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted"),
+      ]);
+      const sessions=(plRows||[]).reduce((a:number,p:any)=>a+(p.session_count||0),0);
+      const dinners=(plRows||[]).reduce((a:number,p:any)=>a+(p.chicken_dinners||0),0);
+      const wins=(plRows||[]).reduce((a:number,p:any)=>a+(p.wins||0),0);
+      const hours=Math.floor((plRows||[]).reduce((a:number,p:any)=>a+(p.time_played_seconds||0),0)/3600);
+      const friends=(fdRows||[]).length;
+      // Fetch session entries
+      const playerIds=((await db.from("players").select("id").ilike("name",displayName)).data||[]).map((p:any)=>p.id);
+      const{data:seData}=await db.from("session_entries").select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot)").eq("sessions.stats_committed",true).in("player_id",playerIds);
+      const ses=(seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime());
+      // Compute current earned set (same logic as BadgeRow)
+      const earned:Set<string>=new Set();
+      if(dinners>=1)earned.add('dinner_bell');
+      if(ses.filter((e:any)=>(e.profit||0)>=100).length>0)earned.add('high_roller');
+      if(sessions>=10)earned.add('road_warrior');
+      if(dinners>=5)earned.add('collector');
+      if(ses.filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length>0)earned.add('comeback_kid');
+      if(Math.floor(wins/5)>0)earned.add('shark');
+      if(hours>=1000)earned.add('degenerate');
+      if(friends>=1)earned.add('bring_a_friend');
+      // last man standing
+      if(ses.filter((e:any)=>(e.sessions?.chicken_dinner_name||"").toLowerCase()===displayName.toLowerCase()&&(e.rebuys||0)===0).length>0)earned.add('last_man_standing');
+      if(ses.filter((e:any)=>(e.buy_in||0)*(1+(e.rebuys||0))>=200).length>0)earned.add('the_whale');
+      if(ses.filter((e:any)=>(e.profit||0)===0).length>0)earned.add('ice_cold');
+      if(ses.filter((e:any)=>(e.profit||0)>=(e.buy_in||0)*2&&(e.buy_in||0)>0).length>0)earned.add('robbery');
+      // bounce back
+      for(let i=1;i<ses.length;i++){if((ses[i-1].profit||0)<0&&(ses[i].profit||0)>0){earned.add('bounce_back');break;}}
+      if(ses.filter((e:any)=>{const pot=e.sessions?.pot||0;return pot>0&&(e.profit||0)>=pot*0.8;}).length>0)earned.add('get_wrecked');
+      // Compare to last seen
+      const storageKey=`hg_badges_seen_${userId}`;
+      const seenRaw=localStorage.getItem(storageKey);
+      const seen:Set<string>=new Set(seenRaw?JSON.parse(seenRaw):[]);
+      const newBadges:string[]=[...earned].filter(id=>!seen.has(id));
+      // Save new seen set
+      localStorage.setItem(storageKey,JSON.stringify([...earned]));
+      if(newBadges.length>0){
+        const defs=BADGE_DEFS.filter(b=>newBadges.includes(b.id));
+        setBadgePopup(defs);
+      }
+    }catch(_){}
   };
 
   const loadLeagueData=async(lgId:string)=>{
@@ -2433,6 +2634,45 @@ export default function HomeGameApp(){
     await loadMyLeagues(profile.display_name,authUser.id);showToast("You left the league.");setCurrentLeague(null);setLsv('home');
   };
 
+  const handleEndSeason=async()=>{
+    if(!db||!currentLeague||!profile)return;
+    if(!window.confirm("End this season? Stats will be archived and the league will reset for next season."))return;
+    try{
+      const seasonNum=currentLeague.season_number||1;
+      const winner=[...players].sort((a:any,b:any)=>b.total_profit-a.total_profit)[0];
+      // Snapshot current standings + sessions
+      const snapshot={players:players.map((p:any)=>({id:p.id,name:p.name,total_profit:p.total_profit,wins:p.wins,session_count:p.session_count,chicken_dinners:p.chicken_dinners})),sessions:sessions.map((s:any)=>({id:s.id,created_at:s.created_at,pot:s.pot,notes:s.notes,chicken_dinner_name:s.chicken_dinner_name}))};
+      const startRaw=currentLeague.season_start_date||currentLeague.created_at;
+      // Save to season_archives
+      await db.from("season_archives").insert({league_id:currentLeague.id,season_number:seasonNum,season_name:currentLeague.season||`Season ${seasonNum}`,started_at:startRaw,ended_at:new Date().toISOString(),winner_name:winner?.name||null,winner_profit:winner?.total_profit||null,snapshot});
+      // Archive each player's stats to their profile, then reset league stats
+      for(const p of players){
+        // Add to profile archived stats
+        const{data:prof}=await db.from("profiles").select("archived_profit,archived_sessions,archived_wins,archived_best_night,archived_worst_night,archived_chicken_dinners,archived_time_seconds").ilike("display_name",p.name).maybeSingle();
+        if(prof){
+          await db.from("profiles").update({
+            archived_profit:(prof.archived_profit||0)+(p.total_profit||0),
+            archived_sessions:(prof.archived_sessions||0)+(p.session_count||0),
+            archived_wins:(prof.archived_wins||0)+(p.wins||0),
+            archived_best_night:Math.max(prof.archived_best_night||0,p.best_night||0),
+            archived_chicken_dinners:(prof.archived_chicken_dinners||0)+(p.chicken_dinners||0),
+            archived_time_seconds:(prof.archived_time_seconds||0)+(p.time_played_seconds||0),
+          }).ilike("display_name",p.name);
+        }
+        // Reset player stats in league
+        await db.from("players").update({total_profit:0,session_count:0,wins:0,best_night:0,worst_night:0,chicken_dinners:0,streak:0,time_played_seconds:0}).eq("id",p.id);
+      }
+      // Reset league: bump season number, new start date, clear old sessions' link
+      const newSeasonNum=seasonNum+1;
+      await db.from("leagues").update({season_number:newSeasonNum,season_start_date:new Date().toISOString(),season:`Season ${newSeasonNum}`}).eq("id",currentLeague.id);
+      // Reload
+      await loadLeagueData(currentLeague.id);
+      const updatedLeague={...currentLeague,season_number:newSeasonNum,season_start_date:new Date().toISOString(),season:`Season ${newSeasonNum}`};
+      setCurrentLeague(updatedLeague);
+      showToast(`Season ${seasonNum} archived! Season ${newSeasonNum} has begun.`);
+    }catch(e:any){showError(e.message||"Failed to end season");}
+  };
+
   const handleTransferAndLeave=async()=>{
     if(!db||!currentLeague||!profile||!authUser)return;
     const mp=players.find((p:any)=>p.name.toLowerCase()===profile.display_name.toLowerCase());if(mp)await db.from("players").delete().eq("id",mp.id);
@@ -2498,16 +2738,18 @@ export default function HomeGameApp(){
     if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} prefillCode={autoJoinCode}/>;
     if(lsv==='publicLeagues')return<PublicLeaguesView onBack={()=>setLsv('home')} onJoin={joinLeague}/>;
     if(lsv==='worldwideLeaderboard')return<WorldwideLeaderboardView profile={profile} onBack={()=>setLsv('home')}/>;
-    if(lsv==='handRankings')return<HandRankingsView onBack={()=>setLsv('leagueDetail')}/>;
+    if(lsv==='handRankings')return<HandRankingsView onBack={()=>setLsv(currentLeague?'leagueDetail':'home')}/>;
     if(lsv==='seasonRecap'&&currentLeague)return<SeasonRecapView league={currentLeague} players={players} sessions={sessions} onBack={()=>setLsv('leagueDetail')}/>;
-    if(lsv==='leagueDetail'&&currentLeague)return<LeagueDetailView league={currentLeague} players={players} sessions={sessions} profile={profile} isCommissioner={isComm} onViewPlayer={(p:any)=>{setSelectedPlayer(p);setLsv('playerProfile');}} onStartSession={()=>liveSession?setLsv('liveSession'):setLsv('newSession')} onBack={()=>{setCurrentLeague(null);setLsv('home');}} onCommSettings={()=>setLsv('commSettings')} liveSession={liveSession} onLeaveLeague={handleLeave} onViewHandRankings={()=>setLsv('handRankings')} onViewSession={(s:any)=>{setSelectedSession(s);setLsv('sessionDetail');}} onSeasonRecap={()=>setLsv('seasonRecap')} showToast={showToast}/>;
+    if(lsv==='seasonArchive'&&currentLeague)return<SeasonArchiveView league={currentLeague} onBack={()=>setLsv('leagueDetail')} onViewArchive={(a:any)=>{setSelectedArchive(a);setLsv('archivedSeason');}}/>;
+    if(lsv==='archivedSeason'&&currentLeague&&selectedArchive)return<ArchivedSeasonView archive={selectedArchive} league={currentLeague} onBack={()=>setLsv('seasonArchive')}/>;
+    if(lsv==='leagueDetail'&&currentLeague)return<LeagueDetailView league={currentLeague} players={players} sessions={sessions} profile={profile} isCommissioner={isComm} onViewPlayer={(p:any)=>{setSelectedPlayer(p);setLsv('playerProfile');}} onStartSession={()=>liveSession?setLsv('liveSession'):setLsv('newSession')} onBack={()=>{setCurrentLeague(null);setLsv('home');}} onCommSettings={()=>setLsv('commSettings')} liveSession={liveSession} onLeaveLeague={handleLeave} onViewHandRankings={()=>setLsv('handRankings')} onViewSession={(s:any)=>{setSelectedSession(s);setLsv('sessionDetail');}} onSeasonRecap={()=>setLsv('seasonRecap')} onEndSeason={handleEndSeason} onViewSeasonArchive={()=>setLsv('seasonArchive')} showToast={showToast}/>;
     if(lsv==='sessionDetail'&&selectedSession&&currentLeague)return<SessionDetailView session={selectedSession} league={currentLeague} players={players} profile={profile} isCommissioner={isComm} onBack={()=>setLsv('leagueDetail')} onSaved={()=>loadLeagueData(currentLeague.id)} showToast={showToast} showError={showError}/>;
     if(lsv==='playerProfile'&&selectedPlayer)return<PlayerProfileView player={selectedPlayer} profile={profile} onBack={()=>setLsv('leagueDetail')} onSendFriendRequest={sendFriendRequest}/>;
     if(lsv==='newSession'&&currentLeague)return<NewSessionView league={currentLeague} players={players} sessions={sessions} onStart={handleStartSession} onBack={()=>setLsv('leagueDetail')}/>;
     if(lsv==='liveSession'&&currentLeague&&liveSession)return<LiveSessionView session={liveSession} liveEntries={liveEntries} players={players} profile={profile} isCommissioner={isComm} league={currentLeague} onBack={()=>setLsv('leagueDetail')} onSubmitEntry={handleSubmitEntry} onEndSession={handleEndSession}/>;
     if(lsv==='commSettings'&&currentLeague&&isComm)return<CommSettingsView league={currentLeague} players={players} onBack={()=>setLsv('leagueDetail')} onLeagueUpdated={(lg:any)=>{setCurrentLeague({...lg,_myUserId:authUser?.id});loadLeagueData(lg.id);}} onLeagueDeleted={()=>{setCurrentLeague(null);loadMyLeagues(profile.display_name,authUser.id);setLsv('home');}} showToast={showToast} showError={showError}/>;
     if(lsv==='transferComm'&&currentLeague)return<TransferCommView league={currentLeague} players={players} profile={profile} onBack={()=>setLsv('leagueDetail')} onTransferred={handleTransferAndLeave}/>;
-    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewNotification={async(n:any)=>{
+    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewHandRankings={()=>setLsv('handRankings')} onViewNotification={async(n:any)=>{
       if(n.type==='session_edit'&&n.leagueId&&n.sessionId){
         const lg=myLeagues.find((l:any)=>l.id===n.leagueId);
         if(lg){setCurrentLeague(lg);await loadLeagueData(lg.id);}
@@ -2544,6 +2786,27 @@ export default function HomeGameApp(){
       <div style={{background:"#0A0A0A",minHeight:"100vh",paddingBottom:80}}>
         {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(76,175,140,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'Space Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{toast}</div>}
         {error&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(224,85,85,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'Space Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{error}</div>}
+        {/* Badge unlock popup */}
+        {badgePopup.length>0&&(()=>{
+          const b=badgePopup[0];
+          const isBadge=b.progression;
+          return(
+            <div onClick={()=>setBadgePopup(p=>p.slice(1))} style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.2s ease"}}>
+              <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:320,background:"linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))",border:"2px solid #C9A84C",borderRadius:20,padding:28,boxShadow:"0 0 40px rgba(201,168,76,0.3)",animation:"slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)"}}>
+                <div style={{textAlign:"center" as const,marginBottom:16}}>
+                  <div style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:8}}>{isBadge?"BADGE LEVEL UP":"ACHIEVEMENT UNLOCKED"}</div>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>{b.icon(true,56,"#C9A84C")}</div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C9A84C",fontWeight:700,marginBottom:6}}>{b.name}</div>
+                  <div style={{color:"#888",fontSize:12,lineHeight:1.7,marginBottom:4}}>🎉 Congratulations!</div>
+                  <div style={{color:"#666",fontSize:11,lineHeight:1.6}}>{b.desc}</div>
+                </div>
+                <button onClick={()=>setBadgePopup(p=>p.slice(1))} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>
+                  {badgePopup.length>1?`NEXT (${badgePopup.length-1} more)`:"LET'S GO →"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         {activeTab==='league'&&renderLeague()}
         {activeTab==='feed'&&<FeedView profile={profile} myLeagues={myLeagues} isActive={activeTab==='feed'}/>}
         {activeTab==='profile'&&renderProfile()}
