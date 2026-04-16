@@ -256,7 +256,7 @@ function Icon({name,size=16,color="currentColor"}:{name:string;size?:number;colo
     card:<svg {...s} viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={color} strokeWidth={1.8}/><path d="M7 9h2M7 13h6" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><path d="M16 9l1.5 4L19 9" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/></svg>,
     camera:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/><circle cx="12" cy="13" r="4" stroke={color} strokeWidth={1.8}/></svg>,
     hourglass:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M5 3h14M5 21h14M6 3v3l6 6-6 6v3M18 3v3l-6 6 6 6v3" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    drumstick:<svg {...s} viewBox="0 0 24 24" fill="none"><circle cx="17" cy="7" r="4" stroke={color} strokeWidth={1.8}/><path d="M13.5 10.5L5 19a2 2 0 002.8 2.8l8.7-8.7" stroke={color} strokeWidth={1.8} strokeLinecap="round"/><circle cx="6" cy="19" r="1.5" fill={color}/></svg>,
+    drumstick:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M15.5 2C13.6 2 12 3.6 12 5.5c0 .8.3 1.5.7 2.1L5.8 14.5A3 3 0 0 0 5 16.5 3 3 0 0 0 8 19.5a3 3 0 0 0 2.1-.8l6.9-6.9c.5.4 1.2.7 2 .7C20.7 12.5 22 11 22 9c0-2-1.3-3.5-3-4A3.5 3.5 0 0 0 15.5 2Z" fill={color} opacity="0.9"/><circle cx="7.5" cy="16.5" r="1.5" fill={color} opacity="0.6"/></svg>,
     spade:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M12 2L4 10a5 5 0 007 7l-1 3h4l-1-3a5 5 0 007-7L12 2z" stroke={color} strokeWidth={1.8} strokeLinejoin="round"/></svg>,
     person:<svg {...s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke={color} strokeWidth={1.8}/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke={color} strokeWidth={1.8} strokeLinecap="round"/></svg>,
     pencil:<svg {...s} viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"/></svg>,
@@ -561,7 +561,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           <StatBox label="Members" value={`${players.length}/${league.max_players||12}`}/>
           <StatBox label="Sessions" value={sessions.length}/>
           <StatBox label="Last Buy-in" value={sessions[0]?.buy_in_amount?`$${sessions[0].buy_in_amount}`:`$${league.buy_in}`} accent="#4CAF8C"/>
-          {sessionsLeft!==null&&<StatBox label={seasonDone?"Done":"Left"} value={seasonDone?"✓":sessionsLeft} accent={seasonDone?"#E05555":"#C9A84C"}/>}
+          <StatBox label="All-Time Vol" value={`$${sessions.reduce((a:number,s:any)=>a+(s.pot||0),0).toLocaleString()}`} accent="#C9A84C"/>
         </div>
         {/* Code / Location / Invite — evenly spaced */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
@@ -703,8 +703,12 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       entries.forEach(e=>{newProfits[e.id]=getProfit(e.id);});
       const sorted=[...entries].sort((a,b)=>(newProfits[b.id]||0)-(newProfits[a.id]||0));
       const topPlayer=sorted[0]?.players?.name||session.winner_name||"";
-      // Pot = sum of buy-ins only
-      const newPot=Number(editedPot)||entries.reduce((a,e)=>a+Number(editedEntries[e.id]?.buy_in||0),0);
+      // Pot = sum of all buy-ins + rebuys (each rebuy costs buy_in amount)
+      const newPot=Number(editedPot)||entries.reduce((a,e)=>{
+        const bi=Number(editedEntries[e.id]?.buy_in||0);
+        const rb=Number(editedEntries[e.id]?.rebuys||0);
+        return a+bi+(rb*bi);
+      },0);
 
       await db.from("sessions").update({
         winner_name:topPlayer,
@@ -757,8 +761,8 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
       const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
       await db.from("players").update({total_profit:(p.total_profit||0)+profit,session_count:(p.session_count||0)+1,wins:(p.wins||0)+(profit>0?1:0),best_night:profit>(p.best_night||0)?profit:(p.best_night||0)}).eq("id",playerId);
-      // Pot = buy-ins only
-      const newPot=(session.pot||0)+bi;
+      // Pot = buy-in + rebuys
+      const newPot=(session.pot||0)+bi+(rb*bi);
       await db.from("sessions").update({pot:newPot}).eq("id",session.id);
       setEditedPot(String(newPot));
       setNewPlayerName("");setNewPlayerBuyIn(String(session.buy_in_amount||league.buy_in||20));setNewPlayerRebuys("0");setNewPlayerCashOut("0");
@@ -1472,14 +1476,18 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
           <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
         </div>
-        <Card style={{marginBottom:12}}>
-          {([
-            ["All-time profit",fmtProfit(allStats.total_profit),isUp?"#4CAF8C":"#E05555"],
-            ["Worst night",allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—",allStats.worst_night<0?"#E05555":"#555"],
-            ["Win streak",`${allStats.wins||0}`,"#4CAF8C"],
-            ["Loss streak",`${allStats.losses||0}`,"#E05555"],
-          ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
-        </Card>
+        <div style={{display:"flex",gap:7,marginBottom:14}}>
+          {(()=>{
+            const hoursPlayed=(allStats.time_seconds||0)/3600;
+            const hourlyRate=hoursPlayed>0?(allStats.total_profit/hoursPlayed):0;
+            return<>
+              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
+              <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
+              <StatBox label="Win Streak" value={allStats.wins||0} accent="#4CAF8C"/>
+              <StatBox label="$/Hour" value={hoursPlayed>0?fmtProfit(Math.round(hourlyRate)):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
+            </>;
+          })()}
+        </div>
         </>}
         {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries}/>}
         {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
@@ -1645,75 +1653,94 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
   const displayName=b.id==='road_warrior'?(rwTier?.name||b.name):b.name;
 
   return(
-    <div onClick={onFlip} style={{cursor:"pointer",width:"100%",perspective:1000}}>
-      <div style={{
-        position:"relative",width:"100%",paddingBottom:"115%",
-        transformStyle:"preserve-3d",
-        transform:flipped?"rotateY(180deg)":"rotateY(0deg)",
-        transition:"transform 0.45s cubic-bezier(0.4,0,0.2,1)",
+    <>
+      {/* Small front-face card always in grid */}
+      <div onClick={onFlip} style={{cursor:"pointer",width:"100%",borderRadius:16,
+        background:earned?`linear-gradient(145deg,rgba(0,0,0,0.9),rgba(20,15,5,0.95))`:"rgba(255,255,255,0.02)",
+        border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.07)"}`,
+        boxShadow:earned?`0 0 16px ${tierGlow}`:undefined,
+        paddingBottom:"115%",position:"relative",
+        opacity:earned?1:0.4,transition:"transform 0.15s",
       }}>
-        {/* Front */}
-        <div style={{
-          position:"absolute",inset:0,backfaceVisibility:"hidden",
-          borderRadius:16,
-          background:earned?`linear-gradient(145deg, rgba(0,0,0,0.9), rgba(20,15,5,0.95))`:"rgba(255,255,255,0.02)",
-          border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.07)"}`,
-          boxShadow:earned?`0 0 20px ${tierGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`:"none",
-          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 6px",
-          opacity:earned?1:0.4,
-        }}>
-          {b.icon(earned,42,tierColor)}
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 4px"}}>
+          {b.icon(earned,38,tierColor)}
           {earned&&b.repeatable&&count>1&&(
-            <div style={{position:"absolute",top:6,right:6,background:"#C9A84C",borderRadius:8,minWidth:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px",border:"2px solid #0A0A0A"}}>
+            <div style={{position:"absolute",top:5,right:5,background:"#C9A84C",borderRadius:8,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",border:"2px solid #0A0A0A"}}>
               <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
             </div>
           )}
           {b.id==='road_warrior'&&rwTier&&(
-            <div style={{position:"absolute",top:6,left:6,background:tierColor,borderRadius:6,padding:"1px 5px",border:"1px solid rgba(0,0,0,0.3)"}}>
+            <div style={{position:"absolute",top:5,left:5,background:tierColor,borderRadius:5,padding:"1px 4px"}}>
               <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{rwTier.label}</span>
             </div>
           )}
-          <div style={{color:earned?tierColor:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700}}>{displayName}</div>
+          <div style={{color:earned?tierColor:"#444",fontSize:8,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700,paddingBottom:2}}>{displayName}</div>
         </div>
-        {/* Back */}
-        <div style={{
-          position:"absolute",inset:0,backfaceVisibility:"hidden",
-          transform:"rotateY(180deg)",
-          borderRadius:16,
-          background:earned?`linear-gradient(145deg, rgba(20,15,5,0.98), rgba(0,0,0,0.95))`:"rgba(10,10,10,0.98)",
-          border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.1)"}`,
-          boxShadow:earned?`0 0 24px ${tierGlow}`:undefined,
-          padding:10,display:"flex",flexDirection:"column",justifyContent:"space-between",
+      </div>
+
+      {/* Full-screen overlay when flipped */}
+      {flipped&&(
+        <div onClick={onFlip} style={{
+          position:"fixed",inset:0,zIndex:1000,
+          background:"rgba(0,0,0,0.75)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          padding:24,
+          animation:"fadeIn 0.15s ease",
         }}>
-          <div>
-            <div style={{color:earned?tierColor:"#555",fontFamily:"'Playfair Display',serif",fontSize:12,marginBottom:4,lineHeight:1.3}}>{displayName}</div>
-            <div style={{color:"#666",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:1,marginBottom:7}}>{earned?"EARNED":"LOCKED"}</div>
-            <div style={{color:"#999",fontSize:9,lineHeight:1.6}}>{b.desc}</div>
-          </div>
-          {b.id==='road_warrior'&&(
-            <div style={{marginTop:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"space-between"}}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            width:"100%",maxWidth:340,
+            borderRadius:20,
+            background:earned?`linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))`:"rgba(10,10,10,0.99)",
+            border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.12)"}`,
+            boxShadow:earned?`0 0 40px ${tierGlow},0 20px 60px rgba(0,0,0,0.8)`:undefined,
+            padding:24,
+            animation:"slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          }}>
+            {/* Header */}
+            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
+              <div style={{flexShrink:0}}>{b.icon(earned,52,tierColor)}</div>
+              <div style={{flex:1}}>
+                <div style={{color:earned?tierColor:"#555",fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700}}>{displayName}</div>
+                <div style={{color:earned?"#888":"#333",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1,marginTop:3}}>
+                  {earned?"✓ EARNED"+(b.repeatable&&count>1?` · ${count}×`:""):"LOCKED"}
+                </div>
+              </div>
+              <button onClick={onFlip} style={{background:"none",border:"none",color:"#444",fontSize:20,cursor:"pointer",padding:4,flexShrink:0}}>✕</button>
+            </div>
+
+            {/* Description */}
+            <div style={{color:"#aaa",fontSize:13,lineHeight:1.7,marginBottom:b.id==='road_warrior'?16:0}}>{b.desc}</div>
+
+            {/* Road Warrior progression */}
+            {b.id==='road_warrior'&&(
+              <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:16}}>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginBottom:12}}>PROGRESSION</div>
                 {RW_TIERS.map((t,i)=>{
                   const done=sessions>=t.sessions;
-                  const current=sessions>=t.sessions&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
+                  const current=done&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
                   return(
-                    <div key={t.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flex:1}}>
-                      <div style={{width:current?10:7,height:current?10:7,borderRadius:"50%",background:done?t.color:"#222",border:`1.5px solid ${done?t.color:"#333"}`,boxShadow:current?`0 0 6px ${t.color}`:undefined}}/>
-                      {i<RW_TIERS.length-1&&<div style={{height:2,background:done&&sessions>=RW_TIERS[i+1].sessions?t.color:"#222",width:"100%",marginTop:-8,zIndex:-1}}/>}
+                    <div key={t.label} style={{display:"flex",alignItems:"center",gap:12,marginBottom:i<RW_TIERS.length-1?10:0,opacity:done?1:0.35}}>
+                      <div style={{width:28,height:28,borderRadius:8,background:done?`${t.color}22`:"rgba(255,255,255,0.03)",border:`2px solid ${done?t.color:"rgba(255,255,255,0.08)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:current?`0 0 10px ${t.color}`:undefined}}>
+                        <div style={{width:8,height:8,borderRadius:"50%",background:done?t.color:"#333"}}/>
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{color:done?t.color:"#444",fontSize:12,fontWeight:600}}>{t.name}</div>
+                        <div style={{color:"#444",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{t.sessions} sessions · {t.label}</div>
+                      </div>
+                      {current&&<div style={{color:t.color,fontSize:9,fontFamily:"'Space Mono',monospace",background:`${t.color}22`,padding:"2px 7px",borderRadius:6}}>CURRENT</div>}
+                      {!done&&i===RW_TIERS.findIndex(x=>x.sessions>sessions)&&<div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{t.sessions-sessions} left</div>}
                     </div>
                   );
                 })}
               </div>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                {RW_TIERS.map(t=><div key={t.label} style={{color:sessions>=t.sessions?t.color:"#333",fontSize:6,fontFamily:"'Space Mono',monospace",textAlign:"center"}}>{t.sessions}</div>)}
-              </div>
-              {rwNext&&<div style={{color:"#555",fontSize:8,fontFamily:"'Space Mono',monospace",marginTop:5,textAlign:"center"}}>{rwNext.sessions-sessions} sessions to {rwNext.name}</div>}
+            )}
+            <div style={{marginTop:16,textAlign:"center" as const}}>
+              <button onClick={onFlip} style={{background:"none",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,padding:"6px 18px",cursor:"pointer"}}>CLOSE</button>
             </div>
-          )}
-          <div style={{color:"#333",fontSize:7,fontFamily:"'Space Mono',monospace",textAlign:"center",marginTop:4}}>tap to flip back</div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -2139,6 +2166,8 @@ export default function HomeGameApp(){
         select{appearance:none;-webkit-appearance:none;}
         @keyframes hg_spin{to{transform:rotate(360deg);}}
         @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        @keyframes slideUp{from{transform:translateY(30px) scale(0.95);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
       `}</style>
       <div style={{background:"#0A0A0A",minHeight:"100vh",paddingBottom:80}}>
