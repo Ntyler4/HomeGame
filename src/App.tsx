@@ -958,7 +958,13 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         <div style={{display:"flex",gap:12}}>
           <div style={{flex:1,textAlign:"center"}}>
             <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>POT</div>
-            {editing?<input type="number" value={editedPot} onChange={e=>setEditedPot(e.target.value)} style={{...inp,textAlign:"center" as const,fontSize:20,color:"#C9A84C",marginTop:4}}/>:<div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>${session.pot}</div>}
+            {editing
+              ?<input type="number" value={editedPot} onChange={e=>setEditedPot(e.target.value)} style={{...inp,textAlign:"center" as const,fontSize:20,color:"#C9A84C",marginTop:4}}/>
+              :<div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>
+                ${entries.length>0
+                  ? entries.reduce((a:number,e:any)=>(a+(e.buy_in||0)*(1+(e.rebuys||0))),0)
+                  : (session.pot||0)}
+              </div>}
           </div>
           <div style={{flex:1,textAlign:"center"}}>
             <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>BUY-IN</div>
@@ -1191,6 +1197,9 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
 function NewSessionView({league,players,sessions,onStart,onBack}:any){
   const [sessionBuyIn,setSessionBuyIn]=useState(league.buy_in);const [selectedIds,setSelectedIds]=useState<string[]>([]);const [loading,setLoading]=useState(false);
   const [sessionNotes,setSessionNotes]=useState("");
+  const [guestNames,setGuestNames]=useState<string[]>([]);
+  const [addingGuest,setAddingGuest]=useState(false);
+  const [guestInput,setGuestInput]=useState("");
   const lastSession=sessions?.[0];
   const [lastPlayerIds,setLastPlayerIds]=useState<string[]>([]);
   useEffect(()=>{
@@ -1198,13 +1207,14 @@ function NewSessionView({league,players,sessions,onStart,onBack}:any){
     db.from("session_entries").select("player_id").eq("session_id",lastSession.id).then(({data})=>{setLastPlayerIds((data||[]).map((e:any)=>e.player_id));});
   },[lastSession?.id]);
   const handleRematch=()=>{if(lastPlayerIds.length>0){setSelectedIds(lastPlayerIds);if(lastSession.buy_in_amount)setSessionBuyIn(lastSession.buy_in_amount);}};
+  const totalPlaying=selectedIds.length+guestNames.length;
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Tonight's Setup"/>
       <Card style={{marginBottom:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
           <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>BUY-IN FOR TONIGHT</div>
-          {lastSession&&lastPlayerIds.length>0&&<button onClick={handleRematch} style={{padding:"3px 10px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>🔄 REMATCH</button>}
+          {lastSession&&lastPlayerIds.length>0&&<button onClick={handleRematch} style={{padding:"3px 10px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>↺ REMATCH</button>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:9}}><button onClick={()=>setSessionBuyIn(Math.max(1,sessionBuyIn-5))} style={{width:38,height:38,borderRadius:9,background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",color:"#E05555",fontSize:20,cursor:"pointer"}}>−</button><div style={{flex:1,textAlign:"center"}}><div style={{color:"#C9A84C",fontSize:30,fontFamily:"'Space Mono',monospace",fontWeight:700}}>${sessionBuyIn}</div></div><button onClick={()=>setSessionBuyIn(sessionBuyIn+5)} style={{width:38,height:38,borderRadius:9,background:"rgba(76,175,140,0.15)",border:"1px solid rgba(76,175,140,0.3)",color:"#4CAF8C",fontSize:20,cursor:"pointer"}}>+</button></div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>{[10,20,25,50,100].map(amt=><button key={amt} onClick={()=>setSessionBuyIn(amt)} style={{padding:"4px 10px",borderRadius:20,background:sessionBuyIn===amt?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sessionBuyIn===amt?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sessionBuyIn===amt?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>${amt}</button>)}</div>
@@ -1212,10 +1222,34 @@ function NewSessionView({league,players,sessions,onStart,onBack}:any){
         <input value={sessionNotes} onChange={e=>setSessionNotes(e.target.value)} placeholder="e.g. Played at Nick's house" style={{...inp,fontSize:12}}/>
       </Card>
       <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>WHO'S PLAYING</div>
-      <Card style={{marginBottom:14}}>
+      <Card style={{marginBottom:10}}>
         {players.map((p:any)=>{const sel=selectedIds.includes(p.id);return<div key={p.id} onClick={()=>setSelectedIds(sel?selectedIds.filter(x=>x!==p.id):[...selectedIds,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",opacity:sel?1:0.5}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${sel?"#C9A84C":"#333"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{sel?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{flex:1}}><div style={{color:"#fff"}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.wins}W · {fmtProfit(p.total_profit)}</div></div></div>;})}
       </Card>
-      <button disabled={selectedIds.length<2||loading} onClick={async()=>{setLoading(true);await onStart({selectedIds,sessionBuyIn,sessionNotes});setLoading(false);}} style={{width:"100%",padding:"13px 0",background:selectedIds.length>=2&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:selectedIds.length>=2&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:selectedIds.length>=2&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:`START WITH ${selectedIds.length} PLAYERS →`}</button>
+
+      {/* GUESTS */}
+      <div style={{marginBottom:14}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span>GUESTS (optional)</span>
+          <span style={{color:"#444",fontSize:9}}>stats used for pot only · no profile</span>
+        </div>
+        {guestNames.map((g,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 11px",marginBottom:6,background:"rgba(85,119,204,0.06)",border:"1px solid rgba(85,119,204,0.15)",borderRadius:10}}>
+            <Icon name="person" size={13} color="#5577CC"/>
+            <span style={{flex:1,color:"#aaa",fontSize:13}}>{g} <span style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace"}}>(guest)</span></span>
+            <button onClick={()=>setGuestNames(guestNames.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#E05555",fontSize:14,cursor:"pointer",padding:"0 3px"}}>✕</button>
+          </div>
+        ))}
+        {guestNames.length<3&&!addingGuest&&<button onClick={()=>{setAddingGuest(true);setGuestInput("");}} style={{width:"100%",padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <Icon name="person" size={11} color="#5577CC"/>+ ADD GUEST ({guestNames.length}/3)
+        </button>}
+        {addingGuest&&<div style={{display:"flex",gap:7}}>
+          <input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);}}} placeholder="Guest name..." style={{...inp,flex:1,fontSize:13}}/>
+          <button onClick={()=>{if(guestInput.trim())setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);setGuestInput("");}} disabled={!guestInput.trim()} style={{padding:"0 13px",background:guestInput.trim()?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${guestInput.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:guestInput.trim()?"#5577CC":"#444",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>ADD</button>
+          <button onClick={()=>{setAddingGuest(false);setGuestInput("");}} style={{padding:"0 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>✕</button>
+        </div>}
+      </div>
+
+      <button disabled={totalPlaying<2||loading} onClick={async()=>{setLoading(true);await onStart({selectedIds,sessionBuyIn,sessionNotes,guestNames});setLoading(false);}} style={{width:"100%",padding:"13px 0",background:totalPlaying>=2&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:totalPlaying>=2&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:totalPlaying>=2&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:`START WITH ${totalPlaying} PLAYERS →`}</button>
     </div>
   );
 }
@@ -1458,33 +1492,34 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{allStats?.leagues||0} leagues</div>
           <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{friendCount} friends</div>
         </div>
-        {!loading&&allStats&&<><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>{fmtProfit(allStats.total_profit)}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>all-time profit</div></>}
+        {!loading&&allStats&&<>
+          <div style={{color:"#4CAF8C",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>
+            +${(sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0).toFixed(2).replace(/\.00$/,"")}
+          </div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>total winnings</div>
+        </>}
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
         {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
       </div>
       {!loading&&allStats&&<>
         {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
-        <div style={{display:"flex",gap:7,marginBottom:9}}>
-          <StatBox label="Sessions" value={allStats.sessions}/>
-          <StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/>
-          <StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/>
-          <StatBox label="Best Night" value={`$${allStats.best_night}`}/>
-        </div>
-        <div style={{display:"flex",gap:7,marginBottom:14}}>
-          <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
-          <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
-          <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
-          <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
-        </div>
-        <div style={{display:"flex",gap:7,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:14}}>
           {(()=>{
             const hoursPlayed=(allStats.time_seconds||0)/3600;
             const hourlyRate=hoursPlayed>0?(allStats.total_profit/hoursPlayed):0;
             return<>
-              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
+              <StatBox label="Sessions" value={allStats.sessions}/>
+              <StatBox label="Wins" value={allStats.wins} accent="#4CAF8C"/>
+              <StatBox label="Win %" value={allStats.sessions>0?`${((allStats.wins/allStats.sessions)*100).toFixed(0)}%`:"—"} accent="#5577CC"/>
+              <StatBox label="Best Night" value={`$${allStats.best_night}`} accent="#C9A84C"/>
               <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${Math.abs(allStats.worst_night)}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
-              <StatBox label="Win Streak" value={allStats.wins||0} accent="#4CAF8C"/>
+              <StatBox label="Avg/Game" value={allStats.sessions>0?fmtProfit(Math.round(allStats.avg)):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
+              <StatBox label="All-Time P/L" value={fmtProfit(allStats.total_profit)} accent={isUp?"#4CAF8C":"#E05555"}/>
               <StatBox label="$/Hour" value={hoursPlayed>0?fmtProfit(Math.round(hourlyRate)):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
+              <StatBox label="Win Streak" value={allStats.wins||0} accent="#4CAF8C"/>
+              <StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/>
+              <StatBox label="Dinners" value={allStats.chicken_dinners} accent="#C9A84C"/>
+              <StatBox label="Rebuys" value={allStats.rebuys||0} accent="#5577CC"/>
             </>;
           })()}
         </div>
@@ -1582,7 +1617,7 @@ const BADGE_DEFS=[
   },
   {
     id:"road_warrior", name:"Punt Artist", repeatable:false,
-    desc:"Session milestone badge. Levels up as you play more: Bronze → Silver → Gold → Diamond → Fire.",
+    desc:"Session milestone badge. Levels up as you play.",
     progression:true,
     icon:(earned:boolean,size=36,tierColor="#A0714F")=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
@@ -1705,7 +1740,6 @@ function BadgeCard({b,count,sessions,flipped,onFlip}:any){
                   {earned?"✓ EARNED"+(b.repeatable&&count>1?` · ${count}×`:""):"LOCKED"}
                 </div>
               </div>
-              <button onClick={onFlip} style={{background:"none",border:"none",color:"#444",fontSize:20,cursor:"pointer",padding:4,flexShrink:0}}>✕</button>
             </div>
 
             {/* Description */}
@@ -2080,13 +2114,17 @@ export default function HomeGameApp(){
     await loadMyLeagues(profile.display_name,authUser.id);showToast("League transferred. You left.");setCurrentLeague(null);setLsv('home');
   };
 
-  const handleStartSession=async({selectedIds,sessionBuyIn,sessionNotes}:any)=>{
+  const handleStartSession=async({selectedIds,sessionBuyIn,sessionNotes,guestNames=[]}:any)=>{
     if(!db||!currentLeague||!profile)return;
     const{data:session,error}=await db.from("sessions").insert({league_id:currentLeague.id,pot:0,status:"live",buy_in_amount:sessionBuyIn,is_live:true,started_at:new Date().toISOString(),notes:sessionNotes||null}).select().single();
     if(error){showError(error.message);return;}
     const sel=players.filter((p:any)=>selectedIds.includes(p.id));
-    await db.from("live_entries").insert(sel.map((p:any)=>({session_id:session.id,player_id:p.id,player_name:p.name,buy_in:sessionBuyIn,rebuys:0,cash_out:0})));
-    await db.from("posts").insert({league_id:currentLeague.id,author_name:profile.display_name,content:`🃏 Game is live! Buy-in: $${sessionBuyIn} · ${sel.length} players. Join from the league tab!${sessionNotes?` — ${sessionNotes}`:""}`});
+    // League members as live entries
+    const memberEntries=sel.map((p:any)=>({session_id:session.id,player_id:p.id,player_name:p.name,buy_in:sessionBuyIn,rebuys:0,cash_out:0}));
+    // Guests as live entries with null player_id — used for pot only
+    const guestEntries=(guestNames||[]).map((name:string)=>({session_id:session.id,player_id:null,player_name:`${name} (guest)`,buy_in:sessionBuyIn,rebuys:0,cash_out:0}));
+    await db.from("live_entries").insert([...memberEntries,...guestEntries]);
+    await db.from("posts").insert({league_id:currentLeague.id,author_name:profile.display_name,content:`Game is live! Buy-in: $${sessionBuyIn} · ${sel.length+guestEntries.length} players${guestEntries.length>0?` (${guestEntries.length} guest${guestEntries.length>1?'s':''})`:''}.${sessionNotes?` — ${sessionNotes}`:""}`});
     setLiveSession(session);const{data:le}=await db.from("live_entries").select("*").eq("session_id",session.id);setLiveEntries(le||[]);
     showToast("Session started!");setLsv('liveSession');
   };
@@ -2100,12 +2138,17 @@ export default function HomeGameApp(){
   const handleEndSession=async({entries,elapsed,chickenDinner}:any)=>{
     if(!db||!currentLeague||!liveSession)return;
     try{
-      const pot=entries.reduce((a:number,e:any)=>a+e.buy_in,0);
-      const top=[...entries].sort((a:any,b:any)=>b.profit-a.profit)[0];
-      const winnerName=players.find((p:any)=>p.id===top.player_id)?.name||top.player_name;
-      // Save session and entries — stats_committed stays false until locked
+      // Pot = all entries including guests (buy_in + rebuys*buy_in per person)
+      const pot=entries.reduce((a:number,e:any)=>a+(e.buy_in||0)*(1+(e.rebuys||0)),0);
+      // Only non-guest entries for winner/stats
+      const memberEntries=entries.filter((e:any)=>e.player_id!=null);
+      const top=[...memberEntries].sort((a:any,b:any)=>b.profit-a.profit)[0];
+      const winnerName=players.find((p:any)=>p.id===top?.player_id)?.name||top?.player_name||"";
       await db.from("sessions").update({is_live:false,pot,winner_name:winnerName,duration_seconds:elapsed,status:"approved",chicken_dinner_name:chickenDinner||null,stats_committed:false}).eq("id",liveSession.id);
-      await db.from("session_entries").insert(entries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})));
+      // Only insert session_entries for real players (not guests)
+      if(memberEntries.length>0){
+        await db.from("session_entries").insert(memberEntries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})));
+      }
       setLiveSession(null);setLiveEntries([]);await loadLeagueData(currentLeague.id);showToast("Session saved! Lock it to commit stats to profiles.");setLsv('leagueDetail');
     }catch(e:any){showError(e.message||"Failed to save.");}
   };
