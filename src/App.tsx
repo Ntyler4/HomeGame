@@ -312,18 +312,24 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
   const loadCount=async()=>{
     if(!db)return;
     const name=profile.display_name;
-    const[{data:fr},{data:ea}]=await Promise.all([
-      db.from("friends").select("id").eq("recipient_name",name).eq("status","pending"),
-      myLeagues.length>0?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",myLeagues.filter((l:any)=>l.commissioner_id===profile.id||l.commissioner_name?.toLowerCase()===name.toLowerCase()).map((l:any)=>l.id)):Promise.resolve({data:[]}),
-    ]);
+    // Friend requests pending for me
+    const{data:fr}=await db.from("friends").select("id").eq("recipient_name",name).eq("status","pending");
+    // Edit alerts for sessions in leagues I'm in (all members, not just commissioner)
+    const allLeagueIds=myLeagues.map((l:any)=>l.id);
+    const{data:ea}=allLeagueIds.length>0
+      ?await db.from("sessions").select("id").not("edit_alert","is",null).in("league_id",allLeagueIds)
+      :{data:[]};
     setCount(((fr||[]).length)+((ea||[]).length));
   };
   const loadNotifs=async()=>{
     if(!db||loading)return;setLoading(true);
     const name=profile.display_name;
+    const allLeagueIds=myLeagues.map((l:any)=>l.id);
     const[{data:fr},{data:ea}]=await Promise.all([
       db.from("friends").select("*").eq("recipient_name",name).eq("status","pending"),
-      myLeagues.length>0?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",myLeagues.filter((l:any)=>l.commissioner_id===profile.id||l.commissioner_name?.toLowerCase()===name.toLowerCase()).map((l:any)=>l.id)):Promise.resolve({data:[]}),
+      allLeagueIds.length>0
+        ?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",allLeagueIds)
+        :Promise.resolve({data:[]}),
     ]);
     const items:any[]=[];
     (fr||[]).forEach((f:any)=>items.push({type:"friend",id:f.id,text:`${f.requester_name} sent a friend request`,ts:f.created_at}));
@@ -645,10 +651,15 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
 
   // Add missing player state
   const [addingPlayer,setAddingPlayer]=useState(false);
+  const [addingGuest,setAddingGuest]=useState(false);
   const [newPlayerName,setNewPlayerName]=useState("");
   const [newPlayerBuyIn,setNewPlayerBuyIn]=useState(String(session.buy_in_amount||league.buy_in||20));
   const [newPlayerRebuys,setNewPlayerRebuys]=useState("0");
   const [newPlayerCashOut,setNewPlayerCashOut]=useState("0");
+  // Guest names stored per session in state (commissioner only, max 3)
+  const [guestNames,setGuestNames]=useState<string[]>([]);
+  const [editingGuestIdx,setEditingGuestIdx]=useState<number|null>(null);
+  const [guestInput,setGuestInput]=useState("");
 
   const loadEntries=async()=>{
     if(!db)return;
@@ -673,10 +684,10 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
   };
   useEffect(()=>{loadEntries();},[session.id]);
 
-  // Profit = cash_out - buy_in only. Rebuys is a count/tracking stat only.
+  // Profit = cash_out - buy_in - (rebuys * buy_in). Each rebuy costs buy_in amount.
   const getProfit=(id:string)=>{
     const e=editedEntries[id];if(!e)return 0;
-    return Number(e.cash_out||0)-Number(e.buy_in||0);
+    return Number(e.cash_out||0)-Number(e.buy_in||0)-Number(e.rebuys||0)*Number(e.buy_in||0);
   };
 
   const balance=entries.reduce((a,e)=>{
@@ -741,8 +752,8 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       }
       if(!playerId){showError("Couldn't find or create player.");setSaving(false);return;}
       const bi=Number(newPlayerBuyIn)||0;const rb=Number(newPlayerRebuys)||0;const co=Number(newPlayerCashOut)||0;
-      // Profit = cash_out - buy_in only
-      const profit=co-bi;
+      // Profit = cash_out - buy_in - (rebuys * buy_in)
+      const profit=co-bi-(rb*bi);
       await db.from("session_entries").insert({session_id:session.id,player_id:playerId,buy_in:bi,rebuys:rb,cash_out:co,profit});
       const p=playerRows?.[0]||{total_profit:0,session_count:0,wins:0,best_night:0,chicken_dinners:0};
       await db.from("players").update({total_profit:(p.total_profit||0)+profit,session_count:(p.session_count||0)+1,wins:(p.wins||0)+(profit>0?1:0),best_night:profit>(p.best_night||0)?profit:(p.best_night||0)}).eq("id",playerId);
@@ -966,7 +977,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
               <Avatar name={name} size={34}/>
               <div style={{flex:1}}>
                 <div style={{color:"#fff",fontSize:13}}>{name}</div>
-                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
+                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${(e.buy_in||0)*(1+(e.rebuys||0))} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
               </div>
               <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(profit)}</div>
               {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
@@ -979,6 +990,16 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           </div>;
         })}
 
+        {guestNames.map((g,i)=>(
+          <div key={`guest-${i}`} style={{padding:"9px 0",borderTop:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",gap:10}}>
+            <Avatar name={g} size={34}/>
+            <div style={{flex:1}}>
+              <div style={{color:"#777",fontSize:13}}>{g} <span style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace"}}>(guest)</span></div>
+              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace"}}>not tracked in standings</div>
+            </div>
+          </div>
+        ))}
+
         {/* Balance calculator */}
         {entries.length>0&&<div style={{marginTop:9,paddingTop:9,borderTop:"1px solid rgba(255,255,255,0.05)",display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6}}>
           <span style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9}}>BALANCE:</span>
@@ -989,6 +1010,34 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
 
         {/* Add missing player */}
         {isCommissioner&&!isLocked&&!addingPlayer&&<button onClick={()=>setAddingPlayer(true)} style={{width:"100%",marginTop:11,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD MISSING PLAYER</button>}
+
+        {/* GUEST PLAYERS — commissioner only, max 3, tracked in session notes as metadata */}
+        {isCommissioner&&!isLocked&&<div style={{marginTop:11}}>
+          {guestNames.map((g,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"7px 10px",background:"rgba(85,119,204,0.05)",border:"1px solid rgba(85,119,204,0.15)",borderRadius:9}}>
+              <div style={{flex:1}}>
+                {editingGuestIdx===i
+                  ?<input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){const n=guestInput.trim();if(n){const ng=[...guestNames];ng[i]=n;setGuestNames(ng);}setEditingGuestIdx(null);}} } style={{...inp,padding:"4px 7px",fontSize:12,width:"100%"}}/>
+                  :<span style={{color:"#aaa",fontSize:12}}>{g} <span style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace"}}>(guest)</span></span>
+                }
+              </div>
+              {editingGuestIdx===i
+                ?<button onClick={()=>{const n=guestInput.trim();if(n){const ng=[...guestNames];ng[i]=n;setGuestNames(ng);}setEditingGuestIdx(null);}} style={{padding:"3px 8px",background:"rgba(76,175,140,0.15)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:7,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>SAVE</button>
+                :<><button onClick={()=>{setGuestInput(g);setEditingGuestIdx(i);}} style={{padding:"3px 7px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:7,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
+                  <button onClick={()=>setGuestNames(guestNames.filter((_,j)=>j!==i))} style={{padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:7,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>✕</button></>
+              }
+            </div>
+          ))}
+          {guestNames.length<3&&!addingGuest&&<button onClick={()=>{setAddingGuest(true);setGuestInput("");}} style={{width:"100%",padding:"7px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <Icon name="person" size={11} color="#5577CC"/>+ ADD GUEST ({guestNames.length}/3)
+          </button>}
+          {addingGuest&&<div style={{display:"flex",gap:7,marginTop:6}}>
+            <input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);setGuestInput("");}}} placeholder="Guest name..." style={{...inp,flex:1,fontSize:13}}/>
+            <button onClick={()=>{if(guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);}setAddingGuest(false);setGuestInput("");}} disabled={!guestInput.trim()} style={{padding:"0 12px",background:guestInput.trim()?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${guestInput.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:guestInput.trim()?"#5577CC":"#444",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>ADD</button>
+            <button onClick={()=>{setAddingGuest(false);setGuestInput("");}} style={{padding:"0 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>✕</button>
+          </div>}
+          {guestNames.length>0&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:6,textAlign:"center"}}>Guests appear in session results but don't affect league standings</div>}
+        </div>}
         {isCommissioner&&!isLocked&&addingPlayer&&<div style={{marginTop:11,paddingTop:11,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
           <div style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>ADD PLAYER TO THIS SESSION</div>
           <div style={{marginBottom:8}}>
@@ -1001,7 +1050,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
             <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>REBUYS ($)</label><input type="number" value={newPlayerRebuys} onChange={e=>setNewPlayerRebuys(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
             <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>CASH-OUT ($)</label><input type="number" value={newPlayerCashOut} onChange={e=>setNewPlayerCashOut(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
           </div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(Number(newPlayerCashOut)-(Number(newPlayerBuyIn)+Number(newPlayerRebuys)))}</span></div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys)))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys))))}</span></div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{flex:1,padding:"9px 0",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button>
             <button onClick={handleAddPlayer} disabled={saving||!newPlayerName.trim()} style={{flex:2,padding:"9px 0",background:newPlayerName.trim()&&!saving?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${newPlayerName.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:newPlayerName.trim()?"#5577CC":"#555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:"ADD TO SESSION →"}</button>
@@ -1079,8 +1128,8 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
       buy_in:e.buy_in||0,
       rebuys:e.rebuys||0,
       cash_out:finalCashOuts[e.player_id],
-      // Profit = cash_out - buy_in only
-      profit:finalCashOuts[e.player_id]-(e.buy_in||0),
+      // Profit = cash_out - buy_in - (rebuys * buy_in)
+      profit:finalCashOuts[e.player_id]-(e.buy_in||0)-(e.rebuys||0)*(e.buy_in||0),
     }));
     // Auto chicken dinner = highest profit
     const top=[...entries].sort((a,b)=>b.profit-a.profit)[0];
@@ -1104,7 +1153,7 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>REBUYS ($)</div><input type="number" value={myRebuys||""} onChange={e=>setMyRebuys(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
           <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>CASH-OUT ($)</div><input type="number" value={myCashOut||""} onChange={e=>setMyCashOut(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
         </div>
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(myCashOut-myBuyIn)}</span></div>
+        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn-(myRebuys*myBuyIn)>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(myCashOut-myBuyIn-(myRebuys*myBuyIn))}</span></div>
         <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
       </Card>}
       <Card style={{marginBottom:12}}>
@@ -1472,148 +1521,235 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
 }
 
 // ─── BADGES ────────────────────────────────────────────
+
+// Road Warrior progression tiers
+const RW_TIERS=[
+  {sessions:10,  name:"Punt Artist",     color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {sessions:50,  name:"Table Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {sessions:100, name:"Full-Time",        color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {sessions:500, name:"Chip Whisperer",  color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {sessions:1000,name:"The Gambler",     color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE"},
+];
+function getRWTier(sessions:number){
+  let tier=null;
+  for(const t of RW_TIERS){if(sessions>=t.sessions)tier=t;}
+  return tier;
+}
+function getRWNext(sessions:number){
+  for(const t of RW_TIERS){if(sessions<t.sessions)return t;}
+  return null;
+}
+
 const BADGE_DEFS=[
   {
-    id:"dinner_bell",
-    name:"Dinner Bell",
-    desc:"Win your first chicken dinner — highest profit in any single session.",
-    repeatable:false,
-    icon:(earned:boolean)=>(
-      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
-        <ellipse cx="20" cy="30" rx="14" ry="4" fill={earned?"#C9A84C":"#333"} opacity={earned?0.3:0.5}/>
-        <path d="M20 8 C14 8 10 13 10 19 C10 24 13 27 16 28 L24 28 C27 27 30 24 30 19 C30 13 26 8 20 8Z" fill={earned?"#C9A84C":"#444"}/>
-        <rect x="18" y="4" width="4" height="6" rx="2" fill={earned?"#E8C56A":"#555"}/>
-        <path d="M14 19 Q17 16 20 19 Q23 22 26 19" stroke={earned?"#0A0A0A":"#222"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+    id:"dinner_bell", name:"Dinner Bell", repeatable:false,
+    desc:"Win your first chicken dinner — highest profit in any single session. One-time honor.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <ellipse cx="24" cy="38" rx="16" ry="4" fill={earned?"#C9A84C":"#333"} opacity="0.25"/>
+        <path d="M24 8 C16 8 11 14 11 22 C11 28 15 32 18 34 L30 34 C33 32 37 28 37 22 C37 14 32 8 24 8Z" fill={earned?"#C9A84C":"#3a3a3a"}/>
+        <path d="M24 8 C24 8 28 11 28 17 C28 21 26 24 24 24 C22 24 20 21 20 17 C20 11 24 8 24 8Z" fill={earned?"rgba(232,197,106,0.4)":"rgba(255,255,255,0.06)"}/>
+        <rect x="21" y="3" width="6" height="7" rx="3" fill={earned?"#E8C56A":"#555"}/>
+        <rect x="10" y="34" width="28" height="3" rx="1.5" fill={earned?"#E8C56A":"#444"}/>
+        <path d="M16 22 Q20 18 24 22 Q28 26 32 22" stroke={earned?"rgba(0,0,0,0.5)":"rgba(0,0,0,0.3)"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        {earned&&<ellipse cx="24" cy="8" rx="3" ry="2" fill="#E8C56A" opacity="0.6"/>}
       </svg>
     ),
   },
   {
-    id:"high_roller",
-    name:"High Roller",
-    desc:"Cash out +$100 profit in a single session.",
-    repeatable:true,
-    icon:(earned:boolean)=>(
-      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
-        <rect x="8" y="14" width="24" height="16" rx="3" fill={earned?"#C9A84C":"#444"} opacity={earned?1:0.6}/>
-        <rect x="11" y="17" width="8" height="10" rx="2" fill={earned?"#0A0A0A":"#222"}/>
-        <circle cx="27" cy="22" r="3.5" fill={earned?"#E8C56A":"#333"}/>
-        <rect x="6" y="10" width="28" height="5" rx="2" fill={earned?"#E8C56A":"#555"} opacity={earned?0.8:0.5}/>
-        <path d="M15 8 L20 10 L25 8" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round"/>
+    id:"high_roller", name:"High Roller", repeatable:true,
+    desc:"Cash out +$100 profit in a single session. Earned again each time you do it.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <rect x="6" y="17" width="36" height="22" rx="4" fill={earned?"#2a1f0a":"#222"}/>
+        <rect x="6" y="17" width="36" height="22" rx="4" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5"/>
+        <circle cx="24" cy="28" r="7" fill={earned?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.04)"} stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5"/>
+        <text x="24" y="32" textAnchor="middle" fill={earned?"#C9A84C":"#444"} fontSize="9" fontFamily="monospace" fontWeight="bold">$</text>
+        <circle cx="10" cy="21" r="2" fill={earned?"#E8C56A":"#333"}/>
+        <circle cx="38" cy="35" r="2" fill={earned?"#E8C56A":"#333"}/>
+        <rect x="8" y="11" width="32" height="8" rx="3" fill={earned?"#C9A84C":"#3a3a3a"} stroke={earned?"#E8C56A":"#444"} strokeWidth="1"/>
+        <path d="M16 9 L24 12 L32 9" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
       </svg>
     ),
   },
   {
-    id:"road_warrior",
-    name:"Road Warrior",
-    desc:"Play 10 total sessions across all leagues.",
-    repeatable:false,
-    icon:(earned:boolean)=>(
-      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
-        <path d="M8 28 L20 10 L32 28 Z" fill={earned?"#C9A84C":"#444"} opacity={earned?1:0.6}/>
-        <circle cx="20" cy="19" r="4" fill={earned?"#0A0A0A":"#222"}/>
-        <circle cx="20" cy="19" r="2" fill={earned?"#E8C56A":"#555"}/>
-        <path d="M20 10 L20 7" stroke={earned?"#E8C56A":"#555"} strokeWidth="2" strokeLinecap="round"/>
-        <path d="M12 24 L8 32 M28 24 L32 32" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinecap="round" opacity={earned?0.6:0.4}/>
+    id:"road_warrior", name:"Punt Artist", repeatable:false,
+    desc:"Session milestone badge. Levels up as you play more: Bronze → Silver → Gold → Diamond → Fire.",
+    progression:true,
+    icon:(earned:boolean,size=36,tierColor="#A0714F")=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <path d="M24 6 L40 36 L8 36 Z" fill={earned?`${tierColor}22`:"#1a1a1a"} stroke={earned?tierColor:"#444"} strokeWidth="2"/>
+        <circle cx="24" cy="24" r="6" fill={earned?"#0A0A0A":"#111"} stroke={earned?tierColor:"#333"} strokeWidth="1.5"/>
+        <circle cx="24" cy="24" r="3" fill={earned?tierColor:"#2a2a2a"}/>
+        <path d="M24 6 L24 3" stroke={earned?tierColor:"#333"} strokeWidth="2" strokeLinecap="round"/>
+        <path d="M14 30 L10 38 M34 30 L38 38" stroke={earned?tierColor:"#2a2a2a"} strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+        <path d="M16 36 L32 36" stroke={earned?tierColor:"#333"} strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
   },
   {
-    id:"comeback_kid",
-    name:"Comeback Kid",
-    desc:"Buy in 3+ times in a single session and still finish profitable.",
-    repeatable:true,
-    icon:(earned:boolean)=>(
-      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
-        <path d="M20 32 C12 32 7 26 7 20 C7 14 12 9 18 9" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-        <path d="M22 9 C28 9 33 14 33 20 C33 26 28 32 22 32" stroke={earned?"#E8C56A":"#555"} strokeWidth="2.5" strokeLinecap="round" fill="none" strokeDasharray="4 2"/>
-        <path d="M16 7 L20 11 L16 15" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        <path d="M17 20 L20 17 L23 20 L20 23 Z" fill={earned?"#C9A84C":"#555"}/>
+    id:"comeback_kid", name:"Comeback Kid", repeatable:true,
+    desc:"Rebuy 3+ times in a single session and still walk away profitable. Earned again each time.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <path d="M24 40 C13 40 6 32 6 24 C6 16 13 8 21 8" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="3" strokeLinecap="round" fill="none"/>
+        <path d="M27 8 C35 8 42 16 42 24 C42 32 35 40 27 40" stroke={earned?"#E8C56A":"#444"} strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="5 3"/>
+        <path d="M19 5 L24 11 L19 17" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M20 24 L24 20 L28 24 L24 28 Z" fill={earned?"#C9A84C":"#555"} stroke={earned?"#E8C56A":"none"} strokeWidth="1"/>
+        {earned&&<circle cx="24" cy="24" r="10" fill="none" stroke="#C9A84C" strokeWidth="0.5" opacity="0.3"/>}
       </svg>
     ),
   },
   {
-    id:"shark",
-    name:"Shark",
-    desc:"Win 5 sessions in a row.",
-    repeatable:true,
-    icon:(earned:boolean)=>(
-      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
-        <path d="M6 22 C6 22 10 15 20 15 C30 15 34 22 34 22" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" fill="none"/>
-        <path d="M6 22 C6 22 10 29 20 29 C30 29 34 22 34 22" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" fill={earned?"rgba(201,168,76,0.15)":"rgba(68,68,68,0.3)"}/>
-        <path d="M20 15 L23 7 L26 15" fill={earned?"#E8C56A":"#555"}/>
-        <circle cx="15" cy="21" r="1.5" fill={earned?"#C9A84C":"#555"}/>
-        <path d="M23 20 L25 22 L23 24" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        <path d="M26 20 L28 22 L26 24" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6"/>
+    id:"shark", name:"Shark", repeatable:true,
+    desc:"Win 5 sessions in a row. The counter increases each time you hit a new streak of 5.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <path d="M5 26 C5 26 12 17 24 17 C36 17 43 26 43 26 C43 26 36 35 24 35 C12 35 5 26 5 26Z" fill={earned?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)"} stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5"/>
+        <path d="M24 17 L28 7 L33 17" fill={earned?"#C9A84C":"#3a3a3a"}/>
+        <circle cx="17" cy="25" r="2.5" fill={earned?"#E8C56A":"#444"}/>
+        <circle cx="17" cy="25" r="1" fill={earned?"#0A0A0A":"#222"}/>
+        <path d="M30 23 L33 26 L30 29" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M34 23 L37 26 L34 29" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.5"/>
+        <path d="M11 30 C11 30 14 32 17 31" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+      </svg>
+    ),
+  },
+  {
+    id:"degenerate", name:"Degenerate", repeatable:false,
+    desc:"Log 1,000 hours at the table. You didn't choose this life. This life chose you.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        <circle cx="24" cy="24" r="18" fill={earned?"rgba(201,168,76,0.08)":"#111"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        <path d="M24 10 L24 24 L32 30" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="24" cy="24" r="2" fill={earned?"#E8C56A":"#444"}/>
+        {[0,30,60,90,120,150,180,210,240,270,300,330].map((deg,i)=>{
+          const r=14;const rad=((deg-90)*Math.PI)/180;
+          const x=24+r*Math.cos(rad);const y=24+r*Math.sin(rad);
+          return<circle key={i} cx={x} cy={y} r={i%3===0?1.5:0.8} fill={earned?"#C9A84C":"#333"}/>;
+        })}
+        {earned&&<>
+          <path d="M6 38 Q12 34 18 38 Q24 42 30 38 Q36 34 42 38" stroke="#C9A84C" strokeWidth="1" fill="none" opacity="0.4" strokeLinecap="round"/>
+        </>}
       </svg>
     ),
   },
 ];
 
-function BadgeRow({allStats,sessionEntries}:any){
-  const [open,setOpen]=useState<string|null>(null);
-  if(!allStats)return null;
+function BadgeCard({b,count,sessions,flipped,onFlip}:any){
+  const earned=count>0;
+  const rwTier=b.id==='road_warrior'?getRWTier(sessions):null;
+  const rwNext=b.id==='road_warrior'?getRWNext(sessions):null;
+  const tierColor=rwTier?.color||"#C9A84C";
+  const tierGlow=rwTier?.glow||"rgba(201,168,76,0.3)";
+  const displayName=b.id==='road_warrior'?(rwTier?.name||b.name):b.name;
 
-  // Compute badge counts from stats + session entries
+  return(
+    <div onClick={onFlip} style={{cursor:"pointer",width:"100%",perspective:1000}}>
+      <div style={{
+        position:"relative",width:"100%",paddingBottom:"115%",
+        transformStyle:"preserve-3d",
+        transform:flipped?"rotateY(180deg)":"rotateY(0deg)",
+        transition:"transform 0.45s cubic-bezier(0.4,0,0.2,1)",
+      }}>
+        {/* Front */}
+        <div style={{
+          position:"absolute",inset:0,backfaceVisibility:"hidden",
+          borderRadius:16,
+          background:earned?`linear-gradient(145deg, rgba(0,0,0,0.9), rgba(20,15,5,0.95))`:"rgba(255,255,255,0.02)",
+          border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.07)"}`,
+          boxShadow:earned?`0 0 20px ${tierGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`:"none",
+          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:"10px 6px",
+          opacity:earned?1:0.4,
+        }}>
+          {b.icon(earned,42,tierColor)}
+          {earned&&b.repeatable&&count>1&&(
+            <div style={{position:"absolute",top:6,right:6,background:"#C9A84C",borderRadius:8,minWidth:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px",border:"2px solid #0A0A0A"}}>
+              <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
+            </div>
+          )}
+          {b.id==='road_warrior'&&rwTier&&(
+            <div style={{position:"absolute",top:6,left:6,background:tierColor,borderRadius:6,padding:"1px 5px",border:"1px solid rgba(0,0,0,0.3)"}}>
+              <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{rwTier.label}</span>
+            </div>
+          )}
+          <div style={{color:earned?tierColor:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700}}>{displayName}</div>
+        </div>
+        {/* Back */}
+        <div style={{
+          position:"absolute",inset:0,backfaceVisibility:"hidden",
+          transform:"rotateY(180deg)",
+          borderRadius:16,
+          background:earned?`linear-gradient(145deg, rgba(20,15,5,0.98), rgba(0,0,0,0.95))`:"rgba(10,10,10,0.98)",
+          border:`2px solid ${earned?tierColor:"rgba(255,255,255,0.1)"}`,
+          boxShadow:earned?`0 0 24px ${tierGlow}`:undefined,
+          padding:10,display:"flex",flexDirection:"column",justifyContent:"space-between",
+        }}>
+          <div>
+            <div style={{color:earned?tierColor:"#555",fontFamily:"'Playfair Display',serif",fontSize:12,marginBottom:4,lineHeight:1.3}}>{displayName}</div>
+            <div style={{color:"#666",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:1,marginBottom:7}}>{earned?"EARNED":"LOCKED"}</div>
+            <div style={{color:"#999",fontSize:9,lineHeight:1.6}}>{b.desc}</div>
+          </div>
+          {b.id==='road_warrior'&&(
+            <div style={{marginTop:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"space-between"}}>
+                {RW_TIERS.map((t,i)=>{
+                  const done=sessions>=t.sessions;
+                  const current=sessions>=t.sessions&&(i===RW_TIERS.length-1||sessions<RW_TIERS[i+1].sessions);
+                  return(
+                    <div key={t.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flex:1}}>
+                      <div style={{width:current?10:7,height:current?10:7,borderRadius:"50%",background:done?t.color:"#222",border:`1.5px solid ${done?t.color:"#333"}`,boxShadow:current?`0 0 6px ${t.color}`:undefined}}/>
+                      {i<RW_TIERS.length-1&&<div style={{height:2,background:done&&sessions>=RW_TIERS[i+1].sessions?t.color:"#222",width:"100%",marginTop:-8,zIndex:-1}}/>}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                {RW_TIERS.map(t=><div key={t.label} style={{color:sessions>=t.sessions?t.color:"#333",fontSize:6,fontFamily:"'Space Mono',monospace",textAlign:"center"}}>{t.sessions}</div>)}
+              </div>
+              {rwNext&&<div style={{color:"#555",fontSize:8,fontFamily:"'Space Mono',monospace",marginTop:5,textAlign:"center"}}>{rwNext.sessions-sessions} sessions to {rwNext.name}</div>}
+            </div>
+          )}
+          <div style={{color:"#333",fontSize:7,fontFamily:"'Space Mono',monospace",textAlign:"center",marginTop:4}}>tap to flip back</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BadgeRow({allStats,sessionEntries}:any){
+  const [flipped,setFlipped]=useState<string|null>(null);
+  if(!allStats)return null;
+  const sessions=allStats.sessions||0;
   const highRollerCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=100).length;
   const comebackCount=(sessionEntries||[]).filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length;
-  // Shark: count how many 5-win streaks (approximated from win streak — each streak ≥5 counts)
   const sharkCount=Math.floor((allStats.wins||0)/5);
-
+  const hoursPlayed=Math.floor((allStats.time_seconds||0)/3600);
   const counts:Record<string,number>={
     dinner_bell:allStats.chicken_dinners>=1?1:0,
     high_roller:highRollerCount,
-    road_warrior:allStats.sessions>=10?1:0,
+    road_warrior:sessions>=10?1:0,
     comeback_kid:comebackCount,
     shark:sharkCount,
+    degenerate:hoursPlayed>=1000?1:0,
   };
-
+  // 3 per row
+  const rows:any[][]=[];
+  for(let i=0;i<BADGE_DEFS.length;i+=3)rows.push(BADGE_DEFS.slice(i,i+3));
   return(
     <Card style={{marginBottom:12}}>
-      <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:13}}>BADGES</div>
-      <div style={{display:"flex",justifyContent:"space-around",gap:4}}>
-        {BADGE_DEFS.map(b=>{
-          const count=counts[b.id]||0;
-          const earned=count>0;
-          const isOpen=open===b.id;
-          return(
-            <div key={b.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flex:1,cursor:"pointer"}} onClick={()=>setOpen(isOpen?null:b.id)}>
-              <div style={{position:"relative",width:52,height:52,borderRadius:14,
-                background:earned?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)",
-                border:`2px solid ${earned?"rgba(201,168,76,0.5)":"rgba(255,255,255,0.07)"}`,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                boxShadow:earned?"0 0 12px rgba(201,168,76,0.2)":"none",
-                opacity:earned?1:0.45,
-                transition:"all 0.2s",
-              }}>
-                {b.icon(earned)}
-                {earned&&b.repeatable&&count>1&&(
-                  <div style={{position:"absolute",top:-6,right:-6,background:"#C9A84C",borderRadius:10,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",border:"2px solid #0A0A0A"}}>
-                    <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
-                  </div>
-                )}
-              </div>
-              <div style={{color:earned?"#C9A84C":"#444",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3}}>{b.name}</div>
-            </div>
-          );
-        })}
-      </div>
-      {open&&(()=>{
-        const b=BADGE_DEFS.find(x=>x.id===open)!;
-        const count=counts[open]||0;
-        const earned=count>0;
-        return(
-          <div style={{marginTop:13,padding:"11px 13px",background:earned?"rgba(201,168,76,0.07)":"rgba(255,255,255,0.03)",border:`1px solid ${earned?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-              <div style={{opacity:0.8}}>{b.icon(earned)}</div>
-              <div>
-                <div style={{color:earned?"#C9A84C":"#666",fontFamily:"'Playfair Display',serif",fontSize:14}}>{b.name}</div>
-                <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{earned?"EARNED"+(b.repeatable&&count>1?` · ${count}x`:""):"NOT YET EARNED"}</div>
-              </div>
-            </div>
-            <div style={{color:"#888",fontSize:11,lineHeight:1.6}}>{b.desc}</div>
-          </div>
-        );
-      })()}
+      <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
+      {rows.map((row,ri)=>(
+        <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<rows.length-1?10:0}}>
+          {row.map(b=>(
+            <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions}
+              flipped={flipped===b.id}
+              onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
+            />
+          ))}
+          {row.length<3&&Array(3-row.length).fill(0).map((_,i)=><div key={i}/>)}
+        </div>
+      ))}
     </Card>
   );
 }
