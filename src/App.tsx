@@ -420,9 +420,11 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
           </div>
         </div>;
       })}
-      <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
-      <PokerTicker/>
-      <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:4}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
+      <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,marginBottom:20,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
+      <div style={{borderTop:"1px solid rgba(255,255,255,0.04)",paddingTop:16}}>
+        <PokerTicker/>
+        <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
+      </div>
     </div>
   );
 }
@@ -650,41 +652,46 @@ function SeasonCountdown({league,isCommissioner,onEndSeason}:any){
   const [now,setNow]=useState(new Date());
   useEffect(()=>{const t=setInterval(()=>setNow(new Date()),60000);return()=>clearInterval(t);},[]);
 
-  // Season = 91 days (quarterly). Use season_start_date if available, else created_at
+  // Global quarterly calendar — seasons are fixed Jan/Apr/Jul/Oct
   const SEASON_DAYS=91;
-  const startRaw=league.season_start_date||league.created_at;
-  const start=new Date(startRaw);
-  const end=new Date(start.getTime()+SEASON_DAYS*24*60*60*1000);
-  const msLeft=end.getTime()-now.getTime();
-  const daysLeft=Math.max(0,Math.ceil(msLeft/(1000*60*60*24)));
-  const pct=Math.min(100,Math.max(0,((now.getTime()-start.getTime())/(SEASON_DAYS*24*60*60*1000))*100));
-  const seasonOver=msLeft<=0;
   const seasonNum=league.season_number||1;
 
-  const seasonName=()=>{
-    const m=start.getMonth();
-    if(m<3)return`Winter ${start.getFullYear()}`;
-    if(m<6)return`Spring ${start.getFullYear()}`;
-    if(m<9)return`Summer ${start.getFullYear()}`;
-    return`Fall ${start.getFullYear()}`;
+  // Determine which global quarter we're in based on today's date
+  const getGlobalSeasonBounds=(d:Date)=>{
+    const y=d.getFullYear();const m=d.getMonth();
+    let start:Date,name:string;
+    if(m<3){start=new Date(y,0,1);name=`Winter ${y}`;}
+    else if(m<6){start=new Date(y,3,1);name=`Spring ${y}`;}
+    else if(m<9){start=new Date(y,6,1);name=`Summer ${y}`;}
+    else{start=new Date(y,9,1);name=`Fall ${y}`;}
+    const end=new Date(start.getTime()+SEASON_DAYS*24*60*60*1000);
+    return{start,end,name};
   };
 
+  const{start,end,name}=getGlobalSeasonBounds(now);
+  const msLeft=end.getTime()-now.getTime();
+  const daysLeft=Math.max(0,Math.ceil(msLeft/(1000*60*60*24)));
+  const pct=Math.min(100,Math.max(0,((now.getTime()-start.getTime())/SEASON_DAYS/86400000)*100));
+  const seasonOver=msLeft<=0;
+
   return(
-    <div style={{marginBottom:12,background:seasonOver?"rgba(224,85,85,0.06)":"rgba(201,168,76,0.04)",border:`1px solid ${seasonOver?"rgba(224,85,85,0.25)":"rgba(201,168,76,0.15)"}`,borderRadius:13,padding:"11px 14px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
-        <div>
-          <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>SEASON {seasonNum} · {seasonName()}</div>
-          <div style={{color:seasonOver?"#E05555":"#C9A84C",fontSize:13,fontFamily:"'Playfair Display',serif",fontWeight:700,marginTop:2}}>
-            {seasonOver?"Season Complete":`${daysLeft} day${daysLeft!==1?"s":""} remaining`}
-          </div>
+    <div style={{marginBottom:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:13,padding:"11px 14px"}}>
+      {/* Single row: season name left, days right */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5}}>
+          SEASON {seasonNum} · <span style={{color:"#aaa"}}>{name}</span>
         </div>
-        {isCommissioner&&seasonOver&&(
-          <button onClick={onEndSeason} style={{padding:"5px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>END SEASON →</button>
-        )}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {seasonOver
+            ?<span style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace"}}>COMPLETE</span>
+            :<span style={{color:"#C9A84C",fontSize:15,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{daysLeft}<span style={{color:"#666",fontSize:10,fontFamily:"'Space Mono',monospace",marginLeft:4}}>days left</span></span>
+          }
+          {isCommissioner&&seasonOver&&<button onClick={onEndSeason} style={{padding:"3px 10px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>END SEASON →</button>}
+        </div>
       </div>
       {/* Progress bar */}
       <div style={{height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,#C9A84C,#E8C56A)",borderRadius:2,transition:"width 0.3s"}}/>
+        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,rgba(201,168,76,0.6),#C9A84C)",borderRadius:2,transition:"width 0.5s"}}/>
       </div>
     </div>
   );
@@ -1760,7 +1767,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <StatBox label="Rebuys" value={cuRebuys} accent="#5577CC"/>
         </div>
         </>}
-        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries} friendCount={friendCount}/>}
+        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries} friendCount={friendCount} displayName={displayName}/>}
         {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
@@ -2195,7 +2202,7 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
   );
 }
 
-function BadgeRow({allStats,sessionEntries,friendCount}:any){
+function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
   const [flipped,setFlipped]=useState<string|null>(null);
   if(!allStats)return null;
   const sessions=allStats.sessions||0;
