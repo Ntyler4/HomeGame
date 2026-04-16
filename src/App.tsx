@@ -99,16 +99,36 @@ function LoadingScreen(){
 function SetupView(){return<div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}><Card style={{maxWidth:420,width:"100%"}}><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,marginBottom:12}}>⚠ DATABASE NOT CONNECTED</div><div style={{color:"#aaa",fontSize:13,lineHeight:1.8}}>Add your Supabase credentials to App.tsx.</div></Card></div>;}
 
 function AuthView(){
-  const [tab,setTab]=useState<'login'|'signup'|'reset'>('login');
-  const [email,setEmail]=useState("");const [pw,setPw]=useState("");
+  const [tab,setTab]=useState<'login'|'signup'|'reset'|'newpw'>('login');
+  const [email,setEmail]=useState("");const [pw,setPw]=useState("");const [newPw,setNewPw]=useState("");const [newPw2,setNewPw2]=useState("");
   const [loading,setLoading]=useState(false);const [msg,setMsg]=useState("");const [err,setErr]=useState("");
+
+  // Detect password recovery session from email link
+  useEffect(()=>{
+    if(!db)return;
+    const{data:{subscription}}=db.auth.onAuthStateChange((event)=>{
+      if(event==='PASSWORD_RECOVERY')setTab('newpw');
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  const handleSetNewPassword=async()=>{
+    if(!db)return;
+    if(newPw.length<6){setErr("Password must be 6+ characters.");return;}
+    if(newPw!==newPw2){setErr("Passwords don't match.");return;}
+    setLoading(true);setErr("");
+    const{error}=await db.auth.updateUser({password:newPw});
+    if(error){setErr(error.message);}
+    else{setMsg("Password updated! Signing you in...");setTimeout(()=>window.location.reload(),1500);}
+    setLoading(false);
+  };
+
   const handle=async()=>{
     if(!db)return;setLoading(true);setMsg("");setErr("");
     if(tab==='login'){
       const{error}=await db.auth.signInWithPassword({email,password:pw});
       if(error){setErr(error.message);}
       else{
-        // Tell Safari/iOS to save this password
         if(window.PasswordCredential){
           try{const c=new (window as any).PasswordCredential({id:email,password:pw});await navigator.credentials.store(c);}catch(_){}
         }
@@ -119,15 +139,40 @@ function AuthView(){
       const{error}=await db.auth.signUp({email,password:pw});
       if(error){setErr(error.message);}
       else{
-        setMsg("Account created! Sign in now.");
+        setMsg("Account created! Sign in now.");setTab('login');
         if(window.PasswordCredential){
           try{const c=new (window as any).PasswordCredential({id:email,password:pw});await navigator.credentials.store(c);}catch(_){}
         }
       }
     }
-    else{const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error)setErr(error.message);else setMsg("Reset email sent!");}
+    else{
+      const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${window.location.origin}`});
+      if(error)setErr(error.message);
+      else setMsg("Check your email for a reset link!");
+    }
     setLoading(false);
   };
+
+  // Set new password screen (after clicking email reset link)
+  if(tab==='newpw')return(
+    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
+      <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>{["♠","♥","♦","♣"].map((s,i)=><span key={i} style={{fontSize:28,color:i%2===0?"#C9A84C":"#E05555"}}>{s}</span>)}</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#C9A84C"}}>Home Game</div>
+          <div style={{color:"#888",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginTop:8}}>SET NEW PASSWORD</div>
+        </div>
+        <Card>
+          <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>NEW PASSWORD</label><input type="password" autoComplete="new-password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="6+ characters" style={inp}/></div>
+          <div style={{marginBottom:16}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>CONFIRM PASSWORD</label><input type="password" autoComplete="new-password" value={newPw2} onChange={e=>setNewPw2(e.target.value)} placeholder="Same as above" style={inp}/></div>
+          {err&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:8,padding:"9px 12px",color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12}}>{err}</div>}
+          {msg&&<div style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:8,padding:"9px 12px",color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12}}>{msg}</div>}
+          <button onClick={handleSetNewPassword} disabled={loading||!newPw||!newPw2} style={{width:"100%",padding:"13px 0",background:!loading&&newPw&&newPw2?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:!loading&&newPw&&newPw2?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"UPDATE PASSWORD →"}</button>
+        </Card>
+      </div>
+    </div>
+  );
   return(
     <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
@@ -660,23 +705,26 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       }).eq("id",session.id);
 
       for(const e of entries){
-        const oldProfit=e.profit||0;
         const newProfit=newProfits[e.id];
         const newBuyIn=Number(editedEntries[e.id]?.buy_in||0);
         const newRebuys=Number(editedEntries[e.id]?.rebuys||0);
         const newCashOut=Number(editedEntries[e.id]?.cash_out||0);
+        // Always write to session_entries - all authenticated users can edit
         await db.from("session_entries").update({buy_in:newBuyIn,rebuys:newRebuys,cash_out:newCashOut,profit:newProfit}).eq("id",e.id);
-        const diff=newProfit-oldProfit;
-        if(diff!==0&&e.players){
+        // Only update player aggregate stats if commissioner — player stats are
+        // recomputed from scratch when the session is locked anyway
+        if(isCommissioner&&e.players){
           const p=e.players;
-          const oldWon=oldProfit>0?1:0;const newWon=newProfit>0?1:0;const winDiff=newWon-oldWon;
-          let newBest=p.best_night||0;if(newProfit>newBest)newBest=newProfit;
-          await db.from("players").update({total_profit:(p.total_profit||0)+diff,wins:Math.max(0,(p.wins||0)+winDiff),best_night:newBest}).eq("id",e.player_id);
+          const oldProfit=e.profit||0;const diff=newProfit-oldProfit;
+          if(diff!==0){
+            const oldWon=oldProfit>0?1:0;const newWon=newProfit>0?1:0;const winDiff=newWon-oldWon;
+            let newBest=p.best_night||0;if(newProfit>newBest)newBest=newProfit;
+            await db.from("players").update({total_profit:(p.total_profit||0)+diff,wins:Math.max(0,(p.wins||0)+winDiff),best_night:newBest}).eq("id",e.player_id);
+          }
+          const wasChicken=session.chicken_dinner_name?.toLowerCase()===p.name?.toLowerCase();
+          const isChicken=topPlayer.toLowerCase()===p.name?.toLowerCase();
+          if(wasChicken!==isChicken){const delta=isChicken?1:-1;await db.from("players").update({chicken_dinners:Math.max(0,(p.chicken_dinners||0)+delta)}).eq("id",e.player_id);}
         }
-        // Auto-update chicken dinners based on new top player
-        const wasChicken=session.chicken_dinner_name?.toLowerCase()===e.players?.name?.toLowerCase();
-        const isChicken=topPlayer.toLowerCase()===e.players?.name?.toLowerCase();
-        if(wasChicken!==isChicken&&e.players){const delta=isChicken?1:-1;await db.from("players").update({chicken_dinners:Math.max(0,(e.players.chicken_dinners||0)+delta)}).eq("id",e.player_id);}
       }
       showToast("Session updated!");setSaving(false);setEditing(false);onSaved();loadEntries();
     }catch(err:any){showError(err.message||"Save failed");setSaving(false);}
@@ -1296,6 +1344,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
   const [uploadingAvatar,setUploadingAvatar]=useState(false);const [msg,setMsg]=useState("");
   const fileRef=useRef<HTMLInputElement>(null);
   const displayName=isSelf?profile.display_name:(externalName||profile.display_name);
+  const [sessionEntries,setSessionEntries]=useState<any[]>([]);
   useEffect(()=>{loadStats();},[displayName]);
 
   const loadStats=async()=>{
@@ -1320,6 +1369,13 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     const rebuys=(arch.total_rebuys||0)+(arch.archived_rebuys||0);
     const privacy=arch.privacy_settings||{};
     setAllStats({total_profit:tp,sessions:s,wins:w,losses:s-w,best_night:best,worst_night:worst,leagues:liveRows.length,time_seconds:time,chicken_dinners:cd,avg:s>0?tp/s:0,rebuys,privacy});
+    // Fetch session entries for badge computation
+    const playerIds=liveRows.map((_:any,i:number)=>i); // placeholder — fetch by name
+    const{data:seData}=await db.from("session_entries")
+      .select("profit,rebuys,sessions!inner(stats_committed)")
+      .eq("sessions.stats_committed",true)
+      .in("player_id",(await db.from("players").select("id").ilike("name",displayName)).data?.map((p:any)=>p.id)||[]);
+    setSessionEntries(seData||[]);
     setLoading(false);
   };
 
@@ -1376,6 +1432,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           ] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{val}</span></div>)}
         </Card>
         </>}
+        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries}/>}
         {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
@@ -1414,7 +1471,154 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
   );
 }
 
-// ─── PLAYER PROFILE ────────────────────────────────────
+// ─── BADGES ────────────────────────────────────────────
+const BADGE_DEFS=[
+  {
+    id:"dinner_bell",
+    name:"Dinner Bell",
+    desc:"Win your first chicken dinner — highest profit in any single session.",
+    repeatable:false,
+    icon:(earned:boolean)=>(
+      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
+        <ellipse cx="20" cy="30" rx="14" ry="4" fill={earned?"#C9A84C":"#333"} opacity={earned?0.3:0.5}/>
+        <path d="M20 8 C14 8 10 13 10 19 C10 24 13 27 16 28 L24 28 C27 27 30 24 30 19 C30 13 26 8 20 8Z" fill={earned?"#C9A84C":"#444"}/>
+        <rect x="18" y="4" width="4" height="6" rx="2" fill={earned?"#E8C56A":"#555"}/>
+        <path d="M14 19 Q17 16 20 19 Q23 22 26 19" stroke={earned?"#0A0A0A":"#222"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id:"high_roller",
+    name:"High Roller",
+    desc:"Cash out +$100 profit in a single session.",
+    repeatable:true,
+    icon:(earned:boolean)=>(
+      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
+        <rect x="8" y="14" width="24" height="16" rx="3" fill={earned?"#C9A84C":"#444"} opacity={earned?1:0.6}/>
+        <rect x="11" y="17" width="8" height="10" rx="2" fill={earned?"#0A0A0A":"#222"}/>
+        <circle cx="27" cy="22" r="3.5" fill={earned?"#E8C56A":"#333"}/>
+        <rect x="6" y="10" width="28" height="5" rx="2" fill={earned?"#E8C56A":"#555"} opacity={earned?0.8:0.5}/>
+        <path d="M15 8 L20 10 L25 8" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    id:"road_warrior",
+    name:"Road Warrior",
+    desc:"Play 10 total sessions across all leagues.",
+    repeatable:false,
+    icon:(earned:boolean)=>(
+      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
+        <path d="M8 28 L20 10 L32 28 Z" fill={earned?"#C9A84C":"#444"} opacity={earned?1:0.6}/>
+        <circle cx="20" cy="19" r="4" fill={earned?"#0A0A0A":"#222"}/>
+        <circle cx="20" cy="19" r="2" fill={earned?"#E8C56A":"#555"}/>
+        <path d="M20 10 L20 7" stroke={earned?"#E8C56A":"#555"} strokeWidth="2" strokeLinecap="round"/>
+        <path d="M12 24 L8 32 M28 24 L32 32" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinecap="round" opacity={earned?0.6:0.4}/>
+      </svg>
+    ),
+  },
+  {
+    id:"comeback_kid",
+    name:"Comeback Kid",
+    desc:"Buy in 3+ times in a single session and still finish profitable.",
+    repeatable:true,
+    icon:(earned:boolean)=>(
+      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
+        <path d="M20 32 C12 32 7 26 7 20 C7 14 12 9 18 9" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+        <path d="M22 9 C28 9 33 14 33 20 C33 26 28 32 22 32" stroke={earned?"#E8C56A":"#555"} strokeWidth="2.5" strokeLinecap="round" fill="none" strokeDasharray="4 2"/>
+        <path d="M16 7 L20 11 L16 15" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M17 20 L20 17 L23 20 L20 23 Z" fill={earned?"#C9A84C":"#555"}/>
+      </svg>
+    ),
+  },
+  {
+    id:"shark",
+    name:"Shark",
+    desc:"Win 5 sessions in a row.",
+    repeatable:true,
+    icon:(earned:boolean)=>(
+      <svg viewBox="0 0 40 40" width={28} height={28} fill="none">
+        <path d="M6 22 C6 22 10 15 20 15 C30 15 34 22 34 22" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" fill="none"/>
+        <path d="M6 22 C6 22 10 29 20 29 C30 29 34 22 34 22" stroke={earned?"#C9A84C":"#444"} strokeWidth="2" fill={earned?"rgba(201,168,76,0.15)":"rgba(68,68,68,0.3)"}/>
+        <path d="M20 15 L23 7 L26 15" fill={earned?"#E8C56A":"#555"}/>
+        <circle cx="15" cy="21" r="1.5" fill={earned?"#C9A84C":"#555"}/>
+        <path d="M23 20 L25 22 L23 24" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M26 20 L28 22 L26 24" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6"/>
+      </svg>
+    ),
+  },
+];
+
+function BadgeRow({allStats,sessionEntries}:any){
+  const [open,setOpen]=useState<string|null>(null);
+  if(!allStats)return null;
+
+  // Compute badge counts from stats + session entries
+  const highRollerCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=100).length;
+  const comebackCount=(sessionEntries||[]).filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length;
+  // Shark: count how many 5-win streaks (approximated from win streak — each streak ≥5 counts)
+  const sharkCount=Math.floor((allStats.wins||0)/5);
+
+  const counts:Record<string,number>={
+    dinner_bell:allStats.chicken_dinners>=1?1:0,
+    high_roller:highRollerCount,
+    road_warrior:allStats.sessions>=10?1:0,
+    comeback_kid:comebackCount,
+    shark:sharkCount,
+  };
+
+  return(
+    <Card style={{marginBottom:12}}>
+      <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:13}}>BADGES</div>
+      <div style={{display:"flex",justifyContent:"space-around",gap:4}}>
+        {BADGE_DEFS.map(b=>{
+          const count=counts[b.id]||0;
+          const earned=count>0;
+          const isOpen=open===b.id;
+          return(
+            <div key={b.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flex:1,cursor:"pointer"}} onClick={()=>setOpen(isOpen?null:b.id)}>
+              <div style={{position:"relative",width:52,height:52,borderRadius:14,
+                background:earned?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)",
+                border:`2px solid ${earned?"rgba(201,168,76,0.5)":"rgba(255,255,255,0.07)"}`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow:earned?"0 0 12px rgba(201,168,76,0.2)":"none",
+                opacity:earned?1:0.45,
+                transition:"all 0.2s",
+              }}>
+                {b.icon(earned)}
+                {earned&&b.repeatable&&count>1&&(
+                  <div style={{position:"absolute",top:-6,right:-6,background:"#C9A84C",borderRadius:10,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",border:"2px solid #0A0A0A"}}>
+                    <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
+                  </div>
+                )}
+              </div>
+              <div style={{color:earned?"#C9A84C":"#444",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3}}>{b.name}</div>
+            </div>
+          );
+        })}
+      </div>
+      {open&&(()=>{
+        const b=BADGE_DEFS.find(x=>x.id===open)!;
+        const count=counts[open]||0;
+        const earned=count>0;
+        return(
+          <div style={{marginTop:13,padding:"11px 13px",background:earned?"rgba(201,168,76,0.07)":"rgba(255,255,255,0.03)",border:`1px solid ${earned?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.07)"}`,borderRadius:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+              <div style={{opacity:0.8}}>{b.icon(earned)}</div>
+              <div>
+                <div style={{color:earned?"#C9A84C":"#666",fontFamily:"'Playfair Display',serif",fontSize:14}}>{b.name}</div>
+                <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{earned?"EARNED"+(b.repeatable&&count>1?` · ${count}x`:""):"NOT YET EARNED"}</div>
+              </div>
+            </div>
+            <div style={{color:"#888",fontSize:11,lineHeight:1.6}}>{b.desc}</div>
+          </div>
+        );
+      })()}
+    </Card>
+  );
+}
+
+
 function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
   if(!player)return null;
   const isUp=player.total_profit>=0;const isSelf=player.name.toLowerCase()===profile.display_name.toLowerCase();const winRate=player.session_count>0?((player.wins/player.session_count)*100).toFixed(0):0;
