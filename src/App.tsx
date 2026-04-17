@@ -308,8 +308,8 @@ function PokerTicker(){
     return()=>clearInterval(t);
   },[]);
   return(
-    <div style={{padding:"10px 14px",marginBottom:12,marginTop:6,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,minHeight:42,display:"flex",alignItems:"center"}}>
-      <div style={{color:"#666",fontSize:11,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0}}>{POKER_TIPS[idx]}</div>
+    <div style={{padding:"10px 14px",marginBottom:12,marginTop:6,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,minHeight:42,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{color:"#666",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0,textAlign:"center" as const,width:"100%"}}>{POKER_TIPS[idx]}</div>
     </div>
   );
 }
@@ -506,7 +506,7 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
       </div>
       {sorted.length>0&&<Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>FINAL STANDINGS</div>
-        {sorted.map((p:any,i:number)=>{const medalColors=["#C9A84C","#888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+        {sorted.map((p:any,i:number)=>{const medalColors=["#C9A84C","#888888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
           <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
           <Avatar name={p.name} size={34} streak={p.streak||0}/>
           <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
@@ -604,7 +604,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           {getSorted().map((p:any,i:number)=>{
             const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();
             const medals=["1","2","3"];const isTop3=i<3&&!search;
-            const medalColors=["#C9A84C","#888","#A0714F"];
+            const medalColors=["#C9A84C","#888888","#A0714F"];
             const{val,color}=getPrimaryStatValue(p);
             return<div key={p.id} onClick={()=>onViewPlayer(p)} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",background:i===0&&!search?"rgba(201,168,76,0.03)":"transparent"}}>
               <div style={{width:22,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{medals[i]}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
@@ -749,7 +749,7 @@ function ArchivedSeasonView({archive,league,onBack}:any){
       {players.length>0&&<Card style={{marginBottom:12}}>
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>FINAL STANDINGS</div>
         {players.map((p:any,i:number)=>{
-          const medal=["#C9A84C","#888","#A0714F"][i];
+          const medal=["#C9A84C","#888888","#A0714F"][i];
           return<div key={p.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{width:22,flexShrink:0,textAlign:"center" as const}}>
               {i<3?<div style={{width:18,height:18,borderRadius:"50%",background:`${medal}22`,border:`1px solid ${medal}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medal,fontSize:8,fontFamily:"'Space Mono',monospace",fontWeight:700,margin:"0 auto"}}>{i+1}</div>
@@ -944,7 +944,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         }
       }
       await db.from("session_entries").delete().eq("id",entry.id);
-      const newPot=Math.max(0,(session.pot||0)-(entry.buy_in||0));
+      const newPot=Math.max(0,(session.pot||0)-(entry.buy_in||0)*(1+(entry.rebuys||0)));
       await db.from("sessions").update({pot:newPot}).eq("id",session.id);
       showToast(`${name} removed from session.`);onSaved();loadEntries();
     }catch(err:any){showError(err.message||"Failed to remove");}
@@ -1040,7 +1040,8 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         }
       }
 
-      await db.from("sessions").update({locked:true,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:true}).eq("id",session.id);
+      const realPot=(freshEntries||[]).reduce((a:number,e:any)=>a+(e.buy_in||0)*(1+(e.rebuys||0)),0);
+      await db.from("sessions").update({locked:true,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:true,pot:realPot}).eq("id",session.id);
       setIsLocked(true);
       showToast("Session locked — stats committed to profiles");
     }else{
@@ -1694,7 +1695,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     const playerIdRows=(await db.from("players").select("id").ilike("name",displayName)).data||[];
     const playerIds=playerIdRows.map((p:any)=>p.id);
     const{data:seData}=await db.from("session_entries")
-      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot)")
+      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot,duration_seconds)")
       .eq("sessions.stats_committed",true)
       .in("player_id",playerIds);
     setSessionEntries((seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime()));
@@ -1967,7 +1968,7 @@ const BADGE_DEFS=[
     ),
   },
   {
-    id:"last_man_standing", name:"Last Man Standing", repeatable:true,
+    id:"last_man_standing", name:"Carnivore", repeatable:true,
     desc:"Take the chicken dinner without a single rebuy. You came, you saw, you conquered.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
@@ -1985,7 +1986,7 @@ const BADGE_DEFS=[
   },
   {
     id:"the_whale", name:"The Whale", repeatable:true,
-    desc:"Spend $200 or more in a single session between buy-ins and rebuys. Go big or go home.",
+    desc:"Buy in 5 or more times in a single session and still lose it all. The truest degenerate move.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         {/* Whale body */}
@@ -2058,6 +2059,21 @@ const BADGE_DEFS=[
         <circle cx="24" cy="24" r="5" fill={earned?"#C9A84C":"#2a2a2a"}/>
         <text x="21.5" y="28" fill={earned?"#0A0A0A":"#444"} fontSize="7" fontFamily="monospace" fontWeight="bold">80</text>
         {earned&&<circle cx="24" cy="24" r="9" fill="none" stroke="#E8C56A" strokeWidth="0.8" opacity="0.5"/>}
+      </svg>
+    ),
+  },
+  {
+    id:"flash_fortune", name:"Flash Fortune", repeatable:true,
+    desc:"Double your money in a session that lasts under 45 minutes. In and out before they knew what hit them.",
+    icon:(earned:boolean,size=36)=>(
+      <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
+        {/* Lightning bolt */}
+        <path d="M28 6 L16 26 L23 26 L20 42 L32 22 L25 22 Z"
+          fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#E8C56A":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* Dollar circle */}
+        <circle cx="36" cy="12" r="7" fill={earned?"rgba(76,175,140,0.2)":"#1a1a1a"} stroke={earned?"#4CAF8C":"#333"} strokeWidth="1.5"/>
+        <text x="33" y="16" fill={earned?"#4CAF8C":"#444"} fontSize="8" fontFamily="monospace" fontWeight="bold">$</text>
+        {earned&&<path d="M24 6 L28 6" stroke="#E8C56A" strokeWidth="1" opacity="0.5" strokeLinecap="round"/>}
       </svg>
     ),
   },
@@ -2215,9 +2231,14 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
   const sharkCount=Math.floor((allStats.wins||0)/5);
 
   // New achievement counts
-  const whaleCount=(sessionEntries||[]).filter((e:any)=>(e.buy_in||0)*(1+(e.rebuys||0))>=200).length;
+  const whaleCount=(sessionEntries||[]).filter((e:any)=>(e.rebuys||0)>=4&&(e.profit||0)<0).length;
   const iceColdCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)===0).length;
   const robberyCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=(e.buy_in||0)*2&&(e.buy_in||0)>0).length;
+  // Flash Fortune: doubled money (profit >= buy_in) in session < 45 min (2700s)
+  const flashFortuneCount=(sessionEntries||[]).filter((e:any)=>{
+    const dur=e.sessions?.duration_seconds||0;
+    return dur>0&&dur<2700&&(e.profit||0)>=(e.buy_in||0)&&(e.buy_in||0)>0;
+  }).length;
   const lastManCount=(sessionEntries||[]).filter((e:any)=>{
     // Must be THE winner of that specific session (chicken_dinner_name matches this player) AND no rebuys
     const wonSession=(e.sessions?.chicken_dinner_name||"").toLowerCase()===displayName.toLowerCase();
@@ -2238,7 +2259,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
     dinner_bell:dinners>=1?1:0,
     high_roller:highRollerCount,
     road_warrior:sessions>=10?1:0,
-    collector:dinners>=1?1:0,
+    collector:dinners>=5?1:0,
     comeback_kid:comebackCount,
     shark:sharkCount,
     degenerate:hoursPlayed>=1000?1:0,
@@ -2249,14 +2270,37 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
     robbery:robberyCount,
     bounce_back:bounceBackCount,
     get_wrecked:getWreckedCount,
+    flash_fortune:flashFortuneCount,
   };
 
   const BADGE_IDS=['road_warrior','collector'];
-  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate','bring_a_friend','last_man_standing','the_whale','ice_cold','robbery','bounce_back','get_wrecked'];
+  const ACHIEVEMENT_IDS=['dinner_bell','high_roller','comeback_kid','shark','degenerate','bring_a_friend','last_man_standing','the_whale','ice_cold','robbery','bounce_back','get_wrecked','flash_fortune'];
   const badgeDefs=BADGE_DEFS.filter(b=>BADGE_IDS.includes(b.id));
   const achievementDefs=BADGE_DEFS.filter(b=>ACHIEVEMENT_IDS.includes(b.id));
-  const achRows:any[][]=[];
-  for(let i=0;i<achievementDefs.length;i+=3)achRows.push(achievementDefs.slice(i,i+3));
+
+  // Swipe pagination — 12 per page (4 rows × 3 cols)
+  const PAGE_SIZE=12;
+  const totalPages=Math.ceil(achievementDefs.length/PAGE_SIZE);
+  const [achPage,setAchPage]=useState(0);
+  const [swipeX,setSwipeX]=useState(0);
+  const [dragging,setDragging]=useState(false);
+  const [startX,setStartX]=useState(0);
+
+  const handleTouchStart=(e:any)=>{setStartX(e.touches[0].clientX);setDragging(true);setSwipeX(0);};
+  const handleTouchMove=(e:any)=>{if(!dragging)return;setSwipeX(e.touches[0].clientX-startX);};
+  const handleTouchEnd=()=>{
+    if(Math.abs(swipeX)>50){
+      if(swipeX<0&&achPage<totalPages-1)setAchPage(p=>p+1);
+      if(swipeX>0&&achPage>0)setAchPage(p=>p-1);
+    }
+    setSwipeX(0);setDragging(false);
+  };
+
+  const pageAchs=achievementDefs.slice(achPage*PAGE_SIZE,(achPage+1)*PAGE_SIZE);
+  // Pad to full grid
+  const padded=[...pageAchs,...Array(Math.max(0,PAGE_SIZE-pageAchs.length)).fill(null)];
+  const pageRows:any[][]=[];
+  for(let i=0;i<padded.length;i+=3)pageRows.push(padded.slice(i,i+3));
 
   return(
     <>
@@ -2276,20 +2320,43 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
         </div>
       </Card>
 
-      {/* ACHIEVEMENTS */}
-      <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>ACHIEVEMENTS</div>
-        {achRows.map((row,ri)=>(
-          <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<achRows.length-1?10:0}}>
-            {row.map(b=>(
-              <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions} dinners={dinners}
-                flipped={flipped===b.id}
-                onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
-              />
+      {/* ACHIEVEMENTS — swipeable pages */}
+      <Card style={{marginBottom:12,overflow:"hidden" as const}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>ACHIEVEMENTS</div>
+          {totalPages>1&&<div style={{display:"flex",gap:5,alignItems:"center"}}>
+            {Array(totalPages).fill(0).map((_,i)=>(
+              <div key={i} onClick={()=>setAchPage(i)} style={{width:i===achPage?16:6,height:6,borderRadius:3,background:i===achPage?"#C9A84C":"rgba(255,255,255,0.12)",transition:"all 0.25s",cursor:"pointer"}}/>
             ))}
-            {row.length<3&&Array(3-row.length).fill(0).map((_,i)=><div key={i}/>)}
+          </div>}
+        </div>
+        {/* Swipe container */}
+        <div
+          style={{overflow:"hidden"}}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div style={{
+            transform:`translateX(${swipeX}px)`,
+            transition:dragging?"none":"transform 0.28s cubic-bezier(0.4,0,0.2,1)",
+            willChange:"transform",
+          }}>
+            {pageRows.map((row,ri)=>(
+              <div key={ri} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:ri<pageRows.length-1?10:0}}>
+                {row.map((b:any,ci:number)=>b?(
+                  <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions} dinners={dinners}
+                    flipped={flipped===b.id}
+                    onFlip={()=>setFlipped(flipped===b.id?null:b.id)}
+                  />
+                ):(
+                  <div key={ci} style={{borderRadius:16,paddingBottom:"115%",background:"rgba(255,255,255,0.01)",border:"1px dashed rgba(255,255,255,0.03)"}}/>
+                ))}
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+        {totalPages>1&&<div style={{textAlign:"center" as const,marginTop:12,color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1}}>SWIPE TO SEE MORE</div>}
       </Card>
     </>
   );
@@ -2375,7 +2442,7 @@ function WorldwideLeaderboardView({profile,onBack}:any){
       {!loading&&top100.length>0&&<Card style={{padding:0,overflow:"hidden"}}>
         {top100.map((p:any,i:number)=>{
           const isMe=p.display_name.toLowerCase()===profile.display_name.toLowerCase();
-          const medalColors2=["#C9A84C","#888","#A0714F"];
+          const medalColors2=["#C9A84C","#888888","#A0714F"];
           const{val,color}=getStatValue(p);
           const subLine=`${fmtSeconds(p.global_time_seconds||0)} · ${p.global_sessions||0} sessions`;
           return<div key={p.display_name} style={{display:"flex",alignItems:"center",gap:11,padding:"11px 16px",borderBottom:i<top100.length-1?"1px solid rgba(255,255,255,0.05)":"none",background:isMe?"rgba(201,168,76,0.05)":"transparent"}}>
@@ -2542,21 +2609,21 @@ export default function HomeGameApp(){
       const friends=(fdRows||[]).length;
       // Fetch session entries
       const playerIds=((await db.from("players").select("id").ilike("name",displayName)).data||[]).map((p:any)=>p.id);
-      const{data:seData}=await db.from("session_entries").select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot)").eq("sessions.stats_committed",true).in("player_id",playerIds);
+      const{data:seData}=await db.from("session_entries").select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot,duration_seconds)").eq("sessions.stats_committed",true).in("player_id",playerIds);
       const ses=(seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime());
       // Compute current earned set (same logic as BadgeRow)
       const earned:Set<string>=new Set();
       if(dinners>=1)earned.add('dinner_bell');
       if(ses.filter((e:any)=>(e.profit||0)>=100).length>0)earned.add('high_roller');
       if(sessions>=10)earned.add('road_warrior');
-      if(dinners>=5)earned.add('collector');
+      if(dinners>=5)earned.add('collector'); // already correct
       if(ses.filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length>0)earned.add('comeback_kid');
       if(Math.floor(wins/5)>0)earned.add('shark');
       if(hours>=1000)earned.add('degenerate');
       if(friends>=1)earned.add('bring_a_friend');
       // last man standing
       if(ses.filter((e:any)=>(e.sessions?.chicken_dinner_name||"").toLowerCase()===displayName.toLowerCase()&&(e.rebuys||0)===0).length>0)earned.add('last_man_standing');
-      if(ses.filter((e:any)=>(e.buy_in||0)*(1+(e.rebuys||0))>=200).length>0)earned.add('the_whale');
+      if(ses.filter((e:any)=>(e.rebuys||0)>=4&&(e.profit||0)<0).length>0)earned.add('the_whale');
       if(ses.filter((e:any)=>(e.profit||0)===0).length>0)earned.add('ice_cold');
       if(ses.filter((e:any)=>(e.profit||0)>=(e.buy_in||0)*2&&(e.buy_in||0)>0).length>0)earned.add('robbery');
       // bounce back
