@@ -2394,7 +2394,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
         >
           <div style={{
             transform:`translateX(${swipeX}px)`,
-            transition:dragging?"none":"transform 0.28s cubic-bezier(0.4,0,0.2,1)",
+            transition:isSwiping.current?"none":"transform 0.28s cubic-bezier(0.4,0,0.2,1)",
             willChange:"transform",
           }}>
             {pageRows.map((row,ri)=>(
