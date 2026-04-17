@@ -111,7 +111,7 @@ function SetupView(){return<div style={{minHeight:"100vh",background:"#0A0A0A",d
 function AuthView(){
   const [tab,setTab]=useState<'login'|'signup'|'reset'|'newpw'>('login');
   const [email,setEmail]=useState("");const [pw,setPw]=useState("");const [newPw,setNewPw]=useState("");const [newPw2,setNewPw2]=useState("");
-  const [loading,setLoading]=useState(false);const [msg,setMsg]=useState("");const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);const [msg,setMsg]=useState("");const [err,setErr]=useState("");const [showPw,setShowPw]=useState(false);const [showNewPw,setShowNewPw]=useState(false);
 
   // Detect password recovery session from email link
   useEffect(()=>{
@@ -156,7 +156,7 @@ function AuthView(){
       }
     }
     else{
-      const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${window.location.origin}`});
+      const{error}=await db.auth.resetPasswordForEmail(email,{redirectTo:`${window.location.origin}/?type=recovery`});
       if(error)setErr(error.message);
       else setMsg("Check your email for a reset link!");
     }
@@ -196,7 +196,7 @@ function AuthView(){
           {tab!=='reset'?<div style={{display:"flex",borderBottom:"1px solid rgba(201,168,76,0.15)"}}>{(['login','signup'] as const).map(t=><button key={t} onClick={()=>{setTab(t);setErr("");setMsg("");}} style={{flex:1,padding:"14px 0",background:"none",border:"none",color:tab===t?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #C9A84C":"2px solid transparent"}}>{t==='login'?'Sign In':'Create Account'}</button>)}</div>:<div style={{borderBottom:"1px solid rgba(201,168,76,0.15)",padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><button onClick={()=>{setTab('login');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer"}}>←</button><span style={{color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12}}>RESET PASSWORD</span></div>}
           <form onSubmit={e=>{e.preventDefault();handle();}} style={{padding:24}}>
             <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>EMAIL</label><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={inp}/></div>
-            {tab!=='reset'&&<div style={{marginBottom:8}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>PASSWORD</label><input type="password" autoComplete={tab==='login'?"current-password":"new-password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={inp}/></div>}
+            {tab!=='reset'&&<div style={{marginBottom:8}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>PASSWORD</label><div style={{position:"relative"}}><input type={showPw?"text":"password"} autoComplete={tab==='login'?"current-password":"new-password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...inp,paddingRight:40}}/><button type="button" onClick={()=>setShowPw(p=>!p)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:10,padding:0}}>{showPw?"HIDE":"SHOW"}</button></div></div>}
             {tab==='login'&&<div style={{textAlign:"right",marginBottom:16}}><button type="button" onClick={()=>{setTab('reset');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>Forgot password?</button></div>}
             {tab!=='login'&&<div style={{marginBottom:16}}/>}
             {err&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:8,padding:"9px 12px",color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12,lineHeight:1.6}}>{err}</div>}
@@ -322,30 +322,42 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
   const loadCount=async()=>{
     if(!db)return;
     const name=profile.display_name;
-    // Friend requests pending for me
     const{data:fr}=await db.from("friends").select("id").eq("recipient_name",name).eq("status","pending");
-    // Edit alerts for sessions in leagues I'm in (all members, not just commissioner)
     const allLeagueIds=myLeagues.map((l:any)=>l.id);
     const{data:ea}=allLeagueIds.length>0
       ?await db.from("sessions").select("id").not("edit_alert","is",null).in("league_id",allLeagueIds)
       :{data:[]};
-    setCount(((fr||[]).length)+((ea||[]).length));
+    // Recent feed posts in my leagues (last 24h, not by me)
+    const cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
+    const{data:fp}=allLeagueIds.length>0
+      ?await db.from("posts").select("id").in("league_id",allLeagueIds).neq("author_name",name).gte("created_at",cutoff)
+      :{data:[]};
+    setCount(((fr||[]).length)+((ea||[]).length)+((fp||[]).length));
   };
   const loadNotifs=async()=>{
     if(!db||loading)return;setLoading(true);
     const name=profile.display_name;
     const allLeagueIds=myLeagues.map((l:any)=>l.id);
-    const[{data:fr},{data:ea}]=await Promise.all([
+    const cutoff=new Date(Date.now()-48*60*60*1000).toISOString();
+    const[{data:fr},{data:ea},{data:fp},{data:ls}]=await Promise.all([
       db.from("friends").select("*").eq("recipient_name",name).eq("status","pending"),
       allLeagueIds.length>0
         ?db.from("sessions").select("id,edit_alert,notes,created_at,league_id").not("edit_alert","is",null).in("league_id",allLeagueIds)
+        :Promise.resolve({data:[]}),
+      allLeagueIds.length>0
+        ?db.from("posts").select("*").in("league_id",allLeagueIds).neq("author_name",name).gte("created_at",cutoff).order("created_at",{ascending:false}).limit(10)
+        :Promise.resolve({data:[]}),
+      allLeagueIds.length>0
+        ?db.from("sessions").select("id,is_live,created_at,league_id,buy_in_amount").eq("is_live",true).in("league_id",allLeagueIds).gte("created_at",cutoff)
         :Promise.resolve({data:[]}),
     ]);
     const items:any[]=[];
     (fr||[]).forEach((f:any)=>items.push({type:"friend",id:f.id,text:`${f.requester_name} sent a friend request`,ts:f.created_at}));
     (ea||[]).forEach((s:any)=>items.push({type:"session_edit",id:s.id,text:s.edit_alert?.summary||"Stats were edited",sub:s.notes||new Date(s.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}),ts:s.edit_alert?.ts||s.created_at,sessionId:s.id,leagueId:s.league_id}));
+    (ls||[]).forEach((s:any)=>{const lg=myLeagues.find((l:any)=>l.id===s.league_id);items.push({type:"live",id:s.id,text:`Game is live in ${lg?.name||"your league"}`,sub:`Buy-in: $${s.buy_in_amount||"?"}`,ts:s.created_at});});
+    (fp||[]).forEach((p:any)=>{const lg=myLeagues.find((l:any)=>l.id===p.league_id);items.push({type:"post",id:p.id,text:p.author_name==="HomeGame"?p.content:`${p.author_name} posted in ${lg?.name||"league"}`,sub:p.author_name!=="HomeGame"?p.content?.slice(0,60):undefined,ts:p.created_at});});
     items.sort((a,b)=>new Date(b.ts).getTime()-new Date(a.ts).getTime());
-    setNotifs(items);setLoading(false);
+    setNotifs(items.slice(0,15));setLoading(false);
   };
   const handleOpen=()=>{setOpen(o=>!o);if(!open)loadNotifs();};
   return(
@@ -364,7 +376,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
         {!loading&&notifs.map((n:any,i:number)=>(
           <div key={n.id+n.type} onClick={()=>{if(n.type==="session_edit"&&onViewNotification)onViewNotification(n);setOpen(false);}} style={{padding:"11px 14px",borderBottom:i<notifs.length-1?"1px solid rgba(255,255,255,0.04)":"none",cursor:n.type==="session_edit"?"pointer":"default",background:"rgba(255,255,255,0.01)"}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
-              <div style={{marginTop:1,flexShrink:0}}>{n.type==="friend"?<Icon name="person" size={16} color="#888"/>:<Icon name="warning" size={16} color="#E05555"/>}</div>
+              <div style={{marginTop:1,flexShrink:0}}>{n.type==="friend"?<Icon name="person" size={16} color="#888"/>:n.type==="live"?<span style={{fontSize:14}}>♠</span>:n.type==="post"?<span style={{fontSize:14}}>◈</span>:<Icon name="warning" size={16} color="#E05555"/>}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:"#fff",fontSize:12,lineHeight:1.4}}>{n.text}</div>
                 {n.sub&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>{n.sub}</div>}
@@ -379,7 +391,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
 }
 
 // ─── LEAGUE HOME ───────────────────────────────────────
-function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification,onViewHandRankings}:any){
+function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification,onViewHandRankings,onViewFriends}:any){
   const has100hrs=(profile?.global_time_seconds||0)>=360000;
   const hoursPlayed=Math.floor((profile?.global_time_seconds||0)/3600);
   const hoursLeft=Math.max(0,100-hoursPlayed);
@@ -387,9 +399,12 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
-        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:3}}>
-          <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
-          <div style={{color:"#fff",fontSize:18,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
+        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4}}>
+          <div style={{color:"#fff",fontSize:17,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button onClick={onViewFriends} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="person" size={20} color="#666"/></button>
+            <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
+          </div>
         </div>
       </div>
       <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
@@ -430,7 +445,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
 }
 
 // ─── JOIN / CREATE ──────────────────────────────────────
-function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
+function JoinCreateView({profile,loading,onBack,onEnter,onViewPublicLeagues,prefillCode=""}:any){
   const [tab,setTab]=useState(prefillCode?"join":"join");
   const [code,setCode]=useState(prefillCode);const [leagueName,setLeagueName]=useState("");const [description,setDescription]=useState("");
   const [buyIn,setBuyIn]=useState("20");const [season,setSeason]=useState("Season 1");const [seasonLength,setSeasonLength]=useState("0");
@@ -444,10 +459,13 @@ function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
       <Card style={{padding:0,overflow:"hidden"}}>
         <div style={{display:"flex",borderBottom:"1px solid rgba(201,168,76,0.15)"}}>{["join","create"].map(t=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"13px 0",background:"none",border:"none",color:tab===t?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #C9A84C":"2px solid transparent"}}>{t==="join"?"Join":"Create"}</button>)}</div>
         <div style={{padding:20}}>
-          {tab==="join"?<div style={{marginBottom:14}}>
+          {tab==="join"?<>
+            <div style={{marginBottom:10}}>
             <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>INVITE CODE</label>
             <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. FNP2026" style={{...inp,color:"#C9A84C",fontSize:20,letterSpacing:4,textAlign:"center" as const}}/>
-          </div>:(
+          </div>
+          <button type="button" onClick={onViewPublicLeagues} style={{width:"100%",padding:"10px 0",background:"rgba(85,119,204,0.07)",border:"1px dashed rgba(85,119,204,0.3)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:4}}><Icon name="globe" size={12} color="#5577CC"/>BROWSE PUBLIC LEAGUES</button>
+          </>:(
             <>
               {([["LEAGUE NAME",leagueName,setLeagueName,"Friday Night Poker"],["DESCRIPTION",description,setDescription,"Weekly home game"],["SEASON NAME",season,setSeason,"Season 1"]] as any[]).map(([label,val,setter,ph])=><div key={label} style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
               <div style={{display:"flex",gap:10,marginBottom:10}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} placeholder="0=unlimited" style={inp}/></div></div>
@@ -574,7 +592,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
         </div>
         {/* Code / Location / Invite — evenly spaced */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
-          <span style={{color:"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:"rgba(201,168,76,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.code}</span>
+          <span style={{color:league.is_public?"#5577CC":"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:league.is_public?"rgba(85,119,204,0.1)":"rgba(201,168,76,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.is_public?"PUBLIC":league.code}</span>
           <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{league.location_name?<><Icon name="pin" size={10} color="#555"/>{league.location_name}</>:(league.is_public?<><Icon name="globe" size={10} color="#5577CC"/>Public</>:"")}</span>
           <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0,display:"flex",alignItems:"center",gap:5}}><Icon name="link" size={11} color="#4CAF8C"/>Invite</button>
         </div>
@@ -777,7 +795,7 @@ function ArchivedSeasonView({archive,league,onBack}:any){
     </div>
   );
 }
-function SessionDetailView({session,league,players,profile,isCommissioner,onBack,onSaved,showToast,showError}:any){
+function SessionDetailView({session,league,players,profile,isCommissioner,onBack,onSaved,onBadgeCheck,showToast,showError}:any){
   const [entries,setEntries]=useState<any[]>([]);
   const [sessionPosts,setSessionPosts]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
@@ -847,7 +865,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       const sorted=[...entries].sort((a,b)=>(newProfits[b.id]||0)-(newProfits[a.id]||0));
       const topPlayer=sorted[0]?.players?.name||session.winner_name||"";
       // Pot = sum of all buy-ins + rebuys (each rebuy costs buy_in amount)
-      const newPot=Number(editedPot)||entries.reduce((a,e)=>{
+      const newPot=entries.reduce((a:number,e:any)=>a+(e.buy_in||0)*(1+(e.rebuys||0)),0)||Number(editedPot)||entries.reduce((a,e)=>{
         const bi=Number(editedEntries[e.id]?.buy_in||0);
         const rb=Number(editedEntries[e.id]?.rebuys||0);
         return a+bi+(rb*bi);
@@ -1038,8 +1056,30 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
 
       const realPot=(freshEntries||[]).reduce((a:number,e:any)=>a+(e.buy_in||0)*(1+(e.rebuys||0)),0);
       await db.from("sessions").update({locked:true,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:true,pot:realPot}).eq("id",session.id);
+
+      // Compute session achievements for each player and post to feed
+      const sessionAchievements:string[]=[];
+      for(const e of (freshEntries||[])){
+        if(!e.players?.name)continue;
+        const pName=e.players.name;
+        const profit=e.profit||0;const bi=e.buy_in||0;const rb=e.rebuys||0;const elapsed=sessionRow?.duration_seconds||0;
+        const isWinner=(sessionRow?.chicken_dinner_name||"").toLowerCase()===pName.toLowerCase();
+        const earned:string[]=[];
+        if(isWinner&&rb===0)earned.push("Carnivore");
+        if(realPot>0&&profit>=realPot*0.8)earned.push("Get Wrecked");
+        if(rb>=4&&profit<0)earned.push("The Whale");
+        if(elapsed>0&&elapsed<2700&&profit>=bi&&bi>0)earned.push("Flash Fortune");
+        if(profit===0)earned.push("Ice Cold");
+        if(profit>=bi*2&&bi>0)earned.push("Robbery");
+        if(earned.length>0)sessionAchievements.push(`${pName} earned ${earned.map(a=>`'${a}'`).join(" & ")}`);
+      }
+      if(sessionAchievements.length>0){
+        const content=`🏆 Session achievements: ${sessionAchievements.join(" · ")}`;
+        await db.from("posts").insert({league_id:session.league_id,author_name:"HomeGame",content,session_id:session.id});
+      }
+
       setIsLocked(true);
-      showToast("Session locked — stats committed to profiles");
+      showToast("Session locked — stats committed to profiles");if(onBadgeCheck)setTimeout(onBadgeCheck,1500);
     }else{
       // Unlock: mark as not committed so re-lock will recompute
       await db.from("sessions").update({locked:false,locked_at:new Date().toISOString(),edit_alert:null,stats_committed:false}).eq("id",session.id);
@@ -1107,13 +1147,11 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         <div style={{display:"flex",gap:12}}>
           <div style={{flex:1,textAlign:"center"}}>
             <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>POT</div>
-            {editing
-              ?<input type="number" value={editedPot} onChange={e=>setEditedPot(e.target.value)} style={{...inp,textAlign:"center" as const,fontSize:20,color:"#C9A84C",marginTop:4}}/>
-              :<div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>
+            <div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>
                 ${entries.length>0
                   ? entries.reduce((a:number,e:any)=>(a+(e.buy_in||0)*(1+(e.rebuys||0))),0)
                   : (session.pot||0)}
-              </div>}
+              </div>
           </div>
           <div style={{flex:1,textAlign:"center"}}>
             <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>BUY-IN</div>
@@ -1128,15 +1166,29 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>RESULTS</div>
         {loading&&<div style={{display:"flex",justifyContent:"center",padding:16}}><Spinner/></div>}
         {[...entries].sort((a:any,b:any)=>(editing?getProfit(b.id)-getProfit(a.id):(b.profit||0)-(a.profit||0))).map((e:any,i:number)=>{
-          const name=e.players?.name||"Unknown";
+          const guestNote=!e.players&&e.notes?.startsWith('guest:')?e.notes.slice(6):null;
+          const name=e.players?.name||(guestNote?`${guestNote} (guest)`:(!e.players?'Guest':'Unknown'));
           const profit=editing?getProfit(e.id):(e.profit||0);
           const ee=editedEntries[e.id]||{buy_in:String(e.buy_in||0),rebuys:String(e.rebuys||0),cash_out:String(e.cash_out||0)};
+          // Compute session achievements for display
+          const sessionPot=entries.reduce((a:number,en:any)=>a+(en.buy_in||0)*(1+(en.rebuys||0)),0);
+          const sessionAchs:string[]=[];
+          if(isLocked&&e.players?.name){
+            const isW=(session.chicken_dinner_name||"").toLowerCase()===e.players.name.toLowerCase();
+            if(isW&&(e.rebuys||0)===0)sessionAchs.push("Carnivore");
+            if(sessionPot>0&&profit>=sessionPot*0.8)sessionAchs.push("Get Wrecked");
+            if((e.rebuys||0)>=4&&profit<0)sessionAchs.push("The Whale");
+            const dur=session.duration_seconds||0;if(dur>0&&dur<2700&&profit>=(e.buy_in||0)&&(e.buy_in||0)>0)sessionAchs.push("Flash Fortune");
+            if(profit===0)sessionAchs.push("Ice Cold");
+            if(profit>=(e.buy_in||0)*2&&(e.buy_in||0)>0)sessionAchs.push("Robbery");
+          }
           return<div key={e.id} style={{padding:"9px 0",borderBottom:i<entries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:editing?7:0}}>
               <Avatar name={name} size={34} streak={e.players?.streak||0}/>
               <div style={{flex:1}}>
                 <div style={{color:"#fff",fontSize:13}}>{name}</div>
                 {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${(e.buy_in||0)*(1+(e.rebuys||0))} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
+                {!editing&&sessionAchs.length>0&&<div style={{display:"flex",flexWrap:"wrap" as const,gap:3,marginTop:4}}>{sessionAchs.map((a:string)=><span key={a} style={{background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:10,color:"#C9A84C",fontSize:8,fontFamily:"'Space Mono',monospace",padding:"2px 6px",letterSpacing:0.5}}>🏆 {a}</span>)}</div>}
               </div>
               <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(profit)}</div>
               {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
@@ -1168,7 +1220,7 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
         </div>}
 
         {/* Add missing player */}
-        {isCommissioner&&!isLocked&&!addingPlayer&&<div style={{display:"flex",gap:7,marginTop:11}}>
+        {isCommissioner&&!addingPlayer&&<div style={{display:"flex",gap:7,marginTop:11}}>
           <button onClick={()=>setAddingPlayer(true)} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD PLAYER</button>
           <button onClick={()=>{setNewPlayerName("(guest)");setAddingPlayer(true);}} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="person" size={11} color="#5577CC"/>+ GUEST</button>
         </div>}
@@ -1627,13 +1679,15 @@ function WipeStatsButton({profile,onWiped}:any){
   const handleWipe=async()=>{
     if(!db)return;setWiping(true);
     try{
-      await db.from("players").update({total_profit:0,session_count:0,wins:0,best_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).ilike("name",profile.display_name);
-      await db.from("profiles").update({global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0,archived_profit:0,archived_sessions:0,archived_wins:0,archived_best_night:0,archived_time_seconds:0,archived_chicken_dinners:0}).eq("id",profile.id);
+      await db.from("players").update({total_profit:0,session_count:0,wins:0,best_night:0,worst_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).ilike("name",profile.display_name);
+      await db.from("profiles").update({global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0,archived_profit:0,archived_sessions:0,archived_wins:0,archived_best_night:0,archived_worst_night:0,archived_time_seconds:0,archived_chicken_dinners:0,total_rebuys:0,archived_rebuys:0,worst_night:0}).eq("id",profile.id);
+      // Clear badge localStorage so achievements also reset
+      Object.keys(localStorage).filter(k=>k.startsWith("hg_badges_seen_")).forEach(k=>localStorage.removeItem(k));
       setConfirm(false);onWiped();
     }finally{setWiping(false);}
   };
-  if(!confirm)return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.15)",background:"rgba(224,85,85,0.04)"}}><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>DANGER ZONE</div><div style={{color:"#666",fontSize:11,lineHeight:1.6,marginBottom:10}}>Reset all your stats to zero across every league. Your leagues, friends, and history are not affected — only your numbers.</div><button onClick={()=>setConfirm(true)} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>WIPE MY STATS</button></Card>;
-  return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.4)",background:"rgba(224,85,85,0.06)"}}><div style={{color:"#E05555",fontSize:13,textAlign:"center",lineHeight:1.6,marginBottom:14}}>Are you sure? This will zero out your profit, wins, sessions, and chicken dinners everywhere. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirm(false)} style={{flex:1,padding:"11px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12,cursor:"pointer"}}>CANCEL</button><button onClick={handleWipe} disabled={wiping} style={{flex:1,padding:"11px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{wiping?<Spinner size={14}/>:"WIPE STATS"}</button></div></Card>;
+  if(!confirm)return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.15)",background:"rgba(224,85,85,0.04)"}}><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>DANGER ZONE</div><div style={{color:"#666",fontSize:11,lineHeight:1.6,marginBottom:10}}>Wipe your entire account stats — profits, wins, sessions, streaks, dinners, badges, and achievements — back to zero. Your leagues, friends, and account remain. <span style={{color:"#E05555",fontWeight:700}}>This cannot be undone.</span></div><button onClick={()=>setConfirm(true)} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>RESET ACCOUNT</button></Card>;
+  return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.4)",background:"rgba(224,85,85,0.06)"}}><div style={{color:"#E05555",fontSize:13,textAlign:"center",lineHeight:1.6,marginBottom:14}}>Are you sure? This will zero out your profit, wins, sessions, and chicken dinners everywhere. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirm(false)} style={{flex:1,padding:"11px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12,cursor:"pointer"}}>CANCEL</button><button onClick={handleWipe} disabled={wiping} style={{flex:1,padding:"11px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{wiping?<Spinner size={14}/>:"RESET ACCOUNT — CANNOT BE UNDONE"}</button></div></Card>;
 }
 
 // ─── PROFILE TAB ───────────────────────────────────────
@@ -1657,7 +1711,7 @@ function useCountUp(target:number,duration=900,enabled=true){
 
 function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest,onBack}:any){
   const [allStats,setAllStats]=useState<any>(null);const [loading,setLoading]=useState(true);
-  const [friendCount,setFriendCount]=useState(0);const [editing,setEditing]=useState(false);
+  const [friendCount,setFriendCount]=useState(0);const [isFriend,setIsFriend]=useState(false);const [editing,setEditing]=useState(false);
   const [newName,setNewName]=useState(profile?.display_name||"");const [savingName,setSavingName]=useState(false);
   const [uploadingAvatar,setUploadingAvatar]=useState(false);const [msg,setMsg]=useState("");
   const fileRef=useRef<HTMLInputElement>(null);
@@ -1669,9 +1723,9 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     if(!db||!displayName)return;setLoading(true);
     const[{data:rows},{data:fd}]=await Promise.all([
       db.from("players").select("total_profit,session_count,wins,best_night,worst_night,time_played_seconds,chicken_dinners").ilike("name",displayName),
-      db.from("friends").select("id").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted")
+      db.from("friends").select("id,requester_name,recipient_name").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted")
     ]);
-    setFriendCount((fd||[]).length);
+    setFriendCount((fd||[]).length);const myName=profile.display_name.toLowerCase();setIsFriend(!isSelf&&(fd||[]).some((f:any)=>f.requester_name.toLowerCase()===myName||f.recipient_name.toLowerCase()===myName));
     const{data:profData}=await db.from("profiles")
       .select("archived_profit,archived_sessions,archived_wins,archived_best_night,archived_worst_night,archived_time_seconds,archived_chicken_dinners,archived_rebuys,total_rebuys,privacy_settings")
       .ilike("display_name",displayName).single();
@@ -1726,7 +1780,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
           <button onClick={onFriends} style={{padding:"5px 11px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>FRIENDS</button>
           <button onClick={()=>setEditing(!editing)} style={{padding:"5px 11px",background:editing?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${editing?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
         </div>}
-        {!isSelf&&<button onClick={()=>onSendFriendRequest&&onSendFriendRequest(displayName)} style={{padding:"6px 14px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}
+        {!isSelf&&!isFriend&&<button onClick={()=>onSendFriendRequest&&onSendFriendRequest(displayName)} style={{padding:"6px 14px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}{!isSelf&&isFriend&&<span style={{padding:"6px 14px",background:"rgba(76,175,140,0.08)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9}}>● Friends</span>}
       </div>
       <div style={{textAlign:"center",marginBottom:18}}>
         <div style={{position:"relative",display:"inline-block"}}>
@@ -1787,7 +1841,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
 
 // ─── FRIENDS ───────────────────────────────────────────
 function FriendsView({profile,onBack,onViewFriendProfile}:any){
-  const [friends,setFriends]=useState<any[]>([]);const [pending,setPending]=useState<any[]>([]);const [loading,setLoading]=useState(true);
+  const [friends,setFriends]=useState<any[]>([]);const [pending,setPending]=useState<any[]>([]);const [loading,setLoading]=useState(true);const [editMode,setEditMode]=useState(false);
   const reload=async()=>{
     if(!db)return;
     const name=profile.display_name;
@@ -1822,7 +1876,7 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
         </Card>)}
       </div>}
       <div>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>FRIENDS ({friends.length})</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>FRIENDS ({friends.length})</div>{friends.length>0&&<button onClick={()=>setEditMode(e=>!e)} style={{background:"none",border:"none",color:editMode?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>{editMode?"DONE":"EDIT"}</button>}</div>
         {!loading&&friends.length===0&&<Card><div style={{textAlign:"center",padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No friends yet — tap players in league standings!</div></Card>}
         {friends.map((f:any)=>{const n=getN(f);return(
           <Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
@@ -1833,7 +1887,7 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
                 <div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>● Friends · tap to view</div>
               </div>
             </div>
-            <button onClick={()=>removeFriend(f.id,n)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>Remove</button>
+            {editMode&&<button onClick={()=>removeFriend(f.id,n)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>Remove</button>}
           </Card>
         );})}
       </div>
@@ -2578,6 +2632,7 @@ export default function HomeGameApp(){
 
     // onAuthStateChange is the primary driver — fires INITIAL_SESSION on load
     const{data:{subscription}}=db.auth.onAuthStateChange(async(event,session)=>{
+      if(event==='PASSWORD_RECOVERY'){setBootstrapping(false);return;}
       if(event==='SIGNED_OUT'||!session?.user){
         clearTimeout(fallback);
         initRan.current=false;
@@ -2616,8 +2671,6 @@ export default function HomeGameApp(){
         const leagues=await loadMyLeagues(data.display_name,user.id);
         requestNotifPermission();
         if(leagues)setupRealtime(leagues,data.display_name);
-        // Check for newly earned badges after a short delay
-        setTimeout(()=>checkNewBadges(data.display_name,user.id),2000);
         setBootstrapping(false);
       }else if(error&&attempt<=3){
         // Retry with backoff — keep showing loading screen
@@ -2864,7 +2917,7 @@ export default function HomeGameApp(){
   if(!profile)return<SetupProfileView user={authUser} onDone={(p:any)=>{setProfile(p);loadMyLeagues(p.display_name,authUser.id);}}/>;
 
   const renderLeague=()=>{
-    if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} prefillCode={autoJoinCode}/>;
+    if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} onViewPublicLeagues={()=>setLsv('publicLeagues')} prefillCode={autoJoinCode}/>;
     if(lsv==='publicLeagues')return<PublicLeaguesView onBack={()=>setLsv('home')} onJoin={joinLeague}/>;
     if(lsv==='worldwideLeaderboard')return<WorldwideLeaderboardView profile={profile} onBack={()=>setLsv('home')}/>;
     if(lsv==='handRankings')return<HandRankingsView onBack={()=>setLsv(currentLeague?'leagueDetail':'home')}/>;
@@ -2872,13 +2925,13 @@ export default function HomeGameApp(){
     if(lsv==='seasonArchive'&&currentLeague)return<SeasonArchiveView league={currentLeague} onBack={()=>setLsv('leagueDetail')} onViewArchive={(a:any)=>{setSelectedArchive(a);setLsv('archivedSeason');}}/>;
     if(lsv==='archivedSeason'&&currentLeague&&selectedArchive)return<ArchivedSeasonView archive={selectedArchive} league={currentLeague} onBack={()=>setLsv('seasonArchive')}/>;
     if(lsv==='leagueDetail'&&currentLeague)return<LeagueDetailView league={currentLeague} players={players} sessions={sessions} profile={profile} isCommissioner={isComm} onViewPlayer={(p:any)=>{setSelectedPlayer(p);setLsv('playerProfile');}} onStartSession={()=>liveSession?setLsv('liveSession'):setLsv('newSession')} onBack={()=>{setCurrentLeague(null);setLsv('home');}} onCommSettings={()=>setLsv('commSettings')} liveSession={liveSession} onLeaveLeague={handleLeave} onViewHandRankings={()=>setLsv('handRankings')} onViewSession={(s:any)=>{setSelectedSession(s);setLsv('sessionDetail');}} onSeasonRecap={()=>setLsv('seasonRecap')} onEndSeason={handleEndSeason} onViewSeasonArchive={()=>setLsv('seasonArchive')} showToast={showToast}/>;
-    if(lsv==='sessionDetail'&&selectedSession&&currentLeague)return<SessionDetailView session={selectedSession} league={currentLeague} players={players} profile={profile} isCommissioner={isComm} onBack={()=>setLsv('leagueDetail')} onSaved={()=>loadLeagueData(currentLeague.id)} showToast={showToast} showError={showError}/>;
+    if(lsv==='sessionDetail'&&selectedSession&&currentLeague)return<SessionDetailView session={selectedSession} league={currentLeague} players={players} profile={profile} isCommissioner={isComm} onBack={()=>setLsv('leagueDetail')} onSaved={()=>loadLeagueData(currentLeague.id)} onBadgeCheck={()=>checkNewBadges(profile.display_name,authUser.id)} showToast={showToast} showError={showError}/>;
     if(lsv==='playerProfile'&&selectedPlayer)return<PlayerProfileView player={selectedPlayer} profile={profile} onBack={()=>setLsv('leagueDetail')} onSendFriendRequest={sendFriendRequest}/>;
     if(lsv==='newSession'&&currentLeague)return<NewSessionView league={currentLeague} players={players} sessions={sessions} onStart={handleStartSession} onBack={()=>setLsv('leagueDetail')}/>;
     if(lsv==='liveSession'&&currentLeague&&liveSession)return<LiveSessionView session={liveSession} liveEntries={liveEntries} players={players} profile={profile} isCommissioner={isComm} league={currentLeague} onBack={()=>setLsv('leagueDetail')} onSubmitEntry={handleSubmitEntry} onEndSession={handleEndSession}/>;
     if(lsv==='commSettings'&&currentLeague&&isComm)return<CommSettingsView league={currentLeague} players={players} onBack={()=>setLsv('leagueDetail')} onLeagueUpdated={(lg:any)=>{setCurrentLeague({...lg,_myUserId:authUser?.id});loadLeagueData(lg.id);}} onLeagueDeleted={()=>{setCurrentLeague(null);loadMyLeagues(profile.display_name,authUser.id);setLsv('home');}} showToast={showToast} showError={showError}/>;
     if(lsv==='transferComm'&&currentLeague)return<TransferCommView league={currentLeague} players={players} profile={profile} onBack={()=>setLsv('leagueDetail')} onTransferred={handleTransferAndLeave}/>;
-    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewHandRankings={()=>setLsv('handRankings')} onViewNotification={async(n:any)=>{
+    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewHandRankings={()=>setLsv('handRankings')} onViewFriends={()=>{setActiveTab('profile');setPsv('friends');}} onViewNotification={async(n:any)=>{
       if(n.type==='session_edit'&&n.leagueId&&n.sessionId){
         const lg=myLeagues.find((l:any)=>l.id===n.leagueId);
         if(lg){setCurrentLeague(lg);await loadLeagueData(lg.id);}
@@ -2939,7 +2992,7 @@ export default function HomeGameApp(){
         {activeTab==='league'&&renderLeague()}
         {activeTab==='feed'&&<FeedView profile={profile} myLeagues={myLeagues} isActive={activeTab==='feed'}/>}
         {activeTab==='profile'&&renderProfile()}
-        <BottomNav activeTab={activeTab} onTab={t=>{setActiveTab(t);if(t==='profile')setPsv('self');}} profile={profile}/>
+        <BottomNav activeTab={activeTab} onTab={t=>{if(t==='league'&&activeTab==='league'){setLsv('home');setCurrentLeague(null);setPlayers([]);setSessions([]);}setActiveTab(t);if(t==='profile')setPsv('self');}} profile={profile}/>
       </div>
     </>
   );
