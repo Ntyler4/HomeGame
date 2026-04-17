@@ -551,11 +551,7 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   };
   const getSubStat=(p:any)=>{
     const winPct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;
-    if(sortBy==='profit')return`${p.session_count} sessions · ${winPct}% win`;
-    if(sortBy==='winpct')return`${p.session_count} sessions · ${fmtProfit(p.total_profit)}`;
-    if(sortBy==='time')return`${p.session_count} sessions · ${fmtProfit(p.total_profit)}`;
-    if(sortBy==='chicken')return`${p.session_count} sessions · ${winPct}% win`;
-    return`${p.session_count} sessions`;
+    return`${p.session_count} sessions · ${winPct}% win`;
   };
   return(
     <div style={{maxWidth:500,margin:"0 auto"}}>
@@ -1792,17 +1788,55 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
 // ─── FRIENDS ───────────────────────────────────────────
 function FriendsView({profile,onBack,onViewFriendProfile}:any){
   const [friends,setFriends]=useState<any[]>([]);const [pending,setPending]=useState<any[]>([]);const [loading,setLoading]=useState(true);
-  useEffect(()=>{if(!db)return;(async()=>{const name=profile.display_name;const{data}=await db.from("friends").select("*").or(`requester_name.ilike.${name},recipient_name.ilike.${name}`);const all=data||[];setFriends(all.filter((f:any)=>f.status==="accepted"));setPending(all.filter((f:any)=>f.status==="pending"&&f.recipient_name.toLowerCase()===name.toLowerCase()));setLoading(false);})();},[]);
-  const accept=async(id:string)=>{if(!db)return;await db.from("friends").update({status:"accepted"}).eq("id",id);const{data}=await db.from("friends").select("*").or(`requester_name.ilike.${profile.display_name},recipient_name.ilike.${profile.display_name}`);const all=data||[];setFriends(all.filter((f:any)=>f.status==="accepted"));setPending(all.filter((f:any)=>f.status==="pending"&&f.recipient_name.toLowerCase()===profile.display_name.toLowerCase()));};
+  const reload=async()=>{
+    if(!db)return;
+    const name=profile.display_name;
+    const{data}=await db.from("friends").select("*").or(`requester_name.ilike.${name},recipient_name.ilike.${name}`);
+    const all=data||[];
+    setFriends(all.filter((f:any)=>f.status==="accepted"));
+    setPending(all.filter((f:any)=>f.status==="pending"&&f.recipient_name.toLowerCase()===name.toLowerCase()));
+  };
+  useEffect(()=>{reload().then(()=>setLoading(false));},[]);
+  const accept=async(id:string)=>{if(!db)return;await db.from("friends").update({status:"accepted"}).eq("id",id);reload();};
   const decline=async(id:string)=>{if(!db)return;await db.from("friends").delete().eq("id",id);setPending(p=>p.filter(f=>f.id!==id));};
+  const removeFriend=async(id:string,name:string)=>{
+    if(!db||!window.confirm(`Remove ${name} as a friend?`))return;
+    await db.from("friends").delete().eq("id",id);
+    setFriends(f=>f.filter(fr=>fr.id!==id));
+  };
   const getN=(f:any)=>f.requester_name.toLowerCase()===profile.display_name.toLowerCase()?f.recipient_name:f.requester_name;
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Friends"/>
       <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:12}}>Add friends from league standings. Mutual friends appear in your feed.</div>
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:32}}><Spinner/></div>}
-      {!loading&&pending.length>0&&<div style={{marginBottom:18}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>PENDING ({pending.length})</div>{pending.map((f:any)=><Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}><Avatar name={f.requester_name} size={38}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{f.requester_name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>wants to be friends</div></div><div style={{display:"flex",gap:7}}><button onClick={()=>accept(f.id)} style={{padding:"4px 10px",background:"rgba(76,175,140,0.2)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Accept</button><button onClick={()=>decline(f.id)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Decline</button></div></Card>)}</div>}
-      <div><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>FRIENDS ({friends.length})</div>{!loading&&friends.length===0&&<Card><div style={{textAlign:"center",padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No friends yet — tap players in league standings!</div></Card>}{friends.map((f:any)=>{const n=getN(f);return<Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11,cursor:"pointer"}} onClick={()=>onViewFriendProfile(n)}><Avatar name={n} size={38}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{n}</div><div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>● Friends</div></div><span style={{color:"#555",fontSize:17}}>›</span></Card>;})}</div>
+      {!loading&&pending.length>0&&<div style={{marginBottom:18}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>PENDING ({pending.length})</div>
+        {pending.map((f:any)=><Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
+          <Avatar name={f.requester_name} size={38}/>
+          <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{f.requester_name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>wants to be friends</div></div>
+          <div style={{display:"flex",gap:7}}>
+            <button onClick={()=>accept(f.id)} style={{padding:"4px 10px",background:"rgba(76,175,140,0.2)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Accept</button>
+            <button onClick={()=>decline(f.id)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Decline</button>
+          </div>
+        </Card>)}
+      </div>}
+      <div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>FRIENDS ({friends.length})</div>
+        {!loading&&friends.length===0&&<Card><div style={{textAlign:"center",padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No friends yet — tap players in league standings!</div></Card>}
+        {friends.map((f:any)=>{const n=getN(f);return(
+          <Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
+            <div style={{display:"flex",alignItems:"center",gap:11,flex:1,cursor:"pointer",minWidth:0}} onClick={()=>onViewFriendProfile(n)}>
+              <Avatar name={n} size={38}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:"#fff",fontSize:13}}>{n}</div>
+                <div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>● Friends · tap to view</div>
+              </div>
+            </div>
+            <button onClick={()=>removeFriend(f.id,n)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>Remove</button>
+          </Card>
+        );})}
+      </div>
     </div>
   );
 }
@@ -1855,7 +1889,7 @@ const BADGE_DEFS=[
     ),
   },
   {
-    id:"high_roller", name:"High Roller", repeatable:true,
+    id:"high_roller", name:"High Roller", repeatable:false,
     desc:"Cash out +$100 profit in a single session. Earned again each time you do it.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
@@ -2226,7 +2260,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
   const hoursPlayed=Math.floor((allStats.time_seconds||0)/3600);
 
   // Existing achievement counts
-  const highRollerCount=(sessionEntries||[]).filter((e:any)=>(e.profit||0)>=100).length;
+  const highRollerCount=(sessionEntries||[]).some((e:any)=>(e.profit||0)>=100)?1:0;
   const comebackCount=(sessionEntries||[]).filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length;
   const sharkCount=Math.floor((allStats.wins||0)/5);
 
@@ -2283,17 +2317,38 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
   const totalPages=Math.ceil(achievementDefs.length/PAGE_SIZE);
   const [achPage,setAchPage]=useState(0);
   const [swipeX,setSwipeX]=useState(0);
-  const [dragging,setDragging]=useState(false);
-  const [startX,setStartX]=useState(0);
+  // Use refs for real-time touch state (state is async, causes jumpy behavior)
+  const touchStartX=useRef(0);const touchStartY=useRef(0);
+  const isSwiping=useRef(false);const swipeResolved=useRef(false);
 
-  const handleTouchStart=(e:any)=>{setStartX(e.touches[0].clientX);setDragging(true);setSwipeX(0);};
-  const handleTouchMove=(e:any)=>{if(!dragging)return;setSwipeX(e.touches[0].clientX-startX);};
-  const handleTouchEnd=()=>{
-    if(Math.abs(swipeX)>50){
-      if(swipeX<0&&achPage<totalPages-1)setAchPage(p=>p+1);
-      if(swipeX>0&&achPage>0)setAchPage(p=>p-1);
+  const handleTouchStart=(e:any)=>{
+    touchStartX.current=e.touches[0].clientX;
+    touchStartY.current=e.touches[0].clientY;
+    isSwiping.current=false;swipeResolved.current=false;
+    setSwipeX(0);
+  };
+  const handleTouchMove=(e:any)=>{
+    const dx=e.touches[0].clientX-touchStartX.current;
+    const dy=e.touches[0].clientY-touchStartY.current;
+    if(!swipeResolved.current){
+      if(Math.abs(dx)<6&&Math.abs(dy)<6)return; // not moved enough yet
+      swipeResolved.current=true;
+      // If more vertical than horizontal → scroll, not swipe
+      if(Math.abs(dy)>=Math.abs(dx)*0.8){isSwiping.current=false;return;}
+      isSwiping.current=true;
     }
-    setSwipeX(0);setDragging(false);
+    if(!isSwiping.current)return;
+    e.preventDefault();setSwipeX(dx);
+  };
+  const handleTouchEnd=()=>{
+    if(isSwiping.current){
+      const dx=swipeX;
+      if(Math.abs(dx)>60){
+        if(dx<0&&achPage<totalPages-1)setAchPage(p=>p+1);
+        if(dx>0&&achPage>0)setAchPage(p=>p-1);
+      }
+    }
+    setSwipeX(0);isSwiping.current=false;swipeResolved.current=false;
   };
 
   const pageAchs=achievementDefs.slice(achPage*PAGE_SIZE,(achPage+1)*PAGE_SIZE);
