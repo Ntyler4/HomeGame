@@ -338,7 +338,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
     if(!db||loading)return;setLoading(true);
     const name=profile.display_name;
     const allLeagueIds=myLeagues.map((l:any)=>l.id);
-    const cutoff=new Date(Date.now()-48*60*60*1000).toISOString();
+    const cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
     const[{data:fr},{data:ea},{data:fp},{data:ls}]=await Promise.all([
       db.from("friends").select("*").eq("recipient_name",name).eq("status","pending"),
       allLeagueIds.length>0
@@ -391,10 +391,7 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
 }
 
 // ─── LEAGUE HOME ───────────────────────────────────────
-function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onScoreboard,onViewNotification,onViewHandRankings,onViewFriends}:any){
-  const has100hrs=(profile?.global_time_seconds||0)>=360000;
-  const hoursPlayed=Math.floor((profile?.global_time_seconds||0)/3600);
-  const hoursLeft=Math.max(0,100-hoursPlayed);
+function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onViewPublicLeagues,onViewNotification,onViewHandRankings,onViewFriends}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
@@ -402,16 +399,13 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4}}>
           <div style={{color:"#fff",fontSize:17,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <button onClick={onViewFriends} style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="person" size={20} color="#666"/></button>
+            <button onClick={onViewFriends} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}><div style={{width:24,height:24,borderRadius:"50%",background:"rgba(255,255,255,0.05)",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="person" size={13} color="#666"/></div></button>
             <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
           </div>
         </div>
       </div>
       <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
-      <button onClick={onScoreboard} style={{width:"100%",padding:"12px 0",marginBottom:14,background:has100hrs?"rgba(201,168,76,0.08)":"rgba(255,255,255,0.03)",border:`1px solid ${has100hrs?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,borderRadius:12,cursor:"pointer",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
-        <div style={{display:"flex",alignItems:"center",gap:7,color:has100hrs?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5}}><Icon name="trophy" size={14} color={has100hrs?"#C9A84C":"#888"}/> WORLDWIDE LEADERBOARD</div>
-        {!has100hrs&&<div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9,letterSpacing:1}}>{hoursLeft} hours to unlock</div>}
-      </button>
+
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner size={30}/></div>}
       {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center" as const}}><div style={{padding:"18px 0",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:8}}><Icon name="spade" size={28} color="#333"/><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
       {!loading&&myLeagues.map((lg:any)=>{
@@ -435,7 +429,10 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
           </div>
         </div>;
       })}
-      <button onClick={onJoinCreate} style={{width:"100%",padding:"12px 0",marginTop:4,marginBottom:20,background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer"}}>+ JOIN OR CREATE LEAGUE</button>
+      <div style={{display:"flex",gap:9,marginTop:4,marginBottom:20}}>
+        <button onClick={onJoinCreate} style={{flex:2,padding:"12px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>+ JOIN OR CREATE</button>
+        <button onClick={onViewPublicLeagues} style={{flex:1,padding:"12px 0",background:"rgba(85,119,204,0.12)",border:"1px solid rgba(85,119,204,0.35)",borderRadius:12,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,letterSpacing:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="globe" size={13} color="#5577CC"/>PUBLIC</button>
+      </div>
       <div style={{borderTop:"1px solid rgba(255,255,255,0.04)",paddingTop:16}}>
         <PokerTicker/>
         <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
@@ -445,7 +442,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
 }
 
 // ─── JOIN / CREATE ──────────────────────────────────────
-function JoinCreateView({profile,loading,onBack,onEnter,onViewPublicLeagues,prefillCode=""}:any){
+function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
   const [tab,setTab]=useState(prefillCode?"join":"join");
   const [code,setCode]=useState(prefillCode);const [leagueName,setLeagueName]=useState("");const [description,setDescription]=useState("");
   const [buyIn,setBuyIn]=useState("20");const [season,setSeason]=useState("Season 1");const [seasonLength,setSeasonLength]=useState("0");
@@ -464,7 +461,6 @@ function JoinCreateView({profile,loading,onBack,onEnter,onViewPublicLeagues,pref
             <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>INVITE CODE</label>
             <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. FNP2026" style={{...inp,color:"#C9A84C",fontSize:20,letterSpacing:4,textAlign:"center" as const}}/>
           </div>
-          <button type="button" onClick={onViewPublicLeagues} style={{width:"100%",padding:"10px 0",background:"rgba(85,119,204,0.07)",border:"1px dashed rgba(85,119,204,0.3)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:4}}><Icon name="globe" size={12} color="#5577CC"/>BROWSE PUBLIC LEAGUES</button>
           </>:(
             <>
               {([["LEAGUE NAME",leagueName,setLeagueName,"Friday Night Poker"],["DESCRIPTION",description,setDescription,"Weekly home game"],["SEASON NAME",season,setSeason,"Season 1"]] as any[]).map(([label,val,setter,ph])=><div key={label} style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
@@ -1917,11 +1913,11 @@ function getRWNext(sessions:number){
 
 // The Collector — chicken dinner progression
 const COLLECTOR_TIERS=[
-  {dinners:5,   name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
-  {dinners:10,  name:"Regular",   color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {dinners:50,  name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
-  {dinners:100, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
-  {dinners:500, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
+  {dinners:1, name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {dinners:2, name:"Regular",   color:"#888888", glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {dinners:3, name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {dinners:4, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {dinners:5, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
 ];
 function getCollectorTier(dinners:number){let t=null;for(const tier of COLLECTOR_TIERS){if(dinners>=tier.dinners)t=tier;}return t;}
 function getCollectorNext(dinners:number){for(const t of COLLECTOR_TIERS){if(dinners<t.dinners)return t;}return null;}
@@ -2347,7 +2343,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
     dinner_bell:dinners>=1?1:0,
     high_roller:highRollerCount,
     road_warrior:sessions>=10?1:0,
-    collector:dinners>=5?1:0,
+    collector:dinners>=1?1:0,
     comeback_kid:comebackCount,
     shark:sharkCount,
     degenerate:hoursPlayed>=1000?1:0,
@@ -2724,7 +2720,7 @@ export default function HomeGameApp(){
       if(dinners>=1)earned.add('dinner_bell');
       if(ses.filter((e:any)=>(e.profit||0)>=100).length>0)earned.add('high_roller');
       if(sessions>=10)earned.add('road_warrior');
-      if(dinners>=5)earned.add('collector'); // already correct
+      if(dinners>=1)earned.add('collector');
       if(ses.filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length>0)earned.add('comeback_kid');
       if(Math.floor(wins/5)>0)earned.add('shark');
       if(hours>=1000)earned.add('degenerate');
@@ -2917,7 +2913,7 @@ export default function HomeGameApp(){
   if(!profile)return<SetupProfileView user={authUser} onDone={(p:any)=>{setProfile(p);loadMyLeagues(p.display_name,authUser.id);}}/>;
 
   const renderLeague=()=>{
-    if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} onViewPublicLeagues={()=>setLsv('publicLeagues')} prefillCode={autoJoinCode}/>;
+    if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} prefillCode={autoJoinCode}/>;
     if(lsv==='publicLeagues')return<PublicLeaguesView onBack={()=>setLsv('home')} onJoin={joinLeague}/>;
     if(lsv==='worldwideLeaderboard')return<WorldwideLeaderboardView profile={profile} onBack={()=>setLsv('home')}/>;
     if(lsv==='handRankings')return<HandRankingsView onBack={()=>setLsv(currentLeague?'leagueDetail':'home')}/>;
@@ -2931,7 +2927,7 @@ export default function HomeGameApp(){
     if(lsv==='liveSession'&&currentLeague&&liveSession)return<LiveSessionView session={liveSession} liveEntries={liveEntries} players={players} profile={profile} isCommissioner={isComm} league={currentLeague} onBack={()=>setLsv('leagueDetail')} onSubmitEntry={handleSubmitEntry} onEndSession={handleEndSession}/>;
     if(lsv==='commSettings'&&currentLeague&&isComm)return<CommSettingsView league={currentLeague} players={players} onBack={()=>setLsv('leagueDetail')} onLeagueUpdated={(lg:any)=>{setCurrentLeague({...lg,_myUserId:authUser?.id});loadLeagueData(lg.id);}} onLeagueDeleted={()=>{setCurrentLeague(null);loadMyLeagues(profile.display_name,authUser.id);setLsv('home');}} showToast={showToast} showError={showError}/>;
     if(lsv==='transferComm'&&currentLeague)return<TransferCommView league={currentLeague} players={players} profile={profile} onBack={()=>setLsv('leagueDetail')} onTransferred={handleTransferAndLeave}/>;
-    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onScoreboard={()=>setLsv('worldwideLeaderboard')} onViewHandRankings={()=>setLsv('handRankings')} onViewFriends={()=>{setActiveTab('profile');setPsv('friends');}} onViewNotification={async(n:any)=>{
+    return<LeagueHomeView profile={profile} myLeagues={myLeagues} loading={loadingLeagues} onSelectLeague={(lg:any)=>{setCurrentLeague(lg);loadLeagueData(lg.id);setLsv('leagueDetail');}} onJoinCreate={()=>setLsv('joinCreate')} onViewPublicLeagues={()=>setLsv('publicLeagues')} onViewHandRankings={()=>setLsv('handRankings')} onViewFriends={()=>{setActiveTab('profile');setPsv('friends');}} onViewNotification={async(n:any)=>{
       if(n.type==='session_edit'&&n.leagueId&&n.sessionId){
         const lg=myLeagues.find((l:any)=>l.id===n.leagueId);
         if(lg){setCurrentLeague(lg);await loadLeagueData(lg.id);}
