@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABA
 const db = (SUPABASE_URL !== 'YOUR_SUPABASE_URL') ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 type Tab = 'league' | 'feed' | 'profile';
-type LSV = 'home'|'joinCreate'|'publicLeagues'|'worldwideLeaderboard'|'leagueDetail'|'newSession'|'liveSession'|'commSettings'|'transferComm'|'handRankings'|'playerProfile'|'sessionDetail'|'seasonRecap'|'seasonArchive'|'archivedSeason';
+type LSV = 'home'|'joinCreate'|'publicLeagues'|'leagueDetail'|'newSession'|'liveSession'|'commSettings'|'transferComm'|'handRankings'|'playerProfile'|'sessionDetail'|'seasonRecap'|'seasonArchive'|'archivedSeason';
 type PSV = 'self'|'friends'|'friendProfile';
 
 const HAND_RANKINGS = [
@@ -392,8 +392,26 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
 
 // ─── LEAGUE HOME ───────────────────────────────────────
 function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,onViewPublicLeagues,onViewNotification,onViewHandRankings,onViewFriends}:any){
+  const [fishOverlay,setFishOverlay]=useState<{player:any,league:any}|null>(null);
+
+  const handleSelectLeague=async(lg:any)=>{
+    // Fetch worst player (most negative profit with at least 1 session) for fish animation
+    if(db){
+      const{data:players}=await db.from("players").select("id,name,total_profit,session_count").eq("league_id",lg.id).gt("session_count",0).order("total_profit",{ascending:true}).limit(1);
+      const worst=players?.[0];
+      if(worst&&worst.total_profit<0){
+        // Fetch their avatar
+        const{data:prof}=await db.from("profiles").select("avatar_url").ilike("display_name",worst.name).maybeSingle();
+        setFishOverlay({player:{...worst,avatar_url:prof?.avatar_url||null},league:lg});
+        setTimeout(()=>{setFishOverlay(null);onSelectLeague(lg);},2800);
+        return;
+      }
+    }
+    onSelectLeague(lg);
+  };
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
+      {fishOverlay&&<FishOfMonthOverlay player={fishOverlay.player} onDone={()=>{setFishOverlay(null);onSelectLeague(fishOverlay.league);}}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4}}>
@@ -412,7 +430,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
         const isComm=lg.commissioner_id===lg._myUserId;
         const sessionsLeft=lg.season_length>0?lg.season_length-(lg._sessionCount||0):null;
         const est=lg.created_at?new Date(lg.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):null;
-        return<div key={lg.id} onClick={()=>onSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
+        return<div key={lg.id} onClick={()=>handleSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:11}}>
             <div style={{width:40,height:40,borderRadius:10,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {lg.is_public?<Icon name="globe" size={20} color="#5577CC"/>:<Icon name="spade" size={20} color="#C9A84C"/>}
@@ -441,7 +459,69 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
   );
 }
 
-// ─── JOIN / CREATE ──────────────────────────────────────
+const FISH_LINES=[
+  "Better luck next time, champ.",
+  "The table called. It wants its money back.",
+  "Legend says they're still looking for their chips.",
+  "Some play to win. This one plays to experience loss.",
+  "The official sponsor of the rebuy button.",
+  "A true student of the game. Just not a good one.",
+  "Remember: poker is 100% skill. Good luck with that.",
+  "Has reread 'The Theory of Poker' 12 times. Hasn't helped.",
+  "Their bankroll has filed a restraining order.",
+  "The human equivalent of a bad beat.",
+  "Every dog has its day. This is not that day.",
+  "They came, they saw, they got felted.",
+  "Somewhere out there is a worse poker player. Probably.",
+  "The chips went home with someone else again.",
+  "Playing scared money since day one.",
+];
+
+function FishOfMonthOverlay({player,onDone}:any){
+  const [line]=useState(()=>FISH_LINES[Math.floor(Math.random()*FISH_LINES.length)]);
+  useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
+  if(!player)return null;
+  return(
+    <div onClick={onDone} style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.2s ease"}}>
+      <div style={{textAlign:"center" as const,maxWidth:300}}>
+        <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:16}}>🐟 FISH OF THE MONTH</div>
+        {/* Fish trophy SVG with avatar */}
+        <div style={{position:"relative" as const,display:"inline-block",marginBottom:14}}>
+          <svg viewBox="0 0 120 120" width={120} height={120} fill="none">
+            {/* Trophy base */}
+            <rect x="45" y="100" width="30" height="6" rx="3" fill="#2a1a0a"/>
+            <rect x="50" y="94" width="20" height="8" rx="2" fill="#2a1a0a"/>
+            {/* Fish body */}
+            <ellipse cx="60" cy="60" rx="32" ry="22" fill="#1a3a2a" stroke="#1a8a4a" strokeWidth="2"/>
+            {/* Fish tail */}
+            <path d="M92 60 L108 45 L108 75 Z" fill="#1a8a4a" opacity="0.8"/>
+            {/* Fins */}
+            <path d="M50 38 Q60 28 70 38" stroke="#1a8a4a" strokeWidth="2" fill="none"/>
+            <path d="M45 72 Q52 80 60 75 Q68 80 75 72" stroke="#1a8a4a" strokeWidth="1.5" fill="none"/>
+            {/* Fish eye */}
+            <circle cx="38" cy="56" r="5" fill="#0a0a0a" stroke="#1a8a4a" strokeWidth="1.5"/>
+            <circle cx="36" cy="54" r="1.5" fill="#4CAF8C"/>
+            {/* Mouth */}
+            <path d="M28 62 Q32 66 36 62" stroke="#1a8a4a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            {/* Scales */}
+            {[[55,52],[65,52],[75,52],[50,62],[60,62],[70,62],[55,72],[65,72]].map(([x,y],i)=>(
+              <ellipse key={i} cx={x} cy={y} rx="5" ry="3" stroke="#1a8a4a" strokeWidth="0.8" fill="none" opacity="0.5"/>
+            ))}
+          </svg>
+          {/* Avatar on the fish */}
+          <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-30%,-55%)",width:40,height:40,borderRadius:"50%",overflow:"hidden",border:"2px solid #1a8a4a",background:"#0a0a0a"}}>
+            <Avatar name={player.name} url={player.avatar_url} size={40}/>
+          </div>
+        </div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#4CAF8C",fontWeight:700,marginBottom:8}}>{player.name}</div>
+        <div style={{color:"#888",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.6,fontStyle:"italic"}}>"{line}"</div>
+        <div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:14}}>tap to continue</div>
+      </div>
+    </div>
+  );
+}
+
+
 function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
   const [tab,setTab]=useState(prefillCode?"join":"join");
   const [code,setCode]=useState(prefillCode);const [leagueName,setLeagueName]=useState("");const [description,setDescription]=useState("");
@@ -1670,21 +1750,7 @@ function FeedView({profile,myLeagues,isActive}:any){
 }
 
 // ─── WIPE STATS BUTTON ─────────────────────────────────
-function WipeStatsButton({profile,onWiped}:any){
-  const [confirm,setConfirm]=useState(false);const [wiping,setWiping]=useState(false);
-  const handleWipe=async()=>{
-    if(!db)return;setWiping(true);
-    try{
-      await db.from("players").update({total_profit:0,session_count:0,wins:0,best_night:0,worst_night:0,streak:0,chicken_dinners:0,time_played_seconds:0}).ilike("name",profile.display_name);
-      await db.from("profiles").update({global_total_profit:0,global_sessions:0,global_wins:0,global_time_seconds:0,chicken_dinners:0,archived_profit:0,archived_sessions:0,archived_wins:0,archived_best_night:0,archived_worst_night:0,archived_time_seconds:0,archived_chicken_dinners:0,total_rebuys:0,archived_rebuys:0,worst_night:0}).eq("id",profile.id);
-      // Clear badge localStorage so achievements also reset
-      Object.keys(localStorage).filter(k=>k.startsWith("hg_badges_seen_")).forEach(k=>localStorage.removeItem(k));
-      setConfirm(false);onWiped();
-    }finally{setWiping(false);}
-  };
-  if(!confirm)return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.15)",background:"rgba(224,85,85,0.04)"}}><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>DANGER ZONE</div><div style={{color:"#666",fontSize:11,lineHeight:1.6,marginBottom:10}}>Wipe your entire account stats — profits, wins, sessions, streaks, dinners, badges, and achievements — back to zero. Your leagues, friends, and account remain. <span style={{color:"#E05555",fontWeight:700}}>This cannot be undone.</span></div><button onClick={()=>setConfirm(true)} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>RESET ACCOUNT</button></Card>;
-  return<Card style={{marginBottom:10,border:"1px solid rgba(224,85,85,0.4)",background:"rgba(224,85,85,0.06)"}}><div style={{color:"#E05555",fontSize:13,textAlign:"center",lineHeight:1.6,marginBottom:14}}>Are you sure? This will zero out your profit, wins, sessions, and chicken dinners everywhere. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirm(false)} style={{flex:1,padding:"11px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12,cursor:"pointer"}}>CANCEL</button><button onClick={handleWipe} disabled={wiping} style={{flex:1,padding:"11px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>{wiping?<Spinner size={14}/>:"RESET ACCOUNT — CANNOT BE UNDONE"}</button></div></Card>;
-}
+// WipeStatsButton removed
 
 // ─── PROFILE TAB ───────────────────────────────────────
 // Count-up animation hook
@@ -1822,12 +1888,6 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
             <Toggle value={!!allStats.privacy?.hide_stats} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_stats:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide my stats from others" sub="Others only see your time played"/>
           </Card>
           <Card style={{marginBottom:10}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>ACCOUNT</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:5}}>{profile.email}</div><div style={{color:"#444",fontSize:11,lineHeight:1.6}}>To change your password, sign out and use "Forgot password?"</div></Card>
-          {(profile.global_time_seconds||0)>=360000&&<Card style={{marginBottom:10}}>
-            <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>WORLDWIDE LEADERBOARD</div>
-            <div style={{color:"#555",fontSize:11,marginBottom:10}}>You've played 100+ hours. Opt in to appear on the worldwide leaderboard.</div>
-            <Toggle value={!!profile.opt_in_global} onChange={async(v:boolean)=>{if(!db)return;await db.from("profiles").update({opt_in_global:v}).eq("id",profile.id);profile.opt_in_global=v;setMsg(v?"You're on the leaderboard!":"Removed from leaderboard.");setTimeout(()=>setMsg(""),3000);}} label="Join worldwide leaderboard" sub="Your stats are visible to all players globally"/>
-          </Card>}
-          <WipeStatsButton profile={profile} onWiped={()=>{loadStats();setMsg("Stats wiped.");setTimeout(()=>setMsg(""),3000);}}/>
           <button onClick={onLogout} style={{width:"100%",padding:"13px 0",background:"rgba(224,85,85,0.08)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>SIGN OUT</button>
         </>}
       </>}
@@ -1913,11 +1973,11 @@ function getRWNext(sessions:number){
 
 // The Collector — chicken dinner progression
 const COLLECTOR_TIERS=[
-  {dinners:1, name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
-  {dinners:2, name:"Regular",   color:"#888888", glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {dinners:3, name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
-  {dinners:4, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
-  {dinners:5, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
+  {dinners:5,   name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
+  {dinners:10,  name:"Regular",   color:"#888888", glow:"rgba(160,160,160,0.4)", label:"SILVER"},
+  {dinners:50,  name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {dinners:100, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
+  {dinners:500, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
 ];
 function getCollectorTier(dinners:number){let t=null;for(const tier of COLLECTOR_TIERS){if(dinners>=tier.dinners)t=tier;}return t;}
 function getCollectorNext(dinners:number){for(const t of COLLECTOR_TIERS){if(dinners<t.dinners)return t;}return null;}
@@ -2343,7 +2403,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
     dinner_bell:dinners>=1?1:0,
     high_roller:highRollerCount,
     road_warrior:sessions>=10?1:0,
-    collector:dinners>=1?1:0,
+    collector:dinners>=5?1:0,
     comeback_kid:comebackCount,
     shark:sharkCount,
     degenerate:hoursPlayed>=1000?1:0,
@@ -2483,90 +2543,6 @@ function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
   );
 }
 
-// ─── WORLDWIDE LEADERBOARD ─────────────────────────────
-function WorldwideLeaderboardView({profile,onBack}:any){
-  const [players,setPlayers]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [sortBy,setSortBy]=useState<'profit'|'winpct'|'chicken'|'rebuys'|'time'>('profit');
-  const has100hrs=(profile?.global_time_seconds||0)>=360000;
-
-  useEffect(()=>{
-    if(!db)return;
-    db.from("profiles")
-      .select("display_name,avatar_url,global_total_profit,global_sessions,global_wins,chicken_dinners,global_time_seconds,total_rebuys")
-      .eq("opt_in_global",true)
-      .gte("global_time_seconds",360000)
-      .limit(200)
-      .then(({data})=>{setPlayers(data||[]);setLoading(false);});
-  },[]);
-
-  const getSorted=()=>{
-    const p=[...players];
-    if(sortBy==='profit')return p.sort((a,b)=>(b.global_total_profit||0)-(a.global_total_profit||0));
-    if(sortBy==='winpct')return p.sort((a,b)=>{const ar=a.global_sessions>0?a.global_wins/a.global_sessions:0;const br=b.global_sessions>0?b.global_wins/b.global_sessions:0;return br-ar;});
-    if(sortBy==='chicken')return p.sort((a,b)=>(b.chicken_dinners||0)-(a.chicken_dinners||0));
-    if(sortBy==='rebuys')return p.sort((a,b)=>(b.total_rebuys||0)-(a.total_rebuys||0));
-    if(sortBy==='time')return p.sort((a,b)=>(b.global_time_seconds||0)-(a.global_time_seconds||0));
-    return p;
-  };
-  const top100=getSorted().slice(0,100);
-
-  const getStatValue=(p:any)=>{
-    if(sortBy==='profit'){const v=p.global_total_profit||0;return{val:fmtProfit(v),color:v>=0?"#4CAF8C":"#E05555"};}
-    if(sortBy==='winpct'){const pct=p.global_sessions>0?((p.global_wins/p.global_sessions)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
-    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
-    if(sortBy==='rebuys')return{val:`${p.total_rebuys||0}`,color:"#5577CC"};
-    if(sortBy==='time')return{val:fmtSeconds(p.global_time_seconds||0),color:"#888"};
-    return{val:"—",color:"#888"};
-  };
-
-  return(
-    <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      <BackButton onBack={onBack}/>
-      <div style={{marginBottom:16}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}><Icon name="trophy" size={22} color="#C9A84C"/><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#C9A84C"}}>Worldwide</div></div>
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5}}>TOP 100 · 100+ HOURS PLAYED</div>
-      </div>
-
-      {/* 100hr requirement notice — non-blocking */}
-      {!has100hrs&&<div style={{background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.15)",borderRadius:11,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:16,flexShrink:0}}>⏱</span>
-        <div>
-          <div style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,marginBottom:2}}>100 HOURS REQUIRED TO JOIN</div>
-          <div style={{color:"#555",fontSize:11}}>You have {fmtSeconds(profile?.global_time_seconds||0)} played. Keep going — the leaderboard isn't going anywhere.</div>
-        </div>
-      </div>}
-
-      {/* Sort tabs */}
-      <div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>
-        {([['profit','$ PROFIT'],['winpct','WIN %'],['chicken','DINNERS'],['rebuys','REBUYS'],['time','TIME']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"5px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#C9A84C":"#555"}/>}{l}</button>)}
-      </div>
-
-      {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
-      {!loading&&top100.length===0&&<Card><div style={{textAlign:"center",padding:"24px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No players yet.<br/>Play 100 hours and opt in from Profile → Edit!</div></Card>}
-      {!loading&&top100.length>0&&<Card style={{padding:0,overflow:"hidden"}}>
-        {top100.map((p:any,i:number)=>{
-          const isMe=p.display_name.toLowerCase()===profile.display_name.toLowerCase();
-          const medalColors2=["#C9A84C","#888888","#A0714F"];
-          const{val,color}=getStatValue(p);
-          const subLine=`${fmtSeconds(p.global_time_seconds||0)} · ${p.global_sessions||0} sessions`;
-          return<div key={p.display_name} style={{display:"flex",alignItems:"center",gap:11,padding:"11px 16px",borderBottom:i<top100.length-1?"1px solid rgba(255,255,255,0.05)":"none",background:isMe?"rgba(201,168,76,0.05)":"transparent"}}>
-            <div style={{width:24,flexShrink:0,display:"flex",justifyContent:"center"}}>
-              {i<3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors2[i]}22`,border:`1px solid ${medalColors2[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors2[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}
-            </div>
-            <Avatar name={p.display_name} url={p.avatar_url} size={34}/>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:isMe?"#C9A84C":"#fff",fontSize:13}}>{p.display_name}{isMe&&<span style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace"}}> (you)</span>}</div>
-              <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{subLine}</div>
-            </div>
-            <div style={{color,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:14,flexShrink:0}}>{val}</div>
-          </div>;
-        })}
-      </Card>}
-      {!loading&&has100hrs&&<div style={{color:"#333",fontSize:10,fontFamily:"'Space Mono',monospace",textAlign:"center",marginTop:14}}>Opt in/out from Profile → Edit</div>}
-    </div>
-  );
-}
 
 // ─── BOTTOM NAV ────────────────────────────────────────
 function BottomNav({activeTab,onTab,profile}:{activeTab:Tab;onTab:(t:Tab)=>void;profile:any}){
@@ -2720,7 +2696,7 @@ export default function HomeGameApp(){
       if(dinners>=1)earned.add('dinner_bell');
       if(ses.filter((e:any)=>(e.profit||0)>=100).length>0)earned.add('high_roller');
       if(sessions>=10)earned.add('road_warrior');
-      if(dinners>=1)earned.add('collector');
+      if(dinners>=5)earned.add('collector');
       if(ses.filter((e:any)=>(e.rebuys||0)>=3&&(e.profit||0)>0).length>0)earned.add('comeback_kid');
       if(Math.floor(wins/5)>0)earned.add('shark');
       if(hours>=1000)earned.add('degenerate');
@@ -2889,9 +2865,14 @@ export default function HomeGameApp(){
       const top=[...memberEntries].sort((a:any,b:any)=>b.profit-a.profit)[0];
       const winnerName=players.find((p:any)=>p.id===top?.player_id)?.name||top?.player_name||"";
       await db.from("sessions").update({is_live:false,pot,winner_name:winnerName,duration_seconds:elapsed,status:"approved",chicken_dinner_name:chickenDinner||null,stats_committed:false}).eq("id",liveSession.id);
-      // Only insert session_entries for real players (not guests)
-      if(memberEntries.length>0){
-        await db.from("session_entries").insert(memberEntries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})));
+      // Insert session_entries for real players AND guests
+      const guestLiveEntries=entries.filter((e:any)=>e.player_id==null);
+      const allEntriesToInsert=[
+        ...memberEntries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})),
+        ...guestLiveEntries.map((e:any)=>({session_id:liveSession.id,player_id:null,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit,notes:`guest:${(e.player_name||'Guest').replace(' (guest)','')}`})),
+      ];
+      if(allEntriesToInsert.length>0){
+        await db.from("session_entries").insert(allEntriesToInsert);
       }
       setLiveSession(null);setLiveEntries([]);await loadLeagueData(currentLeague.id);showToast("Session saved! Lock it to commit stats to profiles.");setLsv('leagueDetail');
     }catch(e:any){showError(e.message||"Failed to save.");}
@@ -2915,7 +2896,7 @@ export default function HomeGameApp(){
   const renderLeague=()=>{
     if(lsv==='joinCreate')return<JoinCreateView profile={profile} loading={loadingLeagues} onBack={()=>{setLsv('home');setAutoJoinCode("");}} onEnter={handleJoinCreate} prefillCode={autoJoinCode}/>;
     if(lsv==='publicLeagues')return<PublicLeaguesView onBack={()=>setLsv('home')} onJoin={joinLeague}/>;
-    if(lsv==='worldwideLeaderboard')return<WorldwideLeaderboardView profile={profile} onBack={()=>setLsv('home')}/>;
+
     if(lsv==='handRankings')return<HandRankingsView onBack={()=>setLsv(currentLeague?'leagueDetail':'home')}/>;
     if(lsv==='seasonRecap'&&currentLeague)return<SeasonRecapView league={currentLeague} players={players} sessions={sessions} onBack={()=>setLsv('leagueDetail')}/>;
     if(lsv==='seasonArchive'&&currentLeague)return<SeasonArchiveView league={currentLeague} onBack={()=>setLsv('leagueDetail')} onViewArchive={(a:any)=>{setSelectedArchive(a);setLsv('archivedSeason');}}/>;
