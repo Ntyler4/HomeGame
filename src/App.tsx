@@ -1871,7 +1871,7 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
         </div>
         {!loading&&allStats&&<>
           <div style={{color:"#4CAF8C",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>+${cuTotalWin}</div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>total winnings</div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>total won (gross)</div>
         </>}
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
         {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
@@ -2878,14 +2878,13 @@ export default function HomeGameApp(){
       const top=[...memberEntries].sort((a:any,b:any)=>b.profit-a.profit)[0];
       const winnerName=players.find((p:any)=>p.id===top?.player_id)?.name||top?.player_name||"";
       await db.from("sessions").update({is_live:false,pot,winner_name:winnerName,duration_seconds:elapsed,status:"approved",chicken_dinner_name:chickenDinner||null,stats_committed:false}).eq("id",liveSession.id);
-      // Insert session_entries for real players AND guests
+      // Insert session_entries: members first, guests separately (null player_id was previously rejecting entire batch)
       const guestLiveEntries=entries.filter((e:any)=>e.player_id==null);
-      const allEntriesToInsert=[
-        ...memberEntries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})),
-        ...guestLiveEntries.map((e:any)=>({session_id:liveSession.id,player_id:null,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit,notes:`guest:${(e.player_name||'Guest').replace(' (guest)','')}`})),
-      ];
-      if(allEntriesToInsert.length>0){
-        await db.from("session_entries").insert(allEntriesToInsert);
+      if(memberEntries.length>0){
+        await db.from("session_entries").insert(memberEntries.map((e:any)=>({session_id:liveSession.id,player_id:e.player_id,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit})));
+      }
+      if(guestLiveEntries.length>0){
+        await db.from("session_entries").insert(guestLiveEntries.map((e:any)=>({session_id:liveSession.id,player_id:null,buy_in:e.buy_in,rebuys:e.rebuys,cash_out:e.cash_out,profit:e.profit,notes:`guest:${(e.player_name||'Guest').replace(' (guest)','')}` })));
       }
       setLiveSession(null);setLiveEntries([]);await loadLeagueData(currentLeague.id);showToast("Session saved! Lock it to commit stats to profiles.");setLsv('leagueDetail');
     }catch(e:any){showError(e.message||"Failed to save.");}
