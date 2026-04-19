@@ -395,15 +395,28 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
   const [fishOverlay,setFishOverlay]=useState<{player:any,league:any}|null>(null);
 
   const handleSelectLeague=async(lg:any)=>{
-    // Fetch worst player (most negative profit with at least 1 session) for fish animation
-    if(db){
-      const{data:players}=await db.from("players").select("id,name,total_profit,session_count").eq("league_id",lg.id).gt("session_count",0).order("total_profit",{ascending:true}).limit(1);
-      const worst=players?.[0];
+    // Fish of the Month: check if it should show this month
+    // Shows on the last day of months 1, 2, 3 of a season (3x per season)
+    // Only shows once per user per league per month (stored in localStorage)
+    const now=new Date();
+    const yr=now.getFullYear();const mo=now.getMonth()+1; // 1-12
+    const fishKey=`hg_fish_${lg.id}_${yr}_${mo}`;
+    const alreadySeen=localStorage.getItem(fishKey);
+    // Check if today is the last day of any of the 3 fish-of-month windows
+    // Season = 91 days. Fish shows at end of month 1 (~day 30), month 2 (~day 61), month 3 (~day 91)
+    const seasonStart=new Date(lg.season_start_date||lg.created_at);
+    const dayOfSeason=Math.floor((now.getTime()-seasonStart.getTime())/(86400000))+1;
+    const isLastDayOfMonth1=dayOfSeason>=28&&dayOfSeason<=32;
+    const isLastDayOfMonth2=dayOfSeason>=58&&dayOfSeason<=63;
+    const isLastDayOfMonth3=dayOfSeason>=88&&dayOfSeason<=93;
+    const isFishDay=isLastDayOfMonth1||isLastDayOfMonth2||isLastDayOfMonth3;
+    if(isFishDay&&!alreadySeen&&db){
+      const{data:plrs}=await db.from("players").select("id,name,total_profit,session_count").eq("league_id",lg.id).gt("session_count",0).order("total_profit",{ascending:true}).limit(1);
+      const worst=plrs?.[0];
       if(worst&&worst.total_profit<0){
-        // Fetch their avatar
         const{data:prof}=await db.from("profiles").select("avatar_url").ilike("display_name",worst.name).maybeSingle();
+        localStorage.setItem(fishKey,"1");
         setFishOverlay({player:{...worst,avatar_url:prof?.avatar_url||null},league:lg});
-        setTimeout(()=>{setFishOverlay(null);onSelectLeague(lg);},2800);
         return;
       }
     }
@@ -411,7 +424,7 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
   };
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      {fishOverlay&&<FishOfMonthOverlay player={fishOverlay.player} onDone={()=>{setFishOverlay(null);onSelectLeague(fishOverlay.league);}}/>}
+      {fishOverlay&&<FishOfMonthOverlay player={fishOverlay.player} onDone={()=>{const lg=fishOverlay.league;setFishOverlay(null);onSelectLeague(lg);}}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4}}>
@@ -479,44 +492,48 @@ const FISH_LINES=[
 
 function FishOfMonthOverlay({player,onDone}:any){
   const [line]=useState(()=>FISH_LINES[Math.floor(Math.random()*FISH_LINES.length)]);
-  useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
+  const [countdown,setCountdown]=useState(6);
+  useEffect(()=>{
+    const t=setInterval(()=>setCountdown(c=>{if(c<=1){clearInterval(t);onDone();return 0;}return c-1;}),1000);
+    return()=>clearInterval(t);
+  },[]);
   if(!player)return null;
   return(
-    <div onClick={onDone} style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.2s ease"}}>
-      <div style={{textAlign:"center" as const,maxWidth:300}}>
-        <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:16}}>🐟 FISH OF THE MONTH</div>
+    <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.95)",display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.3s ease"}}>
+      <div style={{textAlign:"center" as const,maxWidth:300,flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center"}}>
+        <div style={{color:"#4CAF8C",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:4,marginBottom:6}}>🐟 FISH OF THE MONTH</div>
+        <div style={{color:"#333",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:20}}>presenting this month's biggest loser</div>
         {/* Fish trophy SVG with avatar */}
-        <div style={{position:"relative" as const,display:"inline-block",marginBottom:14}}>
-          <svg viewBox="0 0 120 120" width={120} height={120} fill="none">
-            {/* Trophy base */}
+        <div style={{position:"relative" as const,display:"inline-block",marginBottom:18}}>
+          <svg viewBox="0 0 120 120" width={140} height={140} fill="none">
             <rect x="45" y="100" width="30" height="6" rx="3" fill="#2a1a0a"/>
             <rect x="50" y="94" width="20" height="8" rx="2" fill="#2a1a0a"/>
-            {/* Fish body */}
-            <ellipse cx="60" cy="60" rx="32" ry="22" fill="#1a3a2a" stroke="#1a8a4a" strokeWidth="2"/>
-            {/* Fish tail */}
-            <path d="M92 60 L108 45 L108 75 Z" fill="#1a8a4a" opacity="0.8"/>
-            {/* Fins */}
-            <path d="M50 38 Q60 28 70 38" stroke="#1a8a4a" strokeWidth="2" fill="none"/>
-            <path d="M45 72 Q52 80 60 75 Q68 80 75 72" stroke="#1a8a4a" strokeWidth="1.5" fill="none"/>
-            {/* Fish eye */}
-            <circle cx="38" cy="56" r="5" fill="#0a0a0a" stroke="#1a8a4a" strokeWidth="1.5"/>
-            <circle cx="36" cy="54" r="1.5" fill="#4CAF8C"/>
-            {/* Mouth */}
-            <path d="M28 62 Q32 66 36 62" stroke="#1a8a4a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-            {/* Scales */}
+            <ellipse cx="60" cy="60" rx="32" ry="22" fill="#0d2a1a" stroke="#1a8a4a" strokeWidth="2"/>
+            <path d="M92 60 L110 43 L110 77 Z" fill="#1a8a4a" opacity="0.9"/>
+            <path d="M50 38 Q60 26 70 38" stroke="#1a8a4a" strokeWidth="2" fill="none"/>
+            <path d="M45 72 Q52 82 60 77 Q68 82 75 72" stroke="#1a8a4a" strokeWidth="1.5" fill="none"/>
+            <circle cx="38" cy="56" r="5" fill="#0a0a0a" stroke="#4CAF8C" strokeWidth="1.5"/>
+            <circle cx="36" cy="54" r="2" fill="#4CAF8C"/>
+            <path d="M28 62 Q32 67 36 62" stroke="#4CAF8C" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
             {[[55,52],[65,52],[75,52],[50,62],[60,62],[70,62],[55,72],[65,72]].map(([x,y],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="5" ry="3" stroke="#1a8a4a" strokeWidth="0.8" fill="none" opacity="0.5"/>
             ))}
+            {/* Trophy glow */}
+            <ellipse cx="60" cy="60" rx="34" ry="24" stroke="#4CAF8C" strokeWidth="0.5" opacity="0.2" fill="none"/>
           </svg>
-          {/* Avatar on the fish */}
-          <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-30%,-55%)",width:40,height:40,borderRadius:"50%",overflow:"hidden",border:"2px solid #1a8a4a",background:"#0a0a0a"}}>
-            <Avatar name={player.name} url={player.avatar_url} size={40}/>
+          <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-28%,-58%)",width:44,height:44,borderRadius:"50%",overflow:"hidden",border:"2.5px solid #4CAF8C",boxShadow:"0 0 12px rgba(76,175,140,0.5)",background:"#0a0a0a"}}>
+            <Avatar name={player.name} url={player.avatar_url} size={44}/>
           </div>
         </div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#4CAF8C",fontWeight:700,marginBottom:8}}>{player.name}</div>
-        <div style={{color:"#888",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.6,fontStyle:"italic"}}>"{line}"</div>
-        <div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:14}}>tap to continue</div>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#4CAF8C",fontWeight:700,marginBottom:6}}>{player.name}</div>
+        <div style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:16}}>{player.total_profit < 0 ? `$${Math.abs(player.total_profit)} in the hole` : 'somehow still swimming'}</div>
+        <div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.15)",borderRadius:10,padding:"12px 16px",marginBottom:20}}>
+          <div style={{color:"#666",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.7,fontStyle:"italic"}}>"{line}"</div>
+        </div>
       </div>
+      <button onClick={onDone} style={{width:"100%",maxWidth:300,padding:"13px 0",background:"rgba(76,175,140,0.12)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:11,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",flexShrink:0,marginBottom:8}}>
+        CLOSE {countdown > 0 ? `(${countdown})` : ''}
+      </button>
     </div>
   );
 }
@@ -779,9 +796,12 @@ function SeasonCountdown({league,isCommissioner,onEndSeason}:any){
           {isCommissioner&&seasonOver&&<button onClick={onEndSeason} style={{padding:"3px 10px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>END SEASON →</button>}
         </div>
       </div>
-      {/* Progress bar */}
-      <div style={{height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,rgba(201,168,76,0.6),#C9A84C)",borderRadius:2,transition:"width 0.5s"}}/>
+      {/* Progress bar with fish-of-month markers */}
+      <div style={{position:"relative" as const,height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,marginTop:4}}>
+        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,rgba(201,168,76,0.6),#C9A84C)",borderRadius:2,transition:"width 0.5s",position:"relative" as const}}/>
+        {/* Fish of month dots at ~33% and ~66% */}
+        <div style={{position:"absolute" as const,top:"50%",left:"33.3%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=33?"#4CAF8C":"#1a3a2a",border:`1px solid ${pct>=33?"#4CAF8C":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
+        <div style={{position:"absolute" as const,top:"50%",left:"66.6%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=67?"#4CAF8C":"#1a3a2a",border:`1px solid ${pct>=67?"#4CAF8C":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
       </div>
     </div>
   );
