@@ -492,18 +492,12 @@ const FISH_LINES=[
 
 function FishOfMonthOverlay({player,onDone}:any){
   const [line]=useState(()=>FISH_LINES[Math.floor(Math.random()*FISH_LINES.length)]);
-  const [countdown,setCountdown]=useState(6);
-  useEffect(()=>{
-    const t=setInterval(()=>setCountdown(c=>{if(c<=1){clearInterval(t);onDone();return 0;}return c-1;}),1000);
-    return()=>clearInterval(t);
-  },[]);
   if(!player)return null;
   return(
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.95)",display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.3s ease"}}>
       <div style={{textAlign:"center" as const,maxWidth:300,flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center"}}>
         <div style={{color:"#4CAF8C",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:4,marginBottom:6}}>🐟 FISH OF THE MONTH</div>
         <div style={{color:"#333",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:20}}>presenting this month's biggest loser</div>
-        {/* Fish trophy SVG with avatar */}
         <div style={{position:"relative" as const,display:"inline-block",marginBottom:18}}>
           <svg viewBox="0 0 120 120" width={140} height={140} fill="none">
             <rect x="45" y="100" width="30" height="6" rx="3" fill="#2a1a0a"/>
@@ -518,7 +512,6 @@ function FishOfMonthOverlay({player,onDone}:any){
             {[[55,52],[65,52],[75,52],[50,62],[60,62],[70,62],[55,72],[65,72]].map(([x,y],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="5" ry="3" stroke="#1a8a4a" strokeWidth="0.8" fill="none" opacity="0.5"/>
             ))}
-            {/* Trophy glow */}
             <ellipse cx="60" cy="60" rx="34" ry="24" stroke="#4CAF8C" strokeWidth="0.5" opacity="0.2" fill="none"/>
           </svg>
           <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-28%,-58%)",width:44,height:44,borderRadius:"50%",overflow:"hidden",border:"2.5px solid #4CAF8C",boxShadow:"0 0 12px rgba(76,175,140,0.5)",background:"#0a0a0a"}}>
@@ -526,13 +519,13 @@ function FishOfMonthOverlay({player,onDone}:any){
           </div>
         </div>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#4CAF8C",fontWeight:700,marginBottom:6}}>{player.name}</div>
-        <div style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:16}}>{player.total_profit < 0 ? `$${Math.abs(player.total_profit)} in the hole` : 'somehow still swimming'}</div>
+        <div style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:16}}>{player.total_profit<0?`$${Math.abs(player.total_profit)} in the hole`:'somehow still swimming'}</div>
         <div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.15)",borderRadius:10,padding:"12px 16px",marginBottom:20}}>
           <div style={{color:"#666",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.7,fontStyle:"italic"}}>"{line}"</div>
         </div>
       </div>
       <button onClick={onDone} style={{width:"100%",maxWidth:300,padding:"13px 0",background:"rgba(76,175,140,0.12)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:11,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",flexShrink:0,marginBottom:8}}>
-        CLOSE {countdown > 0 ? `(${countdown})` : ''}
+        DISMISS
       </button>
     </div>
   );
