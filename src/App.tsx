@@ -2190,7 +2190,7 @@ function usePlayerAnalytics(displayName: string, leagueFilter: string | null, ti
 
       // 1. Player rows (per-league)
       const { data: playerRows = [] } = await db.from("players")
-        .select("id,league_id,total_profit,session_count,wins,best_night,worst_night,time_played_seconds,chicken_dinners,is_commissioner")
+        .select("id,league_id,total_profit,session_count,wins,best_night,worst_night,time_played_seconds,chicken_dinners")
         .ilike("name", displayName);
 
       // 2. Profile (archived stats, privacy)
