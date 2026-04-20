@@ -10,10 +10,10 @@ type LSV = 'home'|'joinCreate'|'publicLeagues'|'leagueDetail'|'newSession'|'live
 type PSV = 'self'|'friends'|'friendProfile';
 
 const HAND_RANKINGS = [
-  { rank:1,  name:"Royal Flush",     desc:"A K Q J 10 of the same suit",  example:"A♠ K♠ Q♠ J♠ 10♠", color:"#C9A84C" },
-  { rank:2,  name:"Straight Flush",  desc:"Five consecutive same suit",    example:"9♥ 8♥ 7♥ 6♥ 5♥",   color:"#E8C56A" },
-  { rank:3,  name:"Four of a Kind",  desc:"Four cards of the same rank",   example:"K♠ K♥ K♦ K♣ 3♠",   color:"#4CAF8C" },
-  { rank:4,  name:"Full House",      desc:"Three of a kind + a pair",      example:"J♠ J♥ J♦ 9♣ 9♥",   color:"#5577CC" },
+  { rank:1,  name:"Royal Flush",     desc:"A K Q J 10 of the same suit",  example:"A♠ K♠ Q♠ J♠ 10♠", color:"#E9B949" },
+  { rank:2,  name:"Straight Flush",  desc:"Five consecutive same suit",    example:"9♥ 8♥ 7♥ 6♥ 5♥",   color:"#F0CA5A" },
+  { rank:3,  name:"Four of a Kind",  desc:"Four cards of the same rank",   example:"K♠ K♥ K♦ K♣ 3♠",   color:"#4ADE80" },
+  { rank:4,  name:"Full House",      desc:"Three of a kind + a pair",      example:"J♠ J♥ J♦ 9♣ 9♥",   color:"#8AB4FF" },
   { rank:5,  name:"Flush",           desc:"Five cards of same suit",       example:"A♦ J♦ 8♦ 6♦ 2♦",   color:"#CC55AA" },
   { rank:6,  name:"Straight",        desc:"Five consecutive any suit",     example:"10♠ 9♥ 8♦ 7♣ 6♠",  color:"#77CCAA" },
   { rank:7,  name:"Three of a Kind", desc:"Three cards of the same rank",  example:"7♠ 7♥ 7♦ K♣ 2♠",   color:"#CC7744" },
@@ -65,13 +65,13 @@ function Avatar({name,url,size=40,streak=0}:{name:string;url?:string|null;size?:
     if(!db)return;
     db.from("profiles").select("avatar_url").ilike("display_name",name).limit(1).then(({data})=>{const u=data?.[0]?.avatar_url||null;avatarCache[key]=u;setSrc(u);});
   },[name,url]);
-  const colors=["#C9A84C","#4CAF8C","#E05555","#5577CC","#CC55AA"];
+  const colors=["#E9B949","#4ADE80","#F87171","#8AB4FF","#CC55AA"];
   const bg=colors[(name||"?").charCodeAt(0)%colors.length];
   const onFire=streak>=3;
   const inner=src
     ?<img src={src} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover" as const,flexShrink:0,display:"block"}}/>
-    :<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:size*0.4,color:"#0D0D0D",flexShrink:0}}>{(name||"?")[0].toUpperCase()}</div>;
-  if(!onFire)return<div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,border:"2px solid rgba(201,168,76,0.3)",display:"inline-flex"}}>{inner}</div>;
+    :<div style={{width:size,height:size,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Fraunces',serif",fontWeight:700,fontSize:size*0.4,color:"#0D0D0D",flexShrink:0}}>{(name||"?")[0].toUpperCase()}</div>;
+  if(!onFire)return<div style={{width:size,height:size,borderRadius:"50%",overflow:"hidden",flexShrink:0,border:"1px solid rgba(255,255,255,0.10)",display:"inline-flex"}}>{inner}</div>;
   return(
     <div style={{position:"relative",display:"inline-flex",flexShrink:0,width:size+6,height:size+6,alignItems:"center",justifyContent:"center"}}>
       <style>{`@keyframes fireRing{0%,100%{opacity:1;box-shadow:0 0 4px 1px rgba(255,107,53,0.6);}50%{opacity:0.7;box-shadow:0 0 8px 2px rgba(255,140,85,0.8),0 0 14px 3px rgba(255,69,0,0.3);}}`}</style>
@@ -80,33 +80,46 @@ function Avatar({name,url,size=40,streak=0}:{name:string;url?:string|null;size?:
     </div>
   );
 }
-function Card({children,style={}}:any){return<div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:16,padding:20,...style}}>{children}</div>;}
-function StatBox({label,value,accent="#C9A84C",dim=false}:any){return<div style={{background:dim?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.03)",border:`1px solid ${dim?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:"10px 8px",flex:1,minWidth:50,textAlign:"center" as const,transition:"all 0.2s"}}><div style={{color:dim?"#333":"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1,textTransform:"uppercase",marginBottom:4,minHeight:22,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1.3}}>{label}</div><div style={{color:dim?"#333":accent,fontSize:15,fontWeight:700,fontFamily:"'Playfair Display',serif",lineHeight:1}}>{dim?"—":value}</div></div>;}
+function Card({children,style={}}:any){return<div style={{background:"#131317",border:"1px solid rgba(255,255,255,0.06)",borderRadius:16,padding:20,...style}}>{children}</div>;}
+function StatBox({label,value,accent="#E9B949",dim=false}:any){return<div style={{background:dim?"rgba(255,255,255,0.01)":"rgba(255,255,255,0.03)",border:`1px solid ${dim?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:"10px 8px",flex:1,minWidth:50,textAlign:"center" as const,transition:"all 0.2s"}}><div style={{color:dim?"#333":"#5C616B",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1,textTransform:"uppercase",marginBottom:4,minHeight:22,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1.3}}>{label}</div><div style={{color:dim?"#333":accent,fontSize:15,fontWeight:700,fontFamily:"'Fraunces',serif",lineHeight:1}}>{dim?"—":value}</div></div>;}
 function Spinner({size=24}:any){
-  return<><style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style><div style={{width:size,height:size,border:`2px solid rgba(201,168,76,0.15)`,borderTopColor:"#C9A84C",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite",flexShrink:0}}/></>;
+  return<><style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style><div style={{width:size,height:size,border:`2px solid rgba(233,185,73,0.15)`,borderTopColor:"#E9B949",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite",flexShrink:0}}/></>;
 }
-function Toggle({value,onChange,label,sub}:any){return<div onClick={()=>onChange(!value)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,cursor:"pointer",marginBottom:10}}><div style={{flex:1,paddingRight:12}}><div style={{color:"#fff",fontSize:13}}>{label}</div>{sub&&<div style={{color:"#555",fontSize:11,marginTop:2}}>{sub}</div>}</div><div style={{width:44,height:24,borderRadius:12,background:value?"#5577CC":"rgba(255,255,255,0.1)",position:"relative",transition:"background 0.2s",flexShrink:0}}><div style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:value?22:2,transition:"left 0.2s"}}/></div></div>;}
-function Badge({text,color="#C9A84C"}:any){return<span style={{background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1}}>{text}</span>;}
-const inp:any={width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:10,padding:"11px 14px",color:"#fff",fontSize:14,fontFamily:"'Space Mono',monospace",outline:"none",boxSizing:"border-box"};
-function BackButton({onBack}:any){return<button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer",marginBottom:14,display:"block"}}>←</button>;}
-function SectionTitle({text}:any){return<div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginBottom:16}}>{text}</div>;}
+function Toggle({value,onChange,label,sub}:any){return<div onClick={()=>onChange(!value)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:12,cursor:"pointer",marginBottom:10}}><div style={{flex:1,paddingRight:12}}><div style={{color:"#fff",fontSize:13}}>{label}</div>{sub&&<div style={{color:"#555",fontSize:11,marginTop:2}}>{sub}</div>}</div><div style={{width:44,height:24,borderRadius:12,background:value?"#8AB4FF":"rgba(255,255,255,0.1)",position:"relative",transition:"background 0.2s",flexShrink:0}}><div style={{width:20,height:20,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:value?22:2,transition:"left 0.2s"}}/></div></div>;}
+function Badge({text,color="#E9B949"}:any){return<span style={{background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1}}>{text}</span>;}
+const inp:any={width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"11px 14px",color:"#F2F2F3",fontSize:14,fontFamily:"'JetBrains Mono',monospace",outline:"none",boxSizing:"border-box"};
+function BackButton({onBack}:any){return<button onClick={onBack} style={{background:"#131317",border:"1px solid rgba(255,255,255,0.06)",color:"#F2F2F3",borderRadius:10,padding:"6px 10px",cursor:"pointer",marginBottom:14,display:"inline-flex",alignItems:"center",fontSize:15}}>←</button>;}
+function SectionTitle({text}:any){return<div style={{fontFamily:"'Fraunces',serif",fontSize:26,fontWeight:500,letterSpacing:-0.5,color:"#F2F2F3",marginBottom:16}}>{text}</div>;}
+
+function VaultHeader({title,subtitle,right,showBack,onBack}:{title:string;subtitle?:string;right?:any;showBack?:boolean;onBack?:()=>void;}){
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,minHeight:44}}>
+      {showBack&&<button onClick={onBack} style={{background:"#131317",border:"1px solid rgba(255,255,255,0.06)",color:"#F2F2F3",borderRadius:10,padding:"6px 10px",cursor:"pointer",flexShrink:0,fontSize:15,display:"flex",alignItems:"center"}}>←</button>}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:28,fontWeight:500,letterSpacing:-0.5,lineHeight:1.1,color:"#F2F2F3"}}>{title}</div>
+        {subtitle&&<div style={{color:"#9AA0A6",fontSize:13,marginTop:4}}>{subtitle}</div>}
+      </div>
+      {right}
+    </div>
+  );
+}
 function LoadingScreen(){
   return(
-    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{minHeight:"100vh",background:"#0B0B0D",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <style>{`@keyframes hg_spin{to{transform:rotate(360deg);}}`}</style>
       <div style={{textAlign:"center"}}>
         <div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}>
-          <div style={{position:"absolute",inset:0,border:"2px solid rgba(201,168,76,0.15)",borderTopColor:"#C9A84C",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite"}}/>
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#C9A84C"}}>♠</div>
+          <div style={{position:"absolute",inset:0,border:"2px solid rgba(233,185,73,0.15)",borderTopColor:"#E9B949",borderRadius:"50%",animation:"hg_spin 0.7s linear infinite"}}/>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#E9B949"}}>♠</div>
         </div>
-        <div style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:2}}>LOADING</div>
+        <div style={{color:"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:2}}>LOADING</div>
       </div>
     </div>
   );
 }
 
 // ─── AUTH ──────────────────────────────────────────────
-function SetupView(){return<div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}><Card style={{maxWidth:420,width:"100%"}}><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,marginBottom:12}}>⚠ DATABASE NOT CONNECTED</div><div style={{color:"#aaa",fontSize:13,lineHeight:1.8}}>Add your Supabase credentials to App.tsx.</div></Card></div>;}
+function SetupView(){return<div style={{minHeight:"100vh",background:"#0B0B0D",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}><Card style={{maxWidth:420,width:"100%"}}><div style={{color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:1.5,marginBottom:12}}>⚠ DATABASE NOT CONNECTED</div><div style={{color:"#aaa",fontSize:13,lineHeight:1.8}}>Add your Supabase credentials to App.tsx.</div></Card></div>;}
 
 function AuthView(){
   const [tab,setTab]=useState<'login'|'signup'|'reset'|'newpw'>('login');
@@ -165,43 +178,43 @@ function AuthView(){
 
   // Set new password screen (after clicking email reset link)
   if(tab==='newpw')return(
-    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
+    <div style={{minHeight:"100vh",background:"#0B0B0D",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle at 30% 20%, rgba(233,185,73,0.08), transparent 50%), radial-gradient(circle at 70% 80%, rgba(74,222,128,0.05), transparent 50%)",pointerEvents:"none"}}/>
       <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>{["♠","♥","♦","♣"].map((s,i)=><span key={i} style={{fontSize:28,color:i%2===0?"#C9A84C":"#E05555"}}>{s}</span>)}</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:900,color:"#C9A84C"}}>Home Game</div>
-          <div style={{color:"#888",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginTop:8}}>SET NEW PASSWORD</div>
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>{["♠","♥","♦","♣"].map((s,i)=><span key={i} style={{fontSize:28,color:i%2===0?"#E9B949":"#F87171"}}>{s}</span>)}</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:36,fontWeight:900,color:"#E9B949"}}>Home Game</div>
+          <div style={{color:"#888",fontSize:11,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginTop:8}}>SET NEW PASSWORD</div>
         </div>
         <Card>
-          <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>NEW PASSWORD</label><input type="password" autoComplete="new-password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="6+ characters" style={inp}/></div>
-          <div style={{marginBottom:16}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>CONFIRM PASSWORD</label><input type="password" autoComplete="new-password" value={newPw2} onChange={e=>setNewPw2(e.target.value)} placeholder="Same as above" style={inp}/></div>
-          {err&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:8,padding:"9px 12px",color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12}}>{err}</div>}
-          {msg&&<div style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:8,padding:"9px 12px",color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12}}>{msg}</div>}
-          <button onClick={handleSetNewPassword} disabled={loading||!newPw||!newPw2} style={{width:"100%",padding:"13px 0",background:!loading&&newPw&&newPw2?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:!loading&&newPw&&newPw2?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"UPDATE PASSWORD →"}</button>
+          <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>NEW PASSWORD</label><input type="password" autoComplete="new-password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="6+ characters" style={inp}/></div>
+          <div style={{marginBottom:16}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>CONFIRM PASSWORD</label><input type="password" autoComplete="new-password" value={newPw2} onChange={e=>setNewPw2(e.target.value)} placeholder="Same as above" style={inp}/></div>
+          {err&&<div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:8,padding:"9px 12px",color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:11,marginBottom:12}}>{err}</div>}
+          {msg&&<div style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:8,padding:"9px 12px",color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:11,marginBottom:12}}>{msg}</div>}
+          <button onClick={handleSetNewPassword} disabled={loading||!newPw||!newPw2} style={{width:"100%",padding:"13px 0",background:!loading&&newPw&&newPw2?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:!loading&&newPw&&newPw2?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"UPDATE PASSWORD →"}</button>
         </Card>
       </div>
     </div>
   );
   return(
-    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
+    <div style={{minHeight:"100vh",background:"#0B0B0D",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle at 30% 20%, rgba(233,185,73,0.08), transparent 50%), radial-gradient(circle at 70% 80%, rgba(74,222,128,0.05), transparent 50%)",pointerEvents:"none"}}/>
       <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>{["♠","♥","♦","♣"].map((s,i)=><span key={i} style={{fontSize:28,color:i%2===0?"#C9A84C":"#E05555"}}>{s}</span>)}</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:42,fontWeight:900,color:"#C9A84C",letterSpacing:-1}}>Home Game</div>
-          <div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginTop:6}}>YOUR LEAGUE. YOUR RULES.</div>
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:10}}>{["♠","♥","♦","♣"].map((s,i)=><span key={i} style={{fontSize:28,color:i%2===0?"#E9B949":"#F87171"}}>{s}</span>)}</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:42,fontWeight:900,color:"#E9B949",letterSpacing:-1}}>Home Game</div>
+          <div style={{color:"#555",fontSize:11,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginTop:6}}>YOUR LEAGUE. YOUR RULES.</div>
         </div>
         <Card style={{padding:0,overflow:"hidden"}}>
-          {tab!=='reset'?<div style={{display:"flex",borderBottom:"1px solid rgba(201,168,76,0.15)"}}>{(['login','signup'] as const).map(t=><button key={t} onClick={()=>{setTab(t);setErr("");setMsg("");}} style={{flex:1,padding:"14px 0",background:"none",border:"none",color:tab===t?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #C9A84C":"2px solid transparent"}}>{t==='login'?'Sign In':'Create Account'}</button>)}</div>:<div style={{borderBottom:"1px solid rgba(201,168,76,0.15)",padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><button onClick={()=>{setTab('login');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer"}}>←</button><span style={{color:"#888",fontFamily:"'Space Mono',monospace",fontSize:12}}>RESET PASSWORD</span></div>}
+          {tab!=='reset'?<div style={{display:"flex",borderBottom:"1px solid rgba(233,185,73,0.15)"}}>{(['login','signup'] as const).map(t=><button key={t} onClick={()=>{setTab(t);setErr("");setMsg("");}} style={{flex:1,padding:"14px 0",background:"none",border:"none",color:tab===t?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #E9B949":"2px solid transparent"}}>{t==='login'?'Sign In':'Create Account'}</button>)}</div>:<div style={{borderBottom:"1px solid rgba(233,185,73,0.15)",padding:"12px 20px",display:"flex",alignItems:"center",gap:10}}><button onClick={()=>{setTab('login');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer"}}>←</button><span style={{color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>RESET PASSWORD</span></div>}
           <form onSubmit={e=>{e.preventDefault();handle();}} style={{padding:24}}>
-            <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>EMAIL</label><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={inp}/></div>
-            {tab!=='reset'&&<div style={{marginBottom:8}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>PASSWORD</label><div style={{position:"relative"}}><input type={showPw?"text":"password"} autoComplete={tab==='login'?"current-password":"new-password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...inp,paddingRight:40}}/><button type="button" onClick={()=>setShowPw(p=>!p)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontFamily:"'Space Mono',monospace",fontSize:10,padding:0}}>{showPw?"HIDE":"SHOW"}</button></div></div>}
-            {tab==='login'&&<div style={{textAlign:"right",marginBottom:16}}><button type="button" onClick={()=>{setTab('reset');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>Forgot password?</button></div>}
+            <div style={{marginBottom:12}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>EMAIL</label><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={inp}/></div>
+            {tab!=='reset'&&<div style={{marginBottom:8}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>PASSWORD</label><div style={{position:"relative"}}><input type={showPw?"text":"password"} autoComplete={tab==='login'?"current-password":"new-password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...inp,paddingRight:40}}/><button type="button" onClick={()=>setShowPw(p=>!p)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontSize:10,padding:0}}>{showPw?"HIDE":"SHOW"}</button></div></div>}
+            {tab==='login'&&<div style={{textAlign:"right",marginBottom:16}}><button type="button" onClick={()=>{setTab('reset');setErr("");setMsg("");}} style={{background:"none",border:"none",color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>Forgot password?</button></div>}
             {tab!=='login'&&<div style={{marginBottom:16}}/>}
-            {err&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:8,padding:"9px 12px",color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12,lineHeight:1.6}}>{err}</div>}
-            {msg&&<div style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:8,padding:"9px 12px",color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,marginBottom:12,lineHeight:1.6}}>{msg}</div>}
-            <button type="submit" disabled={loading||!email||(tab!=='reset'&&!pw)} style={{width:"100%",padding:"13px 0",background:!loading&&email&&(tab==='reset'||pw)?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:!loading&&email&&(tab==='reset'||pw)?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:tab==='login'?"SIGN IN →":tab==='signup'?"CREATE ACCOUNT →":"SEND RESET →"}</button>
+            {err&&<div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:8,padding:"9px 12px",color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:11,marginBottom:12,lineHeight:1.6}}>{err}</div>}
+            {msg&&<div style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:8,padding:"9px 12px",color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:11,marginBottom:12,lineHeight:1.6}}>{msg}</div>}
+            <button type="submit" disabled={loading||!email||(tab!=='reset'&&!pw)} style={{width:"100%",padding:"13px 0",background:!loading&&email&&(tab==='reset'||pw)?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:!loading&&email&&(tab==='reset'||pw)?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:tab==='login'?"SIGN IN →":tab==='signup'?"CREATE ACCOUNT →":"SEND RESET →"}</button>
           </form>
         </Card>
       </div>
@@ -234,15 +247,15 @@ function SetupProfileView({user,onDone}:any){
   };
   const signOut=async()=>{if(db)await db.auth.signOut();window.location.reload();};
   return(
-    <div style={{minHeight:"100vh",background:"#0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,60,30,0.4) 0%, transparent 70%)",pointerEvents:"none"}}/>
+    <div style={{minHeight:"100vh",background:"#0B0B0D",display:"flex",alignItems:"center",justifyContent:"center",padding:24,position:"relative"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(circle at 30% 20%, rgba(233,185,73,0.08), transparent 50%), radial-gradient(circle at 70% 80%, rgba(74,222,128,0.05), transparent 50%)",pointerEvents:"none"}}/>
       <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
-        <div style={{textAlign:"center",marginBottom:28}}><div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Icon name="person" size={38} color="#C9A84C"/></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#fff"}}>One more thing</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginTop:6}}>WHAT DO THEY CALL YOU AT THE TABLE?</div></div>
+        <div style={{textAlign:"center",marginBottom:28}}><div style={{display:"flex",justifyContent:"center",marginBottom:10}}><Icon name="person" size={38} color="#E9B949"/></div><div style={{fontFamily:"'Fraunces',serif",fontSize:26,color:"#fff"}}>One more thing</div><div style={{color:"#555",fontSize:11,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,marginTop:6}}>WHAT DO THEY CALL YOU AT THE TABLE?</div></div>
         <Card>
-          <div style={{marginBottom:14}}><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Big Stack Tyler" autoFocus style={{...inp,fontSize:18,fontFamily:"'Playfair Display',serif",textAlign:"center" as const}}/></div>
-          {err&&<div style={{color:"#E05555",fontSize:11,marginBottom:10}}>{err}</div>}
-          <button onClick={save} disabled={loading||!name.trim()} style={{width:"100%",padding:"13px 0",background:name.trim()&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:name.trim()&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:10}}>{loading?<Spinner size={16}/>:"LET'S PLAY →"}</button>
-          <button onClick={signOut} style={{width:"100%",padding:"9px 0",background:"none",border:"none",color:"#333",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>wrong account? sign out</button>
+          <div style={{marginBottom:14}}><input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&save()} placeholder="e.g. Big Stack Tyler" autoFocus style={{...inp,fontSize:18,fontFamily:"'Fraunces',serif",textAlign:"center" as const}}/></div>
+          {err&&<div style={{color:"#F87171",fontSize:11,marginBottom:10}}>{err}</div>}
+          <button onClick={save} disabled={loading||!name.trim()} style={{width:"100%",padding:"13px 0",background:name.trim()&&!loading?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:12,color:name.trim()&&!loading?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:10}}>{loading?<Spinner size={16}/>:"LET'S PLAY →"}</button>
+          <button onClick={signOut} style={{width:"100%",padding:"9px 0",background:"none",border:"none",color:"#333",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>wrong account? sign out</button>
         </Card>
       </div>
     </div>
@@ -309,7 +322,7 @@ function PokerTicker(){
   },[]);
   return(
     <div style={{padding:"10px 14px",marginBottom:12,marginTop:6,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:10,minHeight:42,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{color:"#666",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0,textAlign:"center" as const,width:"100%"}}>{POKER_TIPS[idx]}</div>
+      <div style={{color:"#666",fontSize:12,fontFamily:"'JetBrains Mono',monospace",lineHeight:1.5,transition:"opacity 0.4s",opacity:fade?1:0,textAlign:"center" as const,width:"100%"}}>{POKER_TIPS[idx]}</div>
     </div>
   );
 }
@@ -363,24 +376,24 @@ function NotificationBell({profile,myLeagues,onViewNotification}:any){
   return(
     <div style={{position:"relative"}}>
       <button onClick={handleOpen} style={{background:"none",border:"none",cursor:"pointer",position:"relative",padding:4}}>
-        <Icon name="bell" size={22} color={open?"#C9A84C":"#666"}/>
-        {count>0&&<span style={{position:"absolute",top:0,right:0,background:"#E05555",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>{count>9?"9+":count}</span>}
+        <Icon name="bell" size={22} color={open?"#E9B949":"#666"}/>
+        {count>0&&<span style={{position:"absolute",top:0,right:0,background:"#F87171",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>{count>9?"9+":count}</span>}
       </button>
-      {open&&<div style={{position:"absolute",top:36,right:0,width:280,background:"#141414",border:"1px solid rgba(201,168,76,0.2)",borderRadius:14,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",overflow:"hidden"}}>
+      {open&&<div style={{position:"absolute",top:36,right:0,width:280,background:"#141414",border:"1px solid rgba(233,185,73,0.2)",borderRadius:14,zIndex:200,boxShadow:"0 8px 32px rgba(0,0,0,0.6)",overflow:"hidden"}}>
         <div style={{padding:"12px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{color:"#888",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5}}>NOTIFICATIONS</span>
+          <span style={{color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5}}>NOTIFICATIONS</span>
           <button onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"#444",fontSize:14,cursor:"pointer"}}>✕</button>
         </div>
         {loading&&<div style={{display:"flex",justifyContent:"center",padding:20}}><Spinner size={18}/></div>}
-        {!loading&&notifs.length===0&&<div style={{padding:"18px 14px",color:"#444",fontFamily:"'Space Mono',monospace",fontSize:11,textAlign:"center"}}>No new notifications</div>}
+        {!loading&&notifs.length===0&&<div style={{padding:"18px 14px",color:"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:11,textAlign:"center"}}>No new notifications</div>}
         {!loading&&notifs.map((n:any,i:number)=>(
           <div key={n.id+n.type} onClick={()=>{if(n.type==="session_edit"&&onViewNotification)onViewNotification(n);setOpen(false);}} style={{padding:"11px 14px",borderBottom:i<notifs.length-1?"1px solid rgba(255,255,255,0.04)":"none",cursor:n.type==="session_edit"?"pointer":"default",background:"rgba(255,255,255,0.01)"}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
-              <div style={{marginTop:1,flexShrink:0}}>{n.type==="friend"?<Icon name="person" size={16} color="#888"/>:n.type==="live"?<span style={{fontSize:14}}>♠</span>:n.type==="post"?<span style={{fontSize:14}}>◈</span>:<Icon name="warning" size={16} color="#E05555"/>}</div>
+              <div style={{marginTop:1,flexShrink:0}}>{n.type==="friend"?<Icon name="person" size={16} color="#888"/>:n.type==="live"?<span style={{fontSize:14}}>♠</span>:n.type==="post"?<span style={{fontSize:14}}>◈</span>:<Icon name="warning" size={16} color="#F87171"/>}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:"#fff",fontSize:12,lineHeight:1.4}}>{n.text}</div>
-                {n.sub&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>{n.sub}</div>}
-                {n.type==="session_edit"&&<div style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3}}>tap to view →</div>}
+                {n.sub&&<div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>{n.sub}</div>}
+                {n.type==="session_edit"&&<div style={{color:"#8AB4FF",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginTop:3}}>tap to view →</div>}
               </div>
             </div>
           </div>
@@ -426,47 +439,47 @@ function LeagueHomeView({profile,myLeagues,loading,onSelectLeague,onJoinCreate,o
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       {fishOverlay&&<FishOfMonthOverlay player={fishOverlay.player} onDone={()=>{const lg=fishOverlay.league;setFishOverlay(null);onSelectLeague(lg);}}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#C9A84C"/><span style={{color:"#E05555",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:"#C9A84C"}}>Home Game</div></div>
+        <div><div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center"}}><Icon name="spade" size={14} color="#E9B949"/><span style={{color:"#F87171",fontSize:14,lineHeight:1}}>♥</span></div><div style={{fontFamily:"'Fraunces',serif",fontSize:24,color:"#E9B949"}}>Home Game</div></div>
         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4}}>
-          <div style={{color:"#fff",fontSize:17,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{profile.display_name}</div>
+          <div style={{color:"#fff",fontSize:17,fontFamily:"'Fraunces',serif",fontWeight:700}}>{profile.display_name}</div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             <button onClick={onViewFriends} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}><div style={{width:24,height:24,borderRadius:"50%",background:"rgba(255,255,255,0.05)",border:"2px solid #333",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="person" size={13} color="#666"/></div></button>
             <NotificationBell profile={profile} myLeagues={myLeagues} onViewNotification={onViewNotification}/>
           </div>
         </div>
       </div>
-      <div style={{height:1,background:"rgba(201,168,76,0.1)",marginBottom:14}}/>
+      <div style={{height:1,background:"rgba(233,185,73,0.1)",marginBottom:14}}/>
 
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner size={30}/></div>}
-      {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center" as const}}><div style={{padding:"18px 0",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:8}}><Icon name="spade" size={28} color="#333"/><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
+      {!loading&&myLeagues.length===0&&<Card style={{marginBottom:14,textAlign:"center" as const}}><div style={{padding:"18px 0",display:"flex",flexDirection:"column" as const,alignItems:"center",gap:8}}><Icon name="spade" size={28} color="#333"/><div style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>No leagues yet — join or create one below</div></div></Card>}
       {!loading&&myLeagues.map((lg:any)=>{
         const isComm=lg.commissioner_id===lg._myUserId;
         const sessionsLeft=lg.season_length>0?lg.season_length-(lg._sessionCount||0):null;
         const est=lg.created_at?new Date(lg.created_at).toLocaleDateString('en-US',{month:'long',year:'numeric'}):null;
-        return<div key={lg.id} onClick={()=>handleSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
+        return<div key={lg.id} onClick={()=>handleSelectLeague(lg)} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(233,185,73,0.12)",borderRadius:14,padding:"14px 16px",marginBottom:9,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:11}}>
-            <div style={{width:40,height:40,borderRadius:10,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              {lg.is_public?<Icon name="globe" size={20} color="#5577CC"/>:<Icon name="spade" size={20} color="#C9A84C"/>}
+            <div style={{width:40,height:40,borderRadius:10,background:"rgba(233,185,73,0.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {lg.is_public?<Icon name="globe" size={20} color="#8AB4FF"/>:<Icon name="spade" size={20} color="#E9B949"/>}
             </div>
             <div style={{flex:1,minWidth:0,textAlign:"center" as const}}>
-              <div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <div style={{color:"#fff",fontFamily:"'Fraunces',serif",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                 {lg.name}
-                {isComm&&<Icon name="crown" size={13} color="#C9A84C"/>}
-                {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:10,color:"#E05555",fontFamily:"'Space Mono',monospace"}}>DONE</span>}
+                {isComm&&<Icon name="crown" size={13} color="#E9B949"/>}
+                {sessionsLeft!==null&&sessionsLeft<=0&&<span style={{fontSize:10,color:"#F87171",fontFamily:"'JetBrains Mono',monospace"}}>DONE</span>}
               </div>
               {lg.description&&<div style={{color:"#666",fontSize:11,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lg.description}</div>}
-              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:3,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{est?"Est. "+est:""}{lg.location_name&&<><Icon name="pin" size={8} color="#444"/>{lg.location_name}</>}</div>
+              <div style={{color:"#444",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginTop:3,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{est?"Est. "+est:""}{lg.location_name&&<><Icon name="pin" size={8} color="#444"/>{lg.location_name}</>}</div>
             </div>
           </div>
         </div>;
       })}
       <div style={{display:"flex",gap:9,marginTop:4,marginBottom:20}}>
-        <button onClick={onJoinCreate} style={{flex:2,padding:"12px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>+ JOIN OR CREATE</button>
-        <button onClick={onViewPublicLeagues} style={{flex:1,padding:"12px 0",background:"rgba(85,119,204,0.12)",border:"1px solid rgba(85,119,204,0.35)",borderRadius:12,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,letterSpacing:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="globe" size={13} color="#5577CC"/>PUBLIC</button>
+        <button onClick={onJoinCreate} style={{flex:2,padding:"12px 0",background:"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:12,color:"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:1.5,cursor:"pointer"}}>+ JOIN OR CREATE</button>
+        <button onClick={onViewPublicLeagues} style={{flex:1,padding:"12px 0",background:"rgba(138,180,255,0.12)",border:"1px solid rgba(138,180,255,0.35)",borderRadius:12,color:"#8AB4FF",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:11,letterSpacing:1,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="globe" size={13} color="#8AB4FF"/>PUBLIC</button>
       </div>
       <div style={{borderTop:"1px solid rgba(255,255,255,0.04)",paddingTop:16}}>
         <PokerTicker/>
-        <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
+        <button onClick={onViewHandRankings} style={{width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="card" size={12} color="#555"/>HAND RANKINGS</button>
       </div>
     </div>
   );
@@ -496,8 +509,8 @@ function FishOfMonthOverlay({player,onDone}:any){
   return(
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.95)",display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.3s ease"}}>
       <div style={{textAlign:"center" as const,maxWidth:300,flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",justifyContent:"center"}}>
-        <div style={{color:"#4CAF8C",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:4,marginBottom:6}}>🐟 FISH OF THE MONTH</div>
-        <div style={{color:"#333",fontSize:8,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:20}}>presenting this month's biggest loser</div>
+        <div style={{color:"#4ADE80",fontSize:8,fontFamily:"'JetBrains Mono',monospace",letterSpacing:4,marginBottom:6}}>🐟 FISH OF THE MONTH</div>
+        <div style={{color:"#333",fontSize:8,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:20}}>presenting this month's biggest loser</div>
         <div style={{position:"relative" as const,display:"inline-block",marginBottom:18}}>
           <svg viewBox="0 0 120 120" width={140} height={140} fill="none">
             <rect x="45" y="100" width="30" height="6" rx="3" fill="#2a1a0a"/>
@@ -506,25 +519,25 @@ function FishOfMonthOverlay({player,onDone}:any){
             <path d="M92 60 L110 43 L110 77 Z" fill="#1a8a4a" opacity="0.9"/>
             <path d="M50 38 Q60 26 70 38" stroke="#1a8a4a" strokeWidth="2" fill="none"/>
             <path d="M45 72 Q52 82 60 77 Q68 82 75 72" stroke="#1a8a4a" strokeWidth="1.5" fill="none"/>
-            <circle cx="38" cy="56" r="5" fill="#0a0a0a" stroke="#4CAF8C" strokeWidth="1.5"/>
-            <circle cx="36" cy="54" r="2" fill="#4CAF8C"/>
-            <path d="M28 62 Q32 67 36 62" stroke="#4CAF8C" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            <circle cx="38" cy="56" r="5" fill="#0a0a0a" stroke="#4ADE80" strokeWidth="1.5"/>
+            <circle cx="36" cy="54" r="2" fill="#4ADE80"/>
+            <path d="M28 62 Q32 67 36 62" stroke="#4ADE80" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
             {[[55,52],[65,52],[75,52],[50,62],[60,62],[70,62],[55,72],[65,72]].map(([x,y],i)=>(
               <ellipse key={i} cx={x} cy={y} rx="5" ry="3" stroke="#1a8a4a" strokeWidth="0.8" fill="none" opacity="0.5"/>
             ))}
-            <ellipse cx="60" cy="60" rx="34" ry="24" stroke="#4CAF8C" strokeWidth="0.5" opacity="0.2" fill="none"/>
+            <ellipse cx="60" cy="60" rx="34" ry="24" stroke="#4ADE80" strokeWidth="0.5" opacity="0.2" fill="none"/>
           </svg>
-          <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-28%,-58%)",width:44,height:44,borderRadius:"50%",overflow:"hidden",border:"2.5px solid #4CAF8C",boxShadow:"0 0 12px rgba(76,175,140,0.5)",background:"#0a0a0a"}}>
+          <div style={{position:"absolute" as const,top:"50%",left:"50%",transform:"translate(-28%,-58%)",width:44,height:44,borderRadius:"50%",overflow:"hidden",border:"2.5px solid #4ADE80",boxShadow:"0 0 12px rgba(74,222,128,0.5)",background:"#0a0a0a"}}>
             <Avatar name={player.name} url={player.avatar_url} size={44}/>
           </div>
         </div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#4CAF8C",fontWeight:700,marginBottom:6}}>{player.name}</div>
-        <div style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:16}}>{player.total_profit<0?`$${Math.abs(player.total_profit)} in the hole`:'somehow still swimming'}</div>
-        <div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.15)",borderRadius:10,padding:"12px 16px",marginBottom:20}}>
-          <div style={{color:"#666",fontSize:12,fontFamily:"'Space Mono',monospace",lineHeight:1.7,fontStyle:"italic"}}>"{line}"</div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#4ADE80",fontWeight:700,marginBottom:6}}>{player.name}</div>
+        <div style={{color:"#F87171",fontSize:11,fontFamily:"'JetBrains Mono',monospace",marginBottom:16}}>{player.total_profit<0?`$${Math.abs(player.total_profit)} in the hole`:'somehow still swimming'}</div>
+        <div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:10,padding:"12px 16px",marginBottom:20}}>
+          <div style={{color:"#666",fontSize:12,fontFamily:"'JetBrains Mono',monospace",lineHeight:1.7,fontStyle:"italic"}}>"{line}"</div>
         </div>
       </div>
-      <button onClick={onDone} style={{width:"100%",maxWidth:300,padding:"13px 0",background:"rgba(76,175,140,0.12)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:11,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",flexShrink:0,marginBottom:8}}>
+      <button onClick={onDone} style={{width:"100%",maxWidth:300,padding:"13px 0",background:"rgba(74,222,128,0.12)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:11,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",flexShrink:0,marginBottom:8}}>
         DISMISS
       </button>
     </div>
@@ -544,23 +557,23 @@ function JoinCreateView({profile,loading,onBack,onEnter,prefillCode=""}:any){
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Add a League"/>
       <Card style={{padding:0,overflow:"hidden"}}>
-        <div style={{display:"flex",borderBottom:"1px solid rgba(201,168,76,0.15)"}}>{["join","create"].map(t=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"13px 0",background:"none",border:"none",color:tab===t?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #C9A84C":"2px solid transparent"}}>{t==="join"?"Join":"Create"}</button>)}</div>
+        <div style={{display:"flex",borderBottom:"1px solid rgba(233,185,73,0.15)"}}>{["join","create"].map(t=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"13px 0",background:"none",border:"none",color:tab===t?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:1.5,textTransform:"uppercase",cursor:"pointer",borderBottom:tab===t?"2px solid #E9B949":"2px solid transparent"}}>{t==="join"?"Join":"Create"}</button>)}</div>
         <div style={{padding:20}}>
           {tab==="join"?<>
             <div style={{marginBottom:10}}>
-            <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>INVITE CODE</label>
-            <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. FNP2026" style={{...inp,color:"#C9A84C",fontSize:20,letterSpacing:4,textAlign:"center" as const}}/>
+            <label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:6}}>INVITE CODE</label>
+            <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. FNP2026" style={{...inp,color:"#E9B949",fontSize:20,letterSpacing:4,textAlign:"center" as const}}/>
           </div>
           </>:(
             <>
-              {([["LEAGUE NAME",leagueName,setLeagueName,"Friday Night Poker"],["DESCRIPTION",description,setDescription,"Weekly home game"],["SEASON NAME",season,setSeason,"Season 1"]] as any[]).map(([label,val,setter,ph])=><div key={label} style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
-              <div style={{display:"flex",gap:10,marginBottom:10}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} placeholder="0=unlimited" style={inp}/></div></div>
-              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"8px 0",borderRadius:9,background:maxPlayers===n?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
-              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>LOCATION</label><div style={{display:"flex",gap:8}}><input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder="e.g. San Francisco, CA" style={{...inp,flex:1}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,color:"#C9A84C",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#C9A84C"/>}</button></div></div>
+              {([["LEAGUE NAME",leagueName,setLeagueName,"Friday Night Poker"],["DESCRIPTION",description,setDescription,"Weekly home game"],["SEASON NAME",season,setSeason,"Season 1"]] as any[]).map(([label,val,setter,ph])=><div key={label} style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
+              <div style={{display:"flex",gap:10,marginBottom:10}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} placeholder="0=unlimited" style={inp}/></div></div>
+              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"8px 0",borderRadius:9,background:maxPlayers===n?"rgba(233,185,73,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(233,185,73,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
+              <div style={{marginBottom:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>LOCATION</label><div style={{display:"flex",gap:8}}><input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder="e.g. San Francisco, CA" style={{...inp,flex:1}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:10,color:"#E9B949",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#E9B949"/>}</button></div></div>
               <Toggle value={isPublic} onChange={setIsPublic} label="Public League" sub="Anyone can find & join without a code"/>
             </>
           )}
-          <button onClick={()=>canSubmit&&!loading&&onEnter({tab,code,leagueName,description,buyIn:Number(buyIn),season,seasonLength:Number(seasonLength),isPublic,locationName,maxPlayers})} style={{width:"100%",padding:"12px 0",marginTop:6,background:canSubmit&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:canSubmit&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:canSubmit&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:tab==="join"?"Join League →":"Create League →"}</button>
+          <button onClick={()=>canSubmit&&!loading&&onEnter({tab,code,leagueName,description,buyIn:Number(buyIn),season,seasonLength:Number(seasonLength),isPublic,locationName,maxPlayers})} style={{width:"100%",padding:"12px 0",marginTop:6,background:canSubmit&&!loading?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:canSubmit&&!loading?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:canSubmit&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:tab==="join"?"Join League →":"Create League →"}</button>
         </div>
       </Card>
     </div>
@@ -578,11 +591,11 @@ function PublicLeaguesView({onBack,onJoin}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Public Leagues"/>
-      <div style={{display:"flex",gap:8,marginBottom:10}}><input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search name or city..." style={{...inp,flex:1,padding:"9px 12px",fontSize:13}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:10,color:"#5577CC",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#5577CC"/>}</button></div>
-      {userLoc&&<div style={{color:"#5577CC",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:10,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color="#5577CC"/>Near {userLoc} first</div>}
+      <div style={{display:"flex",gap:8,marginBottom:10}}><input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Search name or city..." style={{...inp,flex:1,padding:"9px 12px",fontSize:13}}/><button onClick={detectLocation} style={{padding:"0 13px",background:"rgba(138,180,255,0.1)",border:"1px solid rgba(138,180,255,0.3)",borderRadius:10,color:"#8AB4FF",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{detecting?<Spinner size={13}/>:<Icon name="pin" size={14} color="#8AB4FF"/>}</button></div>
+      {userLoc&&<div style={{color:"#8AB4FF",fontSize:11,fontFamily:"'JetBrains Mono',monospace",marginBottom:10,display:"flex",alignItems:"center",gap:5}}><Icon name="pin" size={11} color="#8AB4FF"/>Near {userLoc} first</div>}
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
-      {!loading&&sorted.length===0&&<Card><div style={{textAlign:"center",padding:"22px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12}}>No public leagues found.</div></Card>}
-      {sorted.map((lg:any)=><Card key={lg.id} style={{marginBottom:11}}><div style={{display:"flex",gap:11,marginBottom:11}}><div style={{width:44,height:44,borderRadius:11,background:"rgba(85,119,204,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="spade" size={20} color="#5577CC"/></div><div style={{flex:1}}><div style={{color:"#fff",fontFamily:"'Playfair Display',serif",fontSize:16}}>{lg.name}</div>{lg.description&&<div style={{color:"#666",fontSize:11,marginTop:2}}>{lg.description}</div>}<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:3,display:"flex",alignItems:"center",gap:4}}>{lg.season} · ${lg.buy_in}{lg.location_name?<><Icon name="pin" size={9} color="#5577CC"/><span style={{color:"#5577CC"}}>{lg.location_name}</span></>:null} · {lg.max_players||12} max</div></div></div><button onClick={()=>onJoin(lg)} style={{width:"100%",padding:"10px 0",background:"rgba(85,119,204,0.15)",border:"1px solid rgba(85,119,204,0.3)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>JOIN LEAGUE →</button></Card>)}
+      {!loading&&sorted.length===0&&<Card><div style={{textAlign:"center",padding:"22px 0",color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>No public leagues found.</div></Card>}
+      {sorted.map((lg:any)=><Card key={lg.id} style={{marginBottom:11}}><div style={{display:"flex",gap:11,marginBottom:11}}><div style={{width:44,height:44,borderRadius:11,background:"rgba(138,180,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="spade" size={20} color="#8AB4FF"/></div><div style={{flex:1}}><div style={{color:"#fff",fontFamily:"'Fraunces',serif",fontSize:16}}>{lg.name}</div>{lg.description&&<div style={{color:"#666",fontSize:11,marginTop:2}}>{lg.description}</div>}<div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:3,display:"flex",alignItems:"center",gap:4}}>{lg.season} · ${lg.buy_in}{lg.location_name?<><Icon name="pin" size={9} color="#8AB4FF"/><span style={{color:"#8AB4FF"}}>{lg.location_name}</span></>:null} · {lg.max_players||12} max</div></div></div><button onClick={()=>onJoin(lg)} style={{width:"100%",padding:"10px 0",background:"rgba(138,180,255,0.15)",border:"1px solid rgba(138,180,255,0.3)",borderRadius:9,color:"#8AB4FF",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>JOIN LEAGUE →</button></Card>)}
     </div>
   );
 }
@@ -600,28 +613,28 @@ function SeasonRecapView({league,players,sessions,onBack}:any){
       <BackButton onBack={onBack}/>
       <div style={{textAlign:"center",marginBottom:24}}>
         <div style={{fontSize:40,marginBottom:8}}>🏁</div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:26,color:"#C9A84C"}}>Season Complete!</div>
-        <div style={{color:"#555",fontSize:12,fontFamily:"'Space Mono',monospace",marginTop:4}}>{league.name} · {league.season}</div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:26,color:"#E9B949"}}>Season Complete!</div>
+        <div style={{color:"#555",fontSize:12,fontFamily:"'JetBrains Mono',monospace",marginTop:4}}>{league.name} · {league.season}</div>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <StatBox label="Sessions" value={sessions.length}/>
-        <StatBox label="Total Pot" value={`$${totalPot}`} accent="#4CAF8C"/>
+        <StatBox label="Total Pot" value={`$${totalPot}`} accent="#4ADE80"/>
         <StatBox label="Players" value={players.length}/>
       </div>
       {sorted.length>0&&<Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>FINAL STANDINGS</div>
-        {sorted.map((p:any,i:number)=>{const medalColors=["#C9A84C","#888888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
-          <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:14}}>FINAL STANDINGS</div>
+        {sorted.map((p:any,i:number)=>{const medalColors=["#E9B949","#888888","#A0714F"];const isTop3=i<3;return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:i<sorted.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+          <div style={{width:24,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{i+1}</div>:<span style={{color:"#333",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
           <Avatar name={p.name} size={34} streak={p.streak||0}/>
-          <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
-          <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(p.total_profit)}</div>
+          <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{p.session_count} games · {p.wins}W</div></div>
+          <div style={{color:p.total_profit>=0?"#4ADE80":"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(p.total_profit)}</div>
         </div>;})}
       </Card>}
       <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:12}}>SEASON AWARDS</div>
-        {sorted[0]&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="star" size={11} color="#555"/>Most Profitable</span><span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{sorted[0].name}</span></div>}
-        {topChicken&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="drumstick" size={11} color="#555"/>Most Chicken Dinners</span><span style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{topChicken[0]} ×{topChicken[1]}</span></div>}
-        {mostSessions&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="card" size={11} color="#555"/>Most Sessions</span><span style={{color:"#fff",fontFamily:"'Space Mono',monospace",fontWeight:700}}>{mostSessions.name} ({mostSessions.session_count})</span></div>}
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:12}}>SEASON AWARDS</div>
+        {sorted[0]&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="star" size={11} color="#555"/>Most Profitable</span><span style={{color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{sorted[0].name}</span></div>}
+        {topChicken&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}><span style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="drumstick" size={11} color="#555"/>Most Chicken Dinners</span><span style={{color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{topChicken[0]} ×{topChicken[1]}</span></div>}
+        {mostSessions&&<div style={{display:"flex",justifyContent:"space-between",padding:"8px 0"}}><span style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,display:"flex",alignItems:"center",gap:5}}><Icon name="card" size={11} color="#555"/>Most Sessions</span><span style={{color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{mostSessions.name} ({mostSessions.session_count})</span></div>}
       </Card>
     </div>
   );
@@ -647,10 +660,10 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
     navigator.clipboard?.writeText(link).then(()=>showToast("Invite link copied! 🔗")).catch(()=>showToast(`Share this code: ${league.code}`));
   };
   const getPrimaryStatValue=(p:any)=>{
-    if(sortBy==='profit')return{val:`${fmtProfit(p.total_profit)}`,color:p.total_profit>=0?"#4CAF8C":"#E05555"};
-    if(sortBy==='winpct'){const pct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;return{val:`${pct}%`,color:"#5577CC"};}
+    if(sortBy==='profit')return{val:`${fmtProfit(p.total_profit)}`,color:p.total_profit>=0?"#4ADE80":"#F87171"};
+    if(sortBy==='winpct'){const pct=p.session_count>0?((p.wins/p.session_count)*100).toFixed(0):0;return{val:`${pct}%`,color:"#8AB4FF"};}
     if(sortBy==='time')return{val:fmtSeconds(p.time_played_seconds||0)||"—",color:"#888"};
-    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#C9A84C"};
+    if(sortBy==='chicken')return{val:`${p.chicken_dinners||0}`,color:"#E9B949"};
     return{val:"—",color:"#888"};
   };
   const getSubStat=(p:any)=>{
@@ -659,34 +672,34 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
   };
   return(
     <div style={{maxWidth:500,margin:"0 auto"}}>
-      <div style={{background:"linear-gradient(180deg,rgba(20,40,20,0.95) 0%,rgba(10,10,10,0) 100%)",padding:"18px 16px 0"}}>
+      <div style={{background:"linear-gradient(180deg,rgba(19,19,23,0.98) 0%,transparent 100%)",padding:"18px 16px 0"}}>
         <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:12}}>
           <button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>←</button>
-          <div style={{flex:1,minWidth:0}}><div style={{fontFamily:"'Playfair Display',serif",fontSize:21,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league.name}</div>{league.description&&<div style={{color:"#666",fontSize:11,marginTop:1}}>{league.description}</div>}</div>
-          {isCommissioner&&<button onClick={onCommSettings} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:20,padding:"5px 10px",color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",gap:4}}><Icon name="crown" size={11} color="#C9A84C"/> MANAGE</button>}
+          <div style={{flex:1,minWidth:0}}><div style={{fontFamily:"'Fraunces',serif",fontSize:21,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league.name}</div>{league.description&&<div style={{color:"#666",fontSize:11,marginTop:1}}>{league.description}</div>}</div>
+          {isCommissioner&&<button onClick={onCommSettings} style={{background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:20,padding:"5px 10px",color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",gap:4}}><Icon name="crown" size={11} color="#E9B949"/> MANAGE</button>}
         </div>
-        {seasonDone&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:10,padding:"9px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <span style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11}}>🏁 Season complete — {sessions.length} sessions</span>
-          <button onClick={onSeasonRecap} style={{padding:"3px 10px",background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>VIEW RECAP</button>
+        {seasonDone&&<div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:10,padding:"9px 14px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>🏁 Season complete — {sessions.length} sessions</span>
+          <button onClick={onSeasonRecap} style={{padding:"3px 10px",background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>VIEW RECAP</button>
         </div>}
-        {sessionsLeft!==null&&sessionsLeft>0&&sessionsLeft<=3&&<div style={{background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:10,padding:"9px 14px",marginBottom:10,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="warning" size={12} color="#C9A84C"/>Only {sessionsLeft} session{sessionsLeft!==1?"s":""} left in the season!</div>}
+        {sessionsLeft!==null&&sessionsLeft>0&&sessionsLeft<=3&&<div style={{background:"rgba(233,185,73,0.08)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:10,padding:"9px 14px",marginBottom:10,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:11,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="warning" size={12} color="#E9B949"/>Only {sessionsLeft} session{sessionsLeft!==1?"s":""} left in the season!</div>}
         <div style={{display:"flex",gap:7,marginBottom:11}}>
           <StatBox label="Members" value={`${players.length}/${league.max_players||12}`}/>
           <StatBox label="Sessions" value={sessions.length}/>
-          <StatBox label="Last Buy-in" value={sessions[0]?.buy_in_amount?`$${sessions[0].buy_in_amount}`:`$${league.buy_in}`} accent="#4CAF8C"/>
-          <StatBox label="All-Time Vol" value={`$${sessions.reduce((a:number,s:any)=>a+(s.pot||0),0).toLocaleString()}`} accent="#C9A84C"/>
+          <StatBox label="Last Buy-in" value={sessions[0]?.buy_in_amount?`$${sessions[0].buy_in_amount}`:`$${league.buy_in}`} accent="#4ADE80"/>
+          <StatBox label="All-Time Vol" value={`$${sessions.reduce((a:number,s:any)=>a+(s.pot||0),0).toLocaleString()}`} accent="#E9B949"/>
         </div>
         {/* Code / Location / Invite — evenly spaced */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
-          <span style={{color:league.is_public?"#5577CC":"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",letterSpacing:3,background:league.is_public?"rgba(85,119,204,0.1)":"rgba(201,168,76,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.is_public?"PUBLIC":league.code}</span>
-          <span style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{league.location_name?<><Icon name="pin" size={10} color="#555"/>{league.location_name}</>:(league.is_public?<><Icon name="globe" size={10} color="#5577CC"/>Public</>:"")}</span>
-          <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0,display:"flex",alignItems:"center",gap:5}}><Icon name="link" size={11} color="#4CAF8C"/>Invite</button>
+          <span style={{color:league.is_public?"#8AB4FF":"#E9B949",fontSize:12,fontFamily:"'JetBrains Mono',monospace",letterSpacing:3,background:league.is_public?"rgba(138,180,255,0.1)":"rgba(233,185,73,0.1)",padding:"4px 10px",borderRadius:8,flexShrink:0}}>{league.is_public?"PUBLIC":league.code}</span>
+          <span style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",flex:1,textAlign:"center" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{league.location_name?<><Icon name="pin" size={10} color="#555"/>{league.location_name}</>:(league.is_public?<><Icon name="globe" size={10} color="#8AB4FF"/>Public</>:"")}</span>
+          <button onClick={copyInviteLink} style={{padding:"4px 12px",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:20,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1,flexShrink:0,display:"flex",alignItems:"center",gap:5}}><Icon name="link" size={11} color="#4ADE80"/>Invite</button>
         </div>
       </div>
       <div style={{padding:"0 16px 20px"}}>
         <SeasonCountdown league={league} isCommissioner={isCommissioner} onEndSeason={onEndSeason}/>
-        {liveSession&&<div onClick={onStartSession} style={{background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,padding:"13px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}><div style={{width:9,height:9,borderRadius:"50%",background:"#4CAF8C",animation:"pulse 1.5s infinite",flexShrink:0}}/><div style={{flex:1}}><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:2}}>● GAME IS LIVE</div><div style={{color:"#888",fontSize:11,marginTop:1}}>Tap to enter your stats</div></div><span style={{color:"#4CAF8C",fontSize:20}}>›</span></div>}
-        {!liveSession&&<button onClick={onStartSession} style={{width:"100%",padding:"12px 0",marginBottom:12,background:"linear-gradient(135deg,#1a4a2a,#2a6a3a)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:13,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}><span style={{fontSize:17}}>♠</span> START TONIGHT'S SESSION</button>}
+        {liveSession&&<div onClick={onStartSession} style={{background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.4)",borderRadius:13,padding:"13px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}><div style={{width:9,height:9,borderRadius:"50%",background:"#4ADE80",animation:"pulse 1.5s infinite",flexShrink:0}}/><div style={{flex:1}}><div style={{color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:2}}>● GAME IS LIVE</div><div style={{color:"#888",fontSize:11,marginTop:1}}>Tap to enter your stats</div></div><span style={{color:"#4ADE80",fontSize:20}}>›</span></div>}
+        {!liveSession&&<button onClick={onStartSession} style={{width:"100%",padding:"12px 0",marginBottom:12,background:"linear-gradient(135deg,#1a4a2a,#2a6a3a)",border:"1px solid rgba(74,222,128,0.4)",borderRadius:13,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}><span style={{fontSize:17}}>♠</span> START TONIGHT'S SESSION</button>}
         <div style={{marginBottom:9}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search players..." style={{...inp,padding:"7px 11px",fontSize:12}}/>
         </div>
@@ -695,53 +708,53 @@ function LeagueDetailView({league,players,sessions,profile,isCommissioner,onView
           <div style={{display:"flex",gap:5,overflowX:"auto",flex:1,scrollbarWidth:"none",msOverflowStyle:"none",WebkitOverflowScrolling:"touch"} as any}>
             <style>{`.sort-bar::-webkit-scrollbar{display:none}`}</style>
             <div className="sort-bar" style={{display:"flex",gap:5,minWidth:"max-content"}}>
-              {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#C9A84C":"#555"}/>}{l}</button>)}
+              {([['profit','$ P/L'],['winpct','WIN %'],['time','TIME PLAYED'],['chicken','DINNERS']] as any[]).map(([k,l])=><button key={k} onClick={()=>setSortBy(k)} style={{padding:"4px 11px",borderRadius:20,background:sortBy===k?"rgba(233,185,73,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sortBy===k?"rgba(233,185,73,0.4)":"rgba(255,255,255,0.08)"}`,color:sortBy===k?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,display:"flex",alignItems:"center",gap:4}}>{k==='chicken'&&<Icon name="drumstick" size={10} color={sortBy===k?"#E9B949":"#555"}/>}{l}</button>)}
             </div>
           </div>
         </div>
         <Card style={{padding:0,overflow:"hidden",marginBottom:12}}>
-          {getSorted().length===0&&<div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:12,textAlign:"center",padding:"22px 0"}}>{search?"No players match your search":"No members yet"}</div>}
+          {getSorted().length===0&&<div style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:12,textAlign:"center",padding:"22px 0"}}>{search?"No players match your search":"No members yet"}</div>}
           {getSorted().map((p:any,i:number)=>{
             const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();
             const medals=["1","2","3"];const isTop3=i<3&&!search;
-            const medalColors=["#C9A84C","#888888","#A0714F"];
+            const medalColors=["#E9B949","#888888","#A0714F"];
             const{val,color}=getPrimaryStatValue(p);
-            return<div key={p.id} onClick={()=>onViewPlayer(p)} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",background:i===0&&!search?"rgba(201,168,76,0.03)":"transparent"}}>
-              <div style={{width:22,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'Space Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{medals[i]}</div>:<span style={{color:"#333",fontFamily:"'Space Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
+            return<div key={p.id} onClick={()=>onViewPlayer(p)} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",background:i===0&&!search?"rgba(233,185,73,0.03)":"transparent"}}>
+              <div style={{width:22,textAlign:"center",flexShrink:0}}>{isTop3?<div style={{width:20,height:20,borderRadius:"50%",background:`${medalColors[i]}22`,border:`1px solid ${medalColors[i]}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medalColors[i],fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:700,margin:"0 auto"}}>{medals[i]}</div>:<span style={{color:"#333",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{i+1}</span>}</div>
               <Avatar name={p.name} size={38}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>
-                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:1}}>{getSubStat(p)}</div>
+                <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:4}}>{p.name.length>13?p.name.slice(0,13)+"…":p.name} {isComm&&<Icon name="crown" size={12} color="#E9B949"/>}</div>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{getSubStat(p)}</div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{color,fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:15}}>{val}</div>
+                <div style={{color,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:15}}>{val}</div>
               </div>
             </div>;
           })}
         </Card>
         {sessions.length>0&&<Card style={{marginBottom:12}}>
-          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PAST SESSIONS</div>
+          <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>PAST SESSIONS</div>
           {sessions.slice(0,6).map((s:any,i:number)=>{
             const d=new Date(s.created_at);
             const title=s.notes||`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · $${s.pot} pot`;
             return<div key={s.id} onClick={()=>onViewSession(s)} style={{display:"flex",alignItems:"center",gap:9,padding:"10px 0",borderBottom:i<Math.min(sessions.length,6)-1?"1px solid rgba(255,255,255,0.05)":"none",cursor:"pointer"}}>
               <div style={{width:32,textAlign:"center",flexShrink:0}}>
-                <div style={{color:"#C9A84C",fontSize:13,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
-                <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+                <div style={{color:"#E9B949",fontSize:13,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
+                <div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-                  <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title.length>28?title.slice(0,28)+"…":title}{s.locked&&<Icon name="lock" size={11} color="#666"/>}{s.edit_alert&&<Icon name="warning" size={11} color="#E05555"/>}</div>
-                  {s.chicken_dinner_name&&<div style={{color:"#C9A84C",fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={13} color="#C9A84C"/>{s.chicken_dinner_name}</div>}
+                  <div style={{color:"#fff",fontSize:13,display:"flex",alignItems:"center",gap:5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title.length>28?title.slice(0,28)+"…":title}{s.locked&&<Icon name="lock" size={11} color="#666"/>}{s.edit_alert&&<Icon name="warning" size={11} color="#F87171"/>}</div>
+                  {s.chicken_dinner_name&&<div style={{color:"#E9B949",fontFamily:"'Fraunces',serif",fontSize:14,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={13} color="#E9B949"/>{s.chicken_dinner_name}</div>}
                 </div>
-                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>${s.pot} pot{s.buy_in_amount?` · $${s.buy_in_amount} buy-in`:""}</div>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>${s.pot} pot{s.buy_in_amount?` · $${s.buy_in_amount} buy-in`:""}</div>
               </div>
               <span style={{color:"#555",fontSize:16,flexShrink:0}}>›</span>
             </div>;
           })}
         </Card>}
-        <button onClick={onViewSeasonArchive} style={{width:"100%",padding:"9px 0",marginBottom:9,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:11,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="trophy" size={11} color="#555"/>SEASON ARCHIVE</button>
-        <button onClick={onLeaveLeague} style={{width:"100%",padding:"10px 0",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.12)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>LEAVE LEAGUE</button>
+        <button onClick={onViewSeasonArchive} style={{width:"100%",padding:"9px 0",marginBottom:9,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:11,color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="trophy" size={11} color="#555"/>SEASON ARCHIVE</button>
+        <button onClick={onLeaveLeague} style={{width:"100%",padding:"10px 0",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.12)",borderRadius:11,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>LEAVE LEAGUE</button>
       </div>
     </div>
   );
@@ -778,23 +791,23 @@ function SeasonCountdown({league,isCommissioner,onEndSeason}:any){
     <div style={{marginBottom:12,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:13,padding:"11px 14px"}}>
       {/* Single row: season name left, days right */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5}}>
           SEASON {seasonNum} · <span style={{color:"#aaa"}}>{name}</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {seasonOver
-            ?<span style={{color:"#E05555",fontSize:11,fontFamily:"'Space Mono',monospace"}}>COMPLETE</span>
-            :<span style={{color:"#C9A84C",fontSize:15,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{daysLeft}<span style={{color:"#666",fontSize:10,fontFamily:"'Space Mono',monospace",marginLeft:4}}>days left</span></span>
+            ?<span style={{color:"#F87171",fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>COMPLETE</span>
+            :<span style={{color:"#E9B949",fontSize:15,fontFamily:"'Fraunces',serif",fontWeight:700}}>{daysLeft}<span style={{color:"#666",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginLeft:4}}>days left</span></span>
           }
-          {isCommissioner&&seasonOver&&<button onClick={onEndSeason} style={{padding:"3px 10px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>END SEASON →</button>}
+          {isCommissioner&&seasonOver&&<button onClick={onEndSeason} style={{padding:"3px 10px",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>END SEASON →</button>}
         </div>
       </div>
       {/* Progress bar with fish-of-month markers */}
       <div style={{position:"relative" as const,height:3,background:"rgba(255,255,255,0.05)",borderRadius:2,marginTop:4}}>
-        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#E05555":"linear-gradient(90deg,rgba(201,168,76,0.6),#C9A84C)",borderRadius:2,transition:"width 0.5s",position:"relative" as const}}/>
+        <div style={{height:"100%",width:`${pct}%`,background:seasonOver?"#F87171":"linear-gradient(90deg,rgba(233,185,73,0.6),#E9B949)",borderRadius:2,transition:"width 0.5s",position:"relative" as const}}/>
         {/* Fish of month dots at ~33% and ~66% */}
-        <div style={{position:"absolute" as const,top:"50%",left:"33.3%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=33?"#4CAF8C":"#1a3a2a",border:`1px solid ${pct>=33?"#4CAF8C":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
-        <div style={{position:"absolute" as const,top:"50%",left:"66.6%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=67?"#4CAF8C":"#1a3a2a",border:`1px solid ${pct>=67?"#4CAF8C":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
+        <div style={{position:"absolute" as const,top:"50%",left:"33.3%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=33?"#4ADE80":"#1a3a2a",border:`1px solid ${pct>=33?"#4ADE80":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
+        <div style={{position:"absolute" as const,top:"50%",left:"66.6%",transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:pct>=67?"#4ADE80":"#1a3a2a",border:`1px solid ${pct>=67?"#4ADE80":"#2a4a3a"}`,zIndex:2,transition:"background 0.5s"}}/>
       </div>
     </div>
   );
@@ -813,18 +826,18 @@ function SeasonArchiveView({league,onBack,onViewArchive}:any){
       <BackButton onBack={onBack}/>
       <SectionTitle text="Season Archive"/>
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:32}}><Spinner/></div>}
-      {!loading&&archives.length===0&&<Card><div style={{textAlign:"center" as const,padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No completed seasons yet.</div></Card>}
+      {!loading&&archives.length===0&&<Card><div style={{textAlign:"center" as const,padding:"20px 0",color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>No completed seasons yet.</div></Card>}
       {archives.map((a:any)=>(
         <Card key={a.id} style={{marginBottom:10,cursor:"pointer"}} onClick={()=>onViewArchive(a)}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:36,height:36,borderRadius:9,background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <span style={{color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,fontWeight:700}}>S{a.season_number}</span>
+            <div style={{width:36,height:36,borderRadius:9,background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <span style={{color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700}}>S{a.season_number}</span>
             </div>
             <div style={{flex:1}}>
-              <div style={{color:"#fff",fontSize:13,fontFamily:"'Playfair Display',serif"}}>{a.season_name||`Season ${a.season_number}`}</div>
-              <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:2}}>
+              <div style={{color:"#fff",fontSize:13,fontFamily:"'Fraunces',serif"}}>{a.season_name||`Season ${a.season_number}`}</div>
+              <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>
                 {a.ended_at?new Date(a.ended_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):""}
-                {a.winner_name&&<span style={{color:"#C9A84C",marginLeft:8}}>🏆 {a.winner_name}</span>}
+                {a.winner_name&&<span style={{color:"#E9B949",marginLeft:8}}>🏆 {a.winner_name}</span>}
               </div>
             </div>
             <span style={{color:"#444",fontSize:17}}>›</span>
@@ -844,40 +857,40 @@ function ArchivedSeasonView({archive,league,onBack}:any){
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/>
       <div style={{textAlign:"center" as const,marginBottom:18}}>
-        <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:4}}>{league.name}</div>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C9A84C"}}>{archive.season_name||`Season ${archive.season_number}`}</div>
-        {archive.winner_name&&<div style={{color:"#4CAF8C",fontSize:12,fontFamily:"'Space Mono',monospace",marginTop:4}}>🏆 {archive.winner_name}</div>}
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:4}}>{sessions.length} sessions played</div>
+        <div style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:4}}>{league.name}</div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#E9B949"}}>{archive.season_name||`Season ${archive.season_number}`}</div>
+        {archive.winner_name&&<div style={{color:"#4ADE80",fontSize:12,fontFamily:"'JetBrains Mono',monospace",marginTop:4}}>🏆 {archive.winner_name}</div>}
+        <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:4}}>{sessions.length} sessions played</div>
       </div>
       {players.length>0&&<Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>FINAL STANDINGS</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>FINAL STANDINGS</div>
         {players.map((p:any,i:number)=>{
-          const medal=["#C9A84C","#888888","#A0714F"][i];
+          const medal=["#E9B949","#888888","#A0714F"][i];
           return<div key={p.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{width:22,flexShrink:0,textAlign:"center" as const}}>
-              {i<3?<div style={{width:18,height:18,borderRadius:"50%",background:`${medal}22`,border:`1px solid ${medal}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medal,fontSize:8,fontFamily:"'Space Mono',monospace",fontWeight:700,margin:"0 auto"}}>{i+1}</div>
-              :<span style={{color:"#333",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{i+1}</span>}
+              {i<3?<div style={{width:18,height:18,borderRadius:"50%",background:`${medal}22`,border:`1px solid ${medal}66`,display:"flex",alignItems:"center",justifyContent:"center",color:medal,fontSize:8,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,margin:"0 auto"}}>{i+1}</div>
+              :<span style={{color:"#333",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{i+1}</span>}
             </div>
             <Avatar name={p.name} size={30}/>
-            <div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{p.name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count}G · {p.wins}W</div></div>
-            <div style={{color:p.total_profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>{fmtProfit(p.total_profit)}</div>
+            <div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{p.name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>{p.session_count}G · {p.wins}W</div></div>
+            <div style={{color:p.total_profit>=0?"#4ADE80":"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12}}>{fmtProfit(p.total_profit)}</div>
           </div>;
         })}
       </Card>}
       {sessions.length>0&&<Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>SESSIONS</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>SESSIONS</div>
         {sessions.map((s:any,i:number)=>{
           const d=new Date(s.created_at);
           return<div key={s.id||i} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 0",borderBottom:i<sessions.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
             <div style={{width:32,textAlign:"center" as const,flexShrink:0}}>
-              <div style={{color:"#C9A84C",fontSize:12,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
-              <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+              <div style={{color:"#E9B949",fontSize:12,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{d.getDate()}</div>
+              <div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
             </div>
             <div style={{flex:1}}>
               <div style={{color:"#fff",fontSize:12}}>{s.notes||`$${s.pot} pot`}</div>
-              {s.chicken_dinner_name&&<div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}><Icon name="drumstick" size={9} color="#C9A84C"/> {s.chicken_dinner_name}</div>}
+              {s.chicken_dinner_name&&<div style={{color:"#E9B949",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}><Icon name="drumstick" size={9} color="#E9B949"/> {s.chicken_dinner_name}</div>}
             </div>
-            <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>${s.pot}</div>
+            <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>${s.pot}</div>
           </div>;
         })}
       </Card>}
@@ -1205,9 +1218,9 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
       <BackButton onBack={onBack}/>
 
       {/* Edit alert banner for commissioner */}
-      {isCommissioner&&session.edit_alert&&<div style={{background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.35)",borderRadius:11,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-        <div><div style={{color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1,marginBottom:2,display:"flex",alignItems:"center",gap:5}}><Icon name="warning" size={12} color="#E05555"/> STATS WERE EDITED</div><div style={{color:"#aaa",fontSize:11}}>{session.edit_alert.summary||`Updated by ${session.edit_alert.editor}`}</div></div>
-        <button onClick={handleDismissAlert} style={{padding:"3px 9px",background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>DISMISS</button>
+      {isCommissioner&&session.edit_alert&&<div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.35)",borderRadius:11,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+        <div><div style={{color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1,marginBottom:2,display:"flex",alignItems:"center",gap:5}}><Icon name="warning" size={12} color="#F87171"/> STATS WERE EDITED</div><div style={{color:"#aaa",fontSize:11}}>{session.edit_alert.summary||`Updated by ${session.edit_alert.editor}`}</div></div>
+        <button onClick={handleDismissAlert} style={{padding:"3px 9px",background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>DISMISS</button>
       </div>}
 
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
@@ -1215,44 +1228,44 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           {renamingTitle
             ?<div style={{display:"flex",gap:7,alignItems:"center"}}>
               <input value={titleInput} onChange={e=>setTitleInput(e.target.value)} placeholder="Name this session..." style={{...inp,fontSize:14,flex:1,padding:"7px 11px"}} autoFocus/>
-              <button onClick={handleSaveTitle} disabled={saving} style={{padding:"7px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>{saving?"...":"✓"}</button>
-              <button onClick={()=>setRenamingTitle(false)} style={{padding:"7px 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>✕</button>
+              <button onClick={handleSaveTitle} disabled={saving} style={{padding:"7px 12px",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:9,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>{saving?"...":"✓"}</button>
+              <button onClick={()=>setRenamingTitle(false)} style={{padding:"7px 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",flexShrink:0}}>✕</button>
             </div>
             :<div style={{display:"flex",alignItems:"baseline",gap:9,flexWrap:"wrap"}}>
-              <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1,flexShrink:0}}>{d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}{showLockCountdown&&<span style={{color:"#333",marginLeft:7}}>{hoursUntilLock===0?"locks soon":`locks in ${hoursUntilLock}h`}</span>}</div>
+              <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1,flexShrink:0}}>{d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}{showLockCountdown&&<span style={{color:"#333",marginLeft:7}}>{hoursUntilLock===0?"locks soon":`locks in ${hoursUntilLock}h`}</span>}</div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:"#fff"}}>{session.notes||"Session Results"}</div>
-                <button onClick={()=>{setTitleInput(session.notes||"");setRenamingTitle(true);}} style={{background:"none",border:"none",color:"#333",fontSize:11,cursor:"pointer",padding:"2px 4px",fontFamily:"'Space Mono',monospace"}}>✏</button>
+                <div style={{fontFamily:"'Fraunces',serif",fontSize:20,color:"#fff"}}>{session.notes||"Session Results"}</div>
+                <button onClick={()=>{setTitleInput(session.notes||"");setRenamingTitle(true);}} style={{background:"none",border:"none",color:"#333",fontSize:11,cursor:"pointer",padding:"2px 4px",fontFamily:"'JetBrains Mono',monospace"}}>✏</button>
               </div>
             </div>}
         </div>
         <div style={{display:"flex",gap:7,flexShrink:0}}>
-          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(201,168,76,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#C9A84C":"#666",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><Icon name={isLocked?"unlock":"lock"} size={12} color={isLocked?"#C9A84C":"#666"}/>{isLocked?"UNLOCK":"LOCK"}</button>}
-          {canEdit&&<button onClick={()=>setEditing(!editing)} style={{padding:"6px 13px",background:editing?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.06)",border:`1px solid ${editing?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{editing?"CANCEL":"EDIT"}</button>}
+          {isCommissioner&&<button onClick={handleToggleLock} style={{padding:"6px 11px",background:isLocked?"rgba(233,185,73,0.1)":"rgba(255,255,255,0.05)",border:`1px solid ${isLocked?"rgba(233,185,73,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:isLocked?"#E9B949":"#666",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><Icon name={isLocked?"unlock":"lock"} size={12} color={isLocked?"#E9B949":"#666"}/>{isLocked?"UNLOCK":"LOCK"}</button>}
+          {canEdit&&<button onClick={()=>setEditing(!editing)} style={{padding:"6px 13px",background:editing?"rgba(233,185,73,0.15)":"rgba(255,255,255,0.06)",border:`1px solid ${editing?"rgba(233,185,73,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#E9B949":"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>{editing?"CANCEL":"EDIT"}</button>}
         </div>
       </div>
 
       <Card style={{marginBottom:12}}>
         <div style={{display:"flex",gap:12}}>
           <div style={{flex:1,textAlign:"center"}}>
-            <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>POT</div>
-            <div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>
+            <div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>POT</div>
+            <div style={{color:"#E9B949",fontSize:24,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:2}}>
                 ${entries.length>0
                   ? entries.reduce((a:number,e:any)=>(a+(e.buy_in||0)*(1+(e.rebuys||0))),0)
                   : (session.pot||0)}
               </div>
           </div>
           <div style={{flex:1,textAlign:"center"}}>
-            <div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>BUY-IN</div>
-            {editing?<input type="number" value={buyInAmount} onChange={e=>setBuyInAmount(e.target.value)} style={{...inp,textAlign:"center" as const,fontSize:20,marginTop:4}}/>:<div style={{color:"#888",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>${session.buy_in_amount||league.buy_in}</div>}
+            <div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>BUY-IN</div>
+            {editing?<input type="number" value={buyInAmount} onChange={e=>setBuyInAmount(e.target.value)} style={{...inp,textAlign:"center" as const,fontSize:20,marginTop:4}}/>:<div style={{color:"#888",fontSize:24,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:2}}>${session.buy_in_amount||league.buy_in}</div>}
           </div>
         </div>
         {session.notes&&!editing&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.05)",color:"#666",fontSize:12,fontStyle:"italic"}}>"{session.notes}"</div>}
-        {editing&&<div style={{marginTop:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:5,display:"block"}}>SESSION NOTES</label><input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Played at Nick's — wild night" style={inp}/></div>}
+        {editing&&<div style={{marginTop:10}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:5,display:"block"}}>SESSION NOTES</label><input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. Played at Nick's — wild night" style={inp}/></div>}
       </Card>
 
       <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>RESULTS</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>RESULTS</div>
         {loading&&<div style={{display:"flex",justifyContent:"center",padding:16}}><Spinner/></div>}
         {[...entries].sort((a:any,b:any)=>(editing?getProfit(b.id)-getProfit(a.id):(b.profit||0)-(a.profit||0))).map((e:any,i:number)=>{
           const guestNote=!e.players&&e.notes?.startsWith('guest:')?e.notes.slice(6):null;
@@ -1276,16 +1289,16 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
               <Avatar name={name} size={34} streak={e.players?.streak||0}/>
               <div style={{flex:1}}>
                 <div style={{color:"#fff",fontSize:13}}>{name}</div>
-                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in: ${(e.buy_in||0)*(1+(e.rebuys||0))} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
-                {!editing&&sessionAchs.length>0&&<div style={{display:"flex",flexWrap:"wrap" as const,gap:3,marginTop:4}}>{sessionAchs.map((a:string)=><span key={a} style={{background:"rgba(201,168,76,0.12)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:10,color:"#C9A84C",fontSize:8,fontFamily:"'Space Mono',monospace",padding:"2px 6px",letterSpacing:0.5}}>🏆 {a}</span>)}</div>}
+                {!editing&&<div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>in: ${(e.buy_in||0)*(1+(e.rebuys||0))} · rebuys: {e.rebuys||0} · out: ${e.cash_out||0}</div>}
+                {!editing&&sessionAchs.length>0&&<div style={{display:"flex",flexWrap:"wrap" as const,gap:3,marginTop:4}}>{sessionAchs.map((a:string)=><span key={a} style={{background:"rgba(233,185,73,0.12)",border:"1px solid rgba(233,185,73,0.25)",borderRadius:10,color:"#E9B949",fontSize:8,fontFamily:"'JetBrains Mono',monospace",padding:"2px 6px",letterSpacing:0.5}}>🏆 {a}</span>)}</div>}
               </div>
-              <div style={{color:profit>=0?"#4CAF8C":"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(profit)}</div>
-              {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
+              <div style={{color:profit>=0?"#4ADE80":"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13}}>{fmtProfit(profit)}</div>
+              {editing&&isCommissioner&&<button onClick={()=>handleRemovePlayer(e)} style={{marginLeft:4,padding:"3px 7px",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>✕</button>}
             </div>
             {editing&&<div style={{display:"flex",gap:6,marginLeft:44}}>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>BUY-IN ($)</div><input type="number" value={ee.buy_in} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,buy_in:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>REBUYS (#)</div><input type="number" value={ee.rebuys} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,rebuys:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
-              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:3}}>CASH-OUT ($)</div><input type="number" value={ee.cash_out} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,cash_out:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>BUY-IN ($)</div><input type="number" value={ee.buy_in} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,buy_in:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>REBUYS (#)</div><input type="number" value={ee.rebuys} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,rebuys:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
+              <div style={{flex:1}}><div style={{color:"#666",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:3}}>CASH-OUT ($)</div><input type="number" value={ee.cash_out} onChange={ev=>setEditedEntries(p=>({...p,[e.id]:{...ee,cash_out:ev.target.value}}))} style={{...inp,padding:"6px 8px",fontSize:12,textAlign:"center" as const}}/></div>
             </div>}
           </div>;
         })}
@@ -1294,69 +1307,69 @@ function SessionDetailView({session,league,players,profile,isCommissioner,onBack
           <div key={`guest-${i}`} style={{padding:"9px 0",borderTop:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",gap:10}}>
             <Avatar name={g} size={34}/>
             <div style={{flex:1}}>
-              <div style={{color:"#777",fontSize:13}}>{g} <span style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace"}}>(guest)</span></div>
-              <div style={{color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace"}}>not tracked in standings</div>
+              <div style={{color:"#777",fontSize:13}}>{g} <span style={{color:"#8AB4FF",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>(guest)</span></div>
+              <div style={{color:"#444",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>not tracked in standings</div>
             </div>
           </div>
         ))}
 
         {/* Balance calculator */}
         {entries.length>0&&<div style={{marginTop:9,paddingTop:9,borderTop:"1px solid rgba(255,255,255,0.05)",display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6}}>
-          <span style={{color:"#444",fontFamily:"'Space Mono',monospace",fontSize:9}}>BALANCE:</span>
+          <span style={{color:"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:9}}>BALANCE:</span>
           {balance===0
-            ?<span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10}}>✓ balanced</span>
-            :<span style={{color:balance>0?"#E8C56A":"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10}}>off by {balance>0?"+":""}${balance}</span>}
+            ?<span style={{color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:10}}>✓ balanced</span>
+            :<span style={{color:balance>0?"#F0CA5A":"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10}}>off by {balance>0?"+":""}${balance}</span>}
         </div>}
 
         {/* Add missing player */}
         {isCommissioner&&!addingPlayer&&<div style={{display:"flex",gap:7,marginTop:11}}>
-          <button onClick={()=>setAddingPlayer(true)} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.1)",border:"1px solid rgba(85,119,204,0.25)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD PLAYER</button>
-          <button onClick={()=>{setNewPlayerName("(guest)");setAddingPlayer(true);}} style={{flex:1,padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="person" size={11} color="#5577CC"/>+ GUEST</button>
+          <button onClick={()=>setAddingPlayer(true)} style={{flex:1,padding:"8px 0",background:"rgba(138,180,255,0.1)",border:"1px solid rgba(138,180,255,0.25)",borderRadius:9,color:"#8AB4FF",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer"}}>+ ADD PLAYER</button>
+          <button onClick={()=>{setNewPlayerName("(guest)");setAddingPlayer(true);}} style={{flex:1,padding:"8px 0",background:"rgba(138,180,255,0.05)",border:"1px dashed rgba(138,180,255,0.2)",borderRadius:9,color:"#8AB4FF",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="person" size={11} color="#8AB4FF"/>+ GUEST</button>
         </div>}
         {isCommissioner&&!isLocked&&addingPlayer&&<div style={{marginTop:11,paddingTop:11,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
-          <div style={{color:"#5577CC",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>ADD PLAYER TO THIS SESSION</div>
+          <div style={{color:"#8AB4FF",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:10}}>ADD PLAYER TO THIS SESSION</div>
           <div style={{marginBottom:8}}>
-            <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:5,display:"block"}}>PLAYER NAME</label>
+            <label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:5,display:"block"}}>PLAYER NAME</label>
             {missingPlayers.length>0&&<select value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} style={{...inp,fontSize:13,marginBottom:6}}><option value="">-- select league member --</option>{missingPlayers.map((p:any)=><option key={p.id} value={p.name}>{p.name}</option>)}</select>}
             <input value={newPlayerName} onChange={e=>setNewPlayerName(e.target.value)} placeholder="Or type a name manually" style={{...inp,fontSize:13}}/>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>BUY-IN ($)</label><input type="number" value={newPlayerBuyIn} onChange={e=>setNewPlayerBuyIn(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
-            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>REBUYS ($)</label><input type="number" value={newPlayerRebuys} onChange={e=>setNewPlayerRebuys(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
-            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4,display:"block"}}>CASH-OUT ($)</label><input type="number" value={newPlayerCashOut} onChange={e=>setNewPlayerCashOut(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4,display:"block"}}>BUY-IN ($)</label><input type="number" value={newPlayerBuyIn} onChange={e=>setNewPlayerBuyIn(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4,display:"block"}}>REBUYS ($)</label><input type="number" value={newPlayerRebuys} onChange={e=>setNewPlayerRebuys(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
+            <div style={{flex:1}}><label style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4,display:"block"}}>CASH-OUT ($)</label><input type="number" value={newPlayerCashOut} onChange={e=>setNewPlayerCashOut(e.target.value)} style={{...inp,padding:"8px 10px",fontSize:13}}/></div>
           </div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys)))>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys))))}</span></div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:10}}>Profit: <span style={{color:Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys)))>=0?"#4ADE80":"#F87171",fontWeight:700}}>{fmtProfit(Number(newPlayerCashOut)-(Number(newPlayerBuyIn)*(1+Number(newPlayerRebuys))))}</span></div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{flex:1,padding:"9px 0",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button>
-            <button onClick={handleAddPlayer} disabled={saving||!newPlayerName.trim()} style={{flex:2,padding:"9px 0",background:newPlayerName.trim()&&!saving?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${newPlayerName.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:newPlayerName.trim()?"#5577CC":"#555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:"ADD TO SESSION →"}</button>
+            <button onClick={()=>{setAddingPlayer(false);setNewPlayerName("");}} style={{flex:1,padding:"9px 0",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button>
+            <button onClick={handleAddPlayer} disabled={saving||!newPlayerName.trim()} style={{flex:2,padding:"9px 0",background:newPlayerName.trim()&&!saving?"rgba(138,180,255,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${newPlayerName.trim()?"rgba(138,180,255,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:newPlayerName.trim()?"#8AB4FF":"#555",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:"ADD TO SESSION →"}</button>
           </div>
         </div>}
       </Card>
 
       {/* Awards */}
       <Card style={{marginBottom:12,textAlign:"center" as const}}>
-        <div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="drumstick" size={11} color="#888"/> WINNER WINNER CHICKEN DINNER</div>
-        <div style={{color:"#C9A84C",fontSize:22,fontFamily:"'Playfair Display',serif",fontWeight:700}}>{session.chicken_dinner_name||"—"}</div>
-        {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'Space Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
+        <div style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:3,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="drumstick" size={11} color="#888"/> WINNER WINNER CHICKEN DINNER</div>
+        <div style={{color:"#E9B949",fontSize:22,fontFamily:"'Fraunces',serif",fontWeight:700}}>{session.chicken_dinner_name||"—"}</div>
+        {editing&&<div style={{color:"#444",fontSize:9,marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>Auto-assigned to highest profit on save</div>}
       </Card>
 
       {isLocked
-        ?<div style={{background:"rgba(76,175,140,0.06)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <Icon name="lock" size={13} color="#4CAF8C"/>
-          <span style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10}}>Stats locked and committed to player profiles</span>
+        ?<div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          <Icon name="lock" size={13} color="#4ADE80"/>
+          <span style={{color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:10}}>Stats locked and committed to player profiles</span>
         </div>
-        :<div style={{background:"rgba(201,168,76,0.04)",border:"1px solid rgba(201,168,76,0.12)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+        :<div style={{background:"rgba(233,185,73,0.04)",border:"1px solid rgba(233,185,73,0.12)",borderRadius:11,padding:"9px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
           <Icon name="hourglass" size={13} color="#666"/>
-          <span style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:10}}>{isCommissioner?"Lock this session to commit stats to player profiles":"Pending — commissioner must lock to commit stats"}</span>
+          <span style={{color:"#666",fontFamily:"'JetBrains Mono',monospace",fontSize:10}}>{isCommissioner?"Lock this session to commit stats to player profiles":"Pending — commissioner must lock to commit stats"}</span>
         </div>}
 
-      {editing&&canEdit&&<button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"12px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>{saving?<><Spinner size={14}/> SAVING...</>:"SAVE CHANGES ✓"}</button>}
+      {editing&&canEdit&&<button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"12px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:11,color:saving?"#444":"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:12}}>{saving?<><Spinner size={14}/> SAVING...</>:"SAVE CHANGES ✓"}</button>}
 
       {/* Session posts */}
       {sessionPosts.length>0&&<Card>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>FROM THIS NIGHT</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>FROM THIS NIGHT</div>
         {sessionPosts.map((post:any,i:number)=><div key={post.id} style={{paddingBottom:i<sessionPosts.length-1?11:0,marginBottom:i<sessionPosts.length-1?11:0,borderBottom:i<sessionPosts.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><Avatar name={post.author_name} size={24}/><span style={{color:"#fff",fontSize:12}}>{post.author_name}</span><span style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",marginLeft:"auto"}}>{new Date(post.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><Avatar name={post.author_name} size={24}/><span style={{color:"#fff",fontSize:12}}>{post.author_name}</span><span style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginLeft:"auto"}}>{new Date(post.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></div>
           {post.content&&<div style={{color:"#bbb",fontSize:12,lineHeight:1.5,marginBottom:post.media_url?7:0}}>{post.content}</div>}
           {post.media_url&&(post.media_type==="video"?<video src={post.media_url} controls style={{width:"100%",borderRadius:9,maxHeight:240}}/>:<img src={post.media_url} style={{width:"100%",borderRadius:9,maxHeight:240,objectFit:"cover"}}/>)}
         </div>)}
@@ -1374,8 +1387,8 @@ function TransferCommView({league,players,profile,onBack,onTransferred}:any){
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Transfer Commissioner"/>
       <div style={{color:"#888",fontSize:12,lineHeight:1.7,marginBottom:16}}>Choose who takes over before you leave.</div>
-      <Card style={{marginBottom:14}}>{others.length===0&&<div style={{color:"#555",textAlign:"center",padding:"14px 0",fontFamily:"'Space Mono',monospace",fontSize:12}}>No other players.</div>}{others.map((p:any)=><div key={p.id} onClick={()=>setSelected(p.name)} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer"}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${selected===p.name?"#C9A84C":"#333"}`,background:selected===p.name?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{selected===p.name?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{color:"#fff"}}>{p.name}</div></div>)}</Card>
-      <button onClick={handleTransfer} disabled={!selected||loading} style={{width:"100%",padding:"12px 0",background:selected&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:selected&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:selected&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"TRANSFER & LEAVE →"}</button>
+      <Card style={{marginBottom:14}}>{others.length===0&&<div style={{color:"#555",textAlign:"center",padding:"14px 0",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>No other players.</div>}{others.map((p:any)=><div key={p.id} onClick={()=>setSelected(p.name)} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer"}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${selected===p.name?"#E9B949":"#333"}`,background:selected===p.name?"#E9B949":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{selected===p.name?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{color:"#fff"}}>{p.name}</div></div>)}</Card>
+      <button onClick={handleTransfer} disabled={!selected||loading} style={{width:"100%",padding:"12px 0",background:selected&&!loading?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:selected&&!loading?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:selected&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:"TRANSFER & LEAVE →"}</button>
     </div>
   );
 }
@@ -1413,47 +1426,47 @@ function LiveSessionView({session,liveEntries,players,profile,isCommissioner,lea
     setSaving(false);
   };
   const notInSession=players.filter((p:any)=>!liveEntries.some((e:any)=>e.player_id===p.id));
-  const ni:any={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:8,padding:"7px 9px",color:"#fff",fontSize:13,fontFamily:"'Space Mono',monospace",outline:"none",textAlign:"center",boxSizing:"border-box"};
+  const ni:any={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(233,185,73,0.25)",borderRadius:8,padding:"7px 9px",color:"#fff",fontSize:13,fontFamily:"'JetBrains Mono',monospace",outline:"none",textAlign:"center",boxSizing:"border-box"};
   return(
     <div style={{padding:"16px 16px",maxWidth:500,margin:"0 auto"}}>
-      <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:12}}><button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>←</button><div style={{flex:1}}><div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>● GAME IS LIVE</div><div style={{fontFamily:"'Playfair Display',serif",fontSize:19,color:"#fff"}}>{league.name}</div></div></div>
+      <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:12}}><button onClick={onBack} style={{background:"none",border:"none",color:"#555",fontSize:22,cursor:"pointer"}}>←</button><div style={{flex:1}}><div style={{color:"#4ADE80",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>● GAME IS LIVE</div><div style={{fontFamily:"'Fraunces',serif",fontSize:19,color:"#fff"}}>{league.name}</div></div></div>
       <div style={{display:"flex",gap:9,marginBottom:12}}>
-        <div style={{flex:1,background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>TIME</div><div style={{color:"#4CAF8C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>{fmt(elapsed)}</div></div>
-        <div style={{flex:1,background:"rgba(201,168,76,0.08)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>POT</div><div style={{color:"#C9A84C",fontSize:24,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:2}}>${totalPot}</div></div>
+        <div style={{flex:1,background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>TIME</div><div style={{color:"#4ADE80",fontSize:24,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:2}}>{fmt(elapsed)}</div></div>
+        <div style={{flex:1,background:"rgba(233,185,73,0.08)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:13,padding:"12px 13px",textAlign:"center"}}><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>POT</div><div style={{color:"#E9B949",fontSize:24,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:2}}>${totalPot}</div></div>
       </div>
-      {myPlayer&&<Card style={{marginBottom:12,border:"1px solid rgba(201,168,76,0.3)",background:"rgba(201,168,76,0.04)"}}>
-        <div style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>YOUR STATS {inSession&&<span style={{color:"#4CAF8C",fontSize:9}}>✓ submitted</span>}</div>
+      {myPlayer&&<Card style={{marginBottom:12,border:"1px solid rgba(233,185,73,0.3)",background:"rgba(233,185,73,0.04)"}}>
+        <div style={{color:"#E9B949",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>YOUR STATS {inSession&&<span style={{color:"#4ADE80",fontSize:9}}>✓ submitted</span>}</div>
         <div style={{display:"flex",gap:9,marginBottom:11}}>
-          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>BUY-IN ($)</div><input type="number" value={myBuyIn||""} onChange={e=>setMyBuyIn(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
-          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>REBUYS ($)</div><input type="number" value={myRebuys||""} onChange={e=>setMyRebuys(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
-          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'Space Mono',monospace",marginBottom:4}}>CASH-OUT ($)</div><input type="number" value={myCashOut||""} onChange={e=>setMyCashOut(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
+          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>BUY-IN ($)</div><input type="number" value={myBuyIn||""} onChange={e=>setMyBuyIn(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
+          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>REBUYS ($)</div><input type="number" value={myRebuys||""} onChange={e=>setMyRebuys(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
+          <div style={{flex:1}}><div style={{color:"#888",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginBottom:4}}>CASH-OUT ($)</div><input type="number" value={myCashOut||""} onChange={e=>setMyCashOut(Number(e.target.value))} style={{...ni,width:"100%"}}/></div>
         </div>
-        <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn-(myRebuys*myBuyIn)>=0?"#4CAF8C":"#E05555",fontWeight:700}}>{fmtProfit(myCashOut-myBuyIn-(myRebuys*myBuyIn))}</span></div>
-        <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
+        <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:9}}>Profit: <span style={{color:myCashOut-myBuyIn-(myRebuys*myBuyIn)>=0?"#4ADE80":"#F87171",fontWeight:700}}>{fmtProfit(myCashOut-myBuyIn-(myRebuys*myBuyIn))}</span></div>
+        <button onClick={handleSubmit} disabled={saving} style={{width:"100%",padding:"9px 0",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:9,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{saving?<Spinner size={13}/>:inSession?"UPDATE MY STATS ✓":"JOIN & SUBMIT STATS →"}</button>
       </Card>}
       <Card style={{marginBottom:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
-          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>IN SESSION ({liveEntries.length})</div>
-          {isCommissioner&&notInSession.length>0&&<button onClick={()=>setAddingPlayer(!addingPlayer)} style={{padding:"3px 9px",background:"rgba(76,175,140,0.1)",border:"1px solid rgba(76,175,140,0.3)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>+ ADD PLAYER</button>}
+          <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>IN SESSION ({liveEntries.length})</div>
+          {isCommissioner&&notInSession.length>0&&<button onClick={()=>setAddingPlayer(!addingPlayer)} style={{padding:"3px 9px",background:"rgba(74,222,128,0.1)",border:"1px solid rgba(74,222,128,0.3)",borderRadius:20,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>+ ADD PLAYER</button>}
         </div>
         {addingPlayer&&isCommissioner&&<div style={{marginBottom:11,paddingBottom:11,borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:7}}>Select player to add:</div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:7}}>Select player to add:</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {notInSession.map((p:any)=><button key={p.id} onClick={async()=>{if(!db||!session)return;await db.from("live_entries").insert({session_id:session.id,player_id:p.id,player_name:p.name,buy_in:session.buy_in_amount||league.buy_in,rebuys:0,cash_out:0});setAddingPlayer(false);}} style={{padding:"5px 10px",borderRadius:20,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>{p.name}</button>)}
+            {notInSession.map((p:any)=><button key={p.id} onClick={async()=>{if(!db||!session)return;await db.from("live_entries").insert({session_id:session.id,player_id:p.id,player_name:p.name,buy_in:session.buy_in_amount||league.buy_in,rebuys:0,cash_out:0});setAddingPlayer(false);}} style={{padding:"5px 10px",borderRadius:20,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>{p.name}</button>)}
           </div>
         </div>}
-        {liveEntries.length===0&&<div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",textAlign:"center",padding:"10px 0"}}>Waiting for players...</div>}
-        {liveEntries.map((e:any,i:number)=>{const total=(e.buy_in||0)+(e.rebuys||0);const isMe=e.player_name.toLowerCase()===profile.display_name.toLowerCase();return<div key={e.id||i} style={{display:"flex",alignItems:"center",gap:9,padding:"7px 0",borderBottom:i<liveEntries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={e.player_name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}{isMe&&<span style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace"}}> (you)</span>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: ${e.rebuys||0} · out: ${e.cash_out||0}</div></div><div style={{color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12}}>${total}</div></div>;})}
+        {liveEntries.length===0&&<div style={{color:"#555",fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",padding:"10px 0"}}>Waiting for players...</div>}
+        {liveEntries.map((e:any,i:number)=>{const total=(e.buy_in||0)+(e.rebuys||0);const isMe=e.player_name.toLowerCase()===profile.display_name.toLowerCase();return<div key={e.id||i} style={{display:"flex",alignItems:"center",gap:9,padding:"7px 0",borderBottom:i<liveEntries.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={e.player_name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}{isMe&&<span style={{color:"#E9B949",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}> (you)</span>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>in: ${e.buy_in||0} · rebuys: ${e.rebuys||0} · out: ${e.cash_out||0}</div></div><div style={{color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12}}>${total}</div></div>;})}
       </Card>
-      {isCommissioner&&<>{!showCashout&&<button onClick={()=>setShowCashout(true)} style={{width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#5a0000,#8B1A1A)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>END GAME & FINALIZE →</button>}{showCashout&&<Card>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>VERIFY / OVERRIDE CASH-OUTS</div>
-        {liveEntries.map((e:any)=><div key={e.player_id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={e.player_name} size={26}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>submitted: ${e.cash_out||0}</div></div><input type="number" value={cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||"")} onChange={ev=>setCashOuts((c:any)=>({...c,[e.player_id]:Number(ev.target.value)}))} style={{...ni,width:"72px"}}/></div>)}
-        <div style={{marginTop:9,padding:"9px 12px",background:"rgba(201,168,76,0.06)",border:"1px solid rgba(201,168,76,0.15)",borderRadius:9}}>
-          <div style={{color:"#666",fontFamily:"'Space Mono',monospace",fontSize:9,display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={10} color="#666"/>Chicken dinner auto-assigned to highest profit on save</div>
+      {isCommissioner&&<>{!showCashout&&<button onClick={()=>setShowCashout(true)} style={{width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#5a0000,#8B1A1A)",border:"1px solid rgba(248,113,113,0.4)",borderRadius:11,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>END GAME & FINALIZE →</button>}{showCashout&&<Card>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>VERIFY / OVERRIDE CASH-OUTS</div>
+        {liveEntries.map((e:any)=><div key={e.player_id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={e.player_name} size={26}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{e.player_name}</div><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>submitted: ${e.cash_out||0}</div></div><input type="number" value={cashOuts[e.player_id]!==undefined?cashOuts[e.player_id]:(e.cash_out||"")} onChange={ev=>setCashOuts((c:any)=>({...c,[e.player_id]:Number(ev.target.value)}))} style={{...ni,width:"72px"}}/></div>)}
+        <div style={{marginTop:9,padding:"9px 12px",background:"rgba(233,185,73,0.06)",border:"1px solid rgba(233,185,73,0.15)",borderRadius:9}}>
+          <div style={{color:"#666",fontFamily:"'JetBrains Mono',monospace",fontSize:9,display:"flex",alignItems:"center",gap:4}}><Icon name="drumstick" size={10} color="#666"/>Chicken dinner auto-assigned to highest profit on save</div>
         </div>
-        <button onClick={handleEnd} disabled={saving} style={{width:"100%",marginTop:13,padding:"11px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:9,color:saving?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<><Spinner size={14}/> SAVING...</>:"APPROVE & SAVE SESSION ✓"}</button>
+        <button onClick={handleEnd} disabled={saving} style={{width:"100%",marginTop:13,padding:"11px 0",background:saving?"rgba(255,255,255,0.08)":"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:9,color:saving?"#444":"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<><Spinner size={14}/> SAVING...</>:"APPROVE & SAVE SESSION ✓"}</button>
       </Card>}</>}
-      {!isCommissioner&&<div style={{padding:"11px 13px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:11,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="crown" size={12} color="#444"/>Commissioner will finalize the session</div>}
+      {!isCommissioner&&<div style={{padding:"11px 13px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:11,color:"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:10,textAlign:"center" as const,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Icon name="crown" size={12} color="#444"/>Commissioner will finalize the session</div>}
     </div>
   );
 }
@@ -1478,43 +1491,43 @@ function NewSessionView({league,players,sessions,onStart,onBack}:any){
       <BackButton onBack={onBack}/><SectionTitle text="Tonight's Setup"/>
       <Card style={{marginBottom:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
-          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>BUY-IN FOR TONIGHT</div>
-          {lastSession&&lastPlayerIds.length>0&&<button onClick={handleRematch} style={{padding:"3px 10px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>↺ REMATCH</button>}
+          <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>BUY-IN FOR TONIGHT</div>
+          {lastSession&&lastPlayerIds.length>0&&<button onClick={handleRematch} style={{padding:"3px 10px",background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.25)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>↺ REMATCH</button>}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:9}}><button onClick={()=>setSessionBuyIn(Math.max(1,sessionBuyIn-5))} style={{width:38,height:38,borderRadius:9,background:"rgba(224,85,85,0.15)",border:"1px solid rgba(224,85,85,0.3)",color:"#E05555",fontSize:20,cursor:"pointer"}}>−</button><div style={{flex:1,textAlign:"center"}}><div style={{color:"#C9A84C",fontSize:30,fontFamily:"'Space Mono',monospace",fontWeight:700}}>${sessionBuyIn}</div></div><button onClick={()=>setSessionBuyIn(sessionBuyIn+5)} style={{width:38,height:38,borderRadius:9,background:"rgba(76,175,140,0.15)",border:"1px solid rgba(76,175,140,0.3)",color:"#4CAF8C",fontSize:20,cursor:"pointer"}}>+</button></div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>{[10,20,25,50,100].map(amt=><button key={amt} onClick={()=>setSessionBuyIn(amt)} style={{padding:"4px 10px",borderRadius:20,background:sessionBuyIn===amt?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sessionBuyIn===amt?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:sessionBuyIn===amt?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>${amt}</button>)}</div>
-        <label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SESSION NOTES (optional)</label>
+        <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:9}}><button onClick={()=>setSessionBuyIn(Math.max(1,sessionBuyIn-5))} style={{width:38,height:38,borderRadius:9,background:"rgba(248,113,113,0.15)",border:"1px solid rgba(248,113,113,0.3)",color:"#F87171",fontSize:20,cursor:"pointer"}}>−</button><div style={{flex:1,textAlign:"center"}}><div style={{color:"#E9B949",fontSize:30,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>${sessionBuyIn}</div></div><button onClick={()=>setSessionBuyIn(sessionBuyIn+5)} style={{width:38,height:38,borderRadius:9,background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.3)",color:"#4ADE80",fontSize:20,cursor:"pointer"}}>+</button></div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>{[10,20,25,50,100].map(amt=><button key={amt} onClick={()=>setSessionBuyIn(amt)} style={{padding:"4px 10px",borderRadius:20,background:sessionBuyIn===amt?"rgba(233,185,73,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${sessionBuyIn===amt?"rgba(233,185,73,0.4)":"rgba(255,255,255,0.08)"}`,color:sessionBuyIn===amt?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>${amt}</button>)}</div>
+        <label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SESSION NOTES (optional)</label>
         <input value={sessionNotes} onChange={e=>setSessionNotes(e.target.value)} placeholder="e.g. Played at Nick's house" style={{...inp,fontSize:12}}/>
       </Card>
-      <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>WHO'S PLAYING</div>
+      <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:9}}>WHO'S PLAYING</div>
       <Card style={{marginBottom:10}}>
-        {players.map((p:any)=>{const sel=selectedIds.includes(p.id);return<div key={p.id} onClick={()=>setSelectedIds(sel?selectedIds.filter(x=>x!==p.id):[...selectedIds,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",opacity:sel?1:0.5}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${sel?"#C9A84C":"#333"}`,background:sel?"#C9A84C":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{sel?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{flex:1}}><div style={{color:"#fff"}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{p.wins}W · {fmtProfit(p.total_profit)}</div></div></div>;})}
+        {players.map((p:any)=>{const sel=selectedIds.includes(p.id);return<div key={p.id} onClick={()=>setSelectedIds(sel?selectedIds.filter(x=>x!==p.id):[...selectedIds,p.id])} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",opacity:sel?1:0.5}}><div style={{width:20,height:20,borderRadius:5,border:`2px solid ${sel?"#E9B949":"#333"}`,background:sel?"#E9B949":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#000",fontSize:12,flexShrink:0}}>{sel?"✓":""}</div><Avatar name={p.name} size={32}/><div style={{flex:1}}><div style={{color:"#fff"}}>{p.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{p.wins}W · {fmtProfit(p.total_profit)}</div></div></div>;})}
       </Card>
 
       {/* GUESTS */}
       <div style={{marginBottom:14}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:9,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span>GUESTS (optional)</span>
           <span style={{color:"#444",fontSize:9}}>stats used for pot only · no profile</span>
         </div>
         {guestNames.map((g,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 11px",marginBottom:6,background:"rgba(85,119,204,0.06)",border:"1px solid rgba(85,119,204,0.15)",borderRadius:10}}>
-            <Icon name="person" size={13} color="#5577CC"/>
-            <span style={{flex:1,color:"#aaa",fontSize:13}}>{g} <span style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace"}}>(guest)</span></span>
-            <button onClick={()=>setGuestNames(guestNames.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#E05555",fontSize:14,cursor:"pointer",padding:"0 3px"}}>✕</button>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 11px",marginBottom:6,background:"rgba(138,180,255,0.06)",border:"1px solid rgba(138,180,255,0.15)",borderRadius:10}}>
+            <Icon name="person" size={13} color="#8AB4FF"/>
+            <span style={{flex:1,color:"#aaa",fontSize:13}}>{g} <span style={{color:"#8AB4FF",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>(guest)</span></span>
+            <button onClick={()=>setGuestNames(guestNames.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#F87171",fontSize:14,cursor:"pointer",padding:"0 3px"}}>✕</button>
           </div>
         ))}
-        {guestNames.length<3&&!addingGuest&&<button onClick={()=>{setAddingGuest(true);setGuestInput("");}} style={{width:"100%",padding:"8px 0",background:"rgba(85,119,204,0.05)",border:"1px dashed rgba(85,119,204,0.2)",borderRadius:9,color:"#5577CC",fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <Icon name="person" size={11} color="#5577CC"/>+ ADD GUEST ({guestNames.length}/3)
+        {guestNames.length<3&&!addingGuest&&<button onClick={()=>{setAddingGuest(true);setGuestInput("");}} style={{width:"100%",padding:"8px 0",background:"rgba(138,180,255,0.05)",border:"1px dashed rgba(138,180,255,0.2)",borderRadius:9,color:"#8AB4FF",fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:1.5,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <Icon name="person" size={11} color="#8AB4FF"/>+ ADD GUEST ({guestNames.length}/3)
         </button>}
         {addingGuest&&<div style={{display:"flex",gap:7}}>
           <input autoFocus value={guestInput} onChange={e=>setGuestInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&guestInput.trim()){setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);}}} placeholder="Guest name..." style={{...inp,flex:1,fontSize:13}}/>
-          <button onClick={()=>{if(guestInput.trim())setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);setGuestInput("");}} disabled={!guestInput.trim()} style={{padding:"0 13px",background:guestInput.trim()?"rgba(85,119,204,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${guestInput.trim()?"rgba(85,119,204,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:guestInput.trim()?"#5577CC":"#444",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>ADD</button>
-          <button onClick={()=>{setAddingGuest(false);setGuestInput("");}} style={{padding:"0 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>✕</button>
+          <button onClick={()=>{if(guestInput.trim())setGuestNames([...guestNames,guestInput.trim()]);setAddingGuest(false);setGuestInput("");}} disabled={!guestInput.trim()} style={{padding:"0 13px",background:guestInput.trim()?"rgba(138,180,255,0.2)":"rgba(255,255,255,0.05)",border:`1px solid ${guestInput.trim()?"rgba(138,180,255,0.4)":"rgba(255,255,255,0.1)"}`,borderRadius:9,color:guestInput.trim()?"#8AB4FF":"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>ADD</button>
+          <button onClick={()=>{setAddingGuest(false);setGuestInput("");}} style={{padding:"0 10px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>✕</button>
         </div>}
       </div>
 
-      <button disabled={totalPlaying<2||loading} onClick={async()=>{setLoading(true);await onStart({selectedIds,sessionBuyIn,sessionNotes,guestNames});setLoading(false);}} style={{width:"100%",padding:"13px 0",background:totalPlaying>=2&&!loading?"linear-gradient(135deg,#C9A84C,#E8C56A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:totalPlaying>=2&&!loading?"#0A0A0A":"#444",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:totalPlaying>=2&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:`START WITH ${totalPlaying} PLAYERS →`}</button>
+      <button disabled={totalPlaying<2||loading} onClick={async()=>{setLoading(true);await onStart({selectedIds,sessionBuyIn,sessionNotes,guestNames});setLoading(false);}} style={{width:"100%",padding:"13px 0",background:totalPlaying>=2&&!loading?"linear-gradient(135deg,#E9B949,#F0CA5A)":"rgba(255,255,255,0.08)",border:"none",borderRadius:11,color:totalPlaying>=2&&!loading?"#0A0A0A":"#444",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:13,letterSpacing:2,cursor:totalPlaying>=2&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>{loading?<Spinner size={16}/>:`START WITH ${totalPlaying} PLAYERS →`}</button>
     </div>
   );
 }
@@ -1553,8 +1566,8 @@ function HandRankingsView({onBack}:any){
 
   const getSuit=(card:string)=>{
     if(card.includes('♠'))return{s:'♠',c:'#e8e8e8'};
-    if(card.includes('♥'))return{s:'♥',c:'#E05555'};
-    if(card.includes('♦'))return{s:'♦',c:'#E05555'};
+    if(card.includes('♥'))return{s:'♥',c:'#F87171'};
+    if(card.includes('♦'))return{s:'♦',c:'#F87171'};
     if(card.includes('♣'))return{s:'♣',c:'#e8e8e8'};
     return{s:'',c:'#fff'};
   };
@@ -1569,16 +1582,16 @@ function HandRankingsView({onBack}:any){
         return(
           <div key={h.rank} onClick={()=>handleFlip(h.rank)} style={{
             marginBottom:8,borderRadius:14,cursor:"pointer",
-            border:`1px solid ${h.rank<=2?"rgba(201,168,76,0.25)":"rgba(255,255,255,0.07)"}`,
+            border:`1px solid ${h.rank<=2?"rgba(233,185,73,0.25)":"rgba(255,255,255,0.07)"}`,
             overflow:"hidden",
             background:isFlipped?"rgba(10,10,10,0.98)":"rgba(255,255,255,0.03)",
             transition:"background 0.2s",
           }}>
             {/* Front row — always visible */}
             <div style={{display:"flex",alignItems:"center",gap:13,padding:"11px 14px"}}>
-              <div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Space Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div>
+              <div style={{width:28,height:28,borderRadius:8,background:`${h.color}22`,border:`1px solid ${h.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:h.color,fontSize:11,flexShrink:0}}>{h.rank}</div>
               <div style={{flex:1}}>
-                <div style={{color:h.color,fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{h.name}</div>
+                <div style={{color:h.color,fontFamily:"'Fraunces',serif",fontSize:14,fontWeight:700}}>{h.name}</div>
                 <div style={{color:"#666",fontSize:10,marginTop:1}}>{h.desc}</div>
               </div>
               <div style={{color:"#333",fontSize:14,transition:"transform 0.2s",transform:isFlipped?"rotate(90deg)":"rotate(0deg)"}}>›</div>
@@ -1603,7 +1616,7 @@ function HandRankingsView({onBack}:any){
                       flexShrink:0,
                     }}>
                       {visible&&<>
-                        <div style={{color:c,fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:15,lineHeight:1}}>{val}</div>
+                        <div style={{color:c,fontFamily:"'Fraunces',serif",fontWeight:700,fontSize:15,lineHeight:1}}>{val}</div>
                         <div style={{color:c,fontSize:16,lineHeight:1,marginTop:2}}>{s}</div>
                       </>}
                     </div>
@@ -1673,25 +1686,25 @@ function CommSettingsView({league,players,onBack,onLeagueUpdated,onLeagueDeleted
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text={`Manage ${league.name}`}/>
       <Card style={{marginBottom:11}}>
-        {([["DESCRIPTION","text",description,setDescription,"League description"],["SEASON NAME","text",season,setSeason,"Season 1"],["LOCATION","text",locationName,setLocationName,"e.g. San Francisco, CA"]] as any[]).map(([label,type,val,setter,ph])=><div key={label} style={{marginBottom:9}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input type={type} value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
-        <div style={{display:"flex",gap:9,marginBottom:9}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>DEFAULT BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} style={inp}/></div></div>
-        <div style={{marginBottom:11}}><label style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"7px 0",borderRadius:9,background:maxPlayers===n?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
+        {([["DESCRIPTION","text",description,setDescription,"League description"],["SEASON NAME","text",season,setSeason,"Season 1"],["LOCATION","text",locationName,setLocationName,"e.g. San Francisco, CA"]] as any[]).map(([label,type,val,setter,ph])=><div key={label} style={{marginBottom:9}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>{label}</label><input type={type} value={val} onChange={(e:any)=>setter(e.target.value)} placeholder={ph} style={inp}/></div>)}
+        <div style={{display:"flex",gap:9,marginBottom:9}}><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>DEFAULT BUY-IN ($)</label><input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} style={inp}/></div><div style={{flex:1}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>SEASON LENGTH</label><input type="number" value={seasonLength} onChange={e=>setSeasonLength(e.target.value)} style={inp}/></div></div>
+        <div style={{marginBottom:11}}><label style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,display:"block",marginBottom:5}}>MAX PLAYERS</label><div style={{display:"flex",gap:5}}>{MAX_PLAYER_OPTIONS.map(n=><button key={n} onClick={()=>setMaxPlayers(n)} style={{flex:1,padding:"7px 0",borderRadius:9,background:maxPlayers===n?"rgba(233,185,73,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${maxPlayers===n?"rgba(233,185,73,0.4)":"rgba(255,255,255,0.08)"}`,color:maxPlayers===n?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>{n}</button>)}</div></div>
         <Toggle value={isPublic} onChange={setIsPublic} label="Public League" sub="Anyone can find & join without a code"/>
-        <button onClick={save} disabled={saving} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:9,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<Spinner size={14}/>:"SAVE ✓"}</button>
+        <button onClick={save} disabled={saving} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:9,color:"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>{saving?<Spinner size={14}/>:"SAVE ✓"}</button>
       </Card>
 
       <Card style={{marginBottom:11}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>LEAGUE CODE</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:9}}>LEAGUE CODE</div>
         <div style={{color:"#555",fontSize:11,marginBottom:9}}>Set a custom code (6-7 characters). Letters and numbers only.</div>
         <div style={{display:"flex",gap:8}}>
-          <input value={customCode} onChange={e=>setCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7))} placeholder="e.g. FRIDAY" style={{...inp,flex:1,color:"#C9A84C",letterSpacing:3,fontSize:16,textAlign:"center" as const}}/>
-          <button onClick={saveCode} disabled={savingCode||customCode.trim().length<6} style={{padding:"0 14px",background:customCode.trim().length>=6?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${customCode.trim().length>=6?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.08)"}`,borderRadius:9,color:customCode.trim().length>=6?"#C9A84C":"#444",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer",flexShrink:0}}>{savingCode?<Spinner size={13}/>:"SAVE"}</button>
+          <input value={customCode} onChange={e=>setCustomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7))} placeholder="e.g. FRIDAY" style={{...inp,flex:1,color:"#E9B949",letterSpacing:3,fontSize:16,textAlign:"center" as const}}/>
+          <button onClick={saveCode} disabled={savingCode||customCode.trim().length<6} style={{padding:"0 14px",background:customCode.trim().length>=6?"rgba(233,185,73,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${customCode.trim().length>=6?"rgba(233,185,73,0.3)":"rgba(255,255,255,0.08)"}`,borderRadius:9,color:customCode.trim().length>=6?"#E9B949":"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer",flexShrink:0}}>{savingCode?<Spinner size={13}/>:"SAVE"}</button>
         </div>
       </Card>
 
-      <Card style={{marginBottom:11}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>PLAYERS ({players.length}/{maxPlayers})</div>{players.map((p:any,i:number)=>{const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();return<div key={p.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={p.name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",display:"flex",alignItems:"center",gap:4,fontSize:13}}>{p.name} {isComm&&<Icon name="crown" size={11} color="#C9A84C"/>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{p.session_count} sessions</div></div>{!isComm&&<button onClick={()=>kick(p.id,p.name)} style={{padding:"3px 9px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>KICK</button>}</div>;})}
+      <Card style={{marginBottom:11}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>PLAYERS ({players.length}/{maxPlayers})</div>{players.map((p:any,i:number)=>{const isComm=p.name.toLowerCase()===league.commissioner_name?.toLowerCase();return<div key={p.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<players.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><Avatar name={p.name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",display:"flex",alignItems:"center",gap:4,fontSize:13}}>{p.name} {isComm&&<Icon name="crown" size={11} color="#E9B949"/>}</div><div style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>{p.session_count} sessions</div></div>{!isComm&&<button onClick={()=>kick(p.id,p.name)} style={{padding:"3px 9px",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>KICK</button>}</div>;})}
       </Card>
-      <Card><div style={{color:"#E05555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>DANGER ZONE</div>{!confirmDelete?<button onClick={()=>setConfirmDelete(true)} style={{width:"100%",padding:"11px 0",background:"rgba(224,85,85,0.06)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>DELETE THIS LEAGUE</button>:<div><div style={{color:"#E05555",fontSize:12,marginBottom:11,textAlign:"center",lineHeight:1.6}}>Permanently delete all data? Career stats will be preserved. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:"10px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button><button onClick={del} style={{flex:1,padding:"10px 0",background:"rgba(224,85,85,0.2)",border:"1px solid rgba(224,85,85,0.4)",borderRadius:9,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer"}}>DELETE</button></div></div>}</Card>
+      <Card><div style={{color:"#F87171",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:9}}>DANGER ZONE</div>{!confirmDelete?<button onClick={()=>setConfirmDelete(true)} style={{width:"100%",padding:"11px 0",background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:9,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:11,letterSpacing:1.5,cursor:"pointer"}}>DELETE THIS LEAGUE</button>:<div><div style={{color:"#F87171",fontSize:12,marginBottom:11,textAlign:"center",lineHeight:1.6}}>Permanently delete all data? Career stats will be preserved. Cannot be undone.</div><div style={{display:"flex",gap:9}}><button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:"10px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:"pointer"}}>CANCEL</button><button onClick={del} style={{flex:1,padding:"10px 0",background:"rgba(248,113,113,0.2)",border:"1px solid rgba(248,113,113,0.4)",borderRadius:9,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:11,cursor:"pointer"}}>DELETE</button></div></div>}</Card>
     </div>
   );
 }
@@ -1735,26 +1748,26 @@ function FeedView({profile,myLeagues,isActive}:any){
   const fmtSessionLabel=(s:any)=>{const d=new Date(s.created_at);return`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} · $${s.pot} pot${s.chicken_dinner_name?` · ${s.chicken_dinner_name} won`:""}`;};
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff"}}>Feed</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>you + friends</div></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff"}}>Feed</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>you + friends</div></div>
       {myLeagues.length>0&&<Card style={{marginBottom:14}}>
-        <div style={{display:"flex",gap:9,marginBottom:9}}><Avatar name={profile.display_name} url={profile.avatar_url} size={30}/><textarea value={newPost} onChange={e=>setNewPost(e.target.value)} placeholder="Share a moment..." style={{flex:1,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:9,padding:9,color:"#fff",fontFamily:"'Space Mono',monospace",fontSize:11,resize:"none",height:58,outline:"none"}}/></div>
-        {myLeagues.length>1&&<div style={{marginBottom:9}}><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{myLeagues.map((lg:any)=><button key={lg.id} onClick={()=>setSelectedLeagueId(lg.id)} style={{padding:"2px 8px",borderRadius:20,background:selectedLeagueId===lg.id?"rgba(201,168,76,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${selectedLeagueId===lg.id?"rgba(201,168,76,0.4)":"rgba(255,255,255,0.08)"}`,color:selectedLeagueId===lg.id?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>{lg.name}</button>)}</div></div>}
+        <div style={{display:"flex",gap:9,marginBottom:9}}><Avatar name={profile.display_name} url={profile.avatar_url} size={30}/><textarea value={newPost} onChange={e=>setNewPost(e.target.value)} placeholder="Share a moment..." style={{flex:1,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:9,padding:9,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontSize:11,resize:"none",height:58,outline:"none"}}/></div>
+        {myLeagues.length>1&&<div style={{marginBottom:9}}><div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{myLeagues.map((lg:any)=><button key={lg.id} onClick={()=>setSelectedLeagueId(lg.id)} style={{padding:"2px 8px",borderRadius:20,background:selectedLeagueId===lg.id?"rgba(233,185,73,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${selectedLeagueId===lg.id?"rgba(233,185,73,0.4)":"rgba(255,255,255,0.08)"}`,color:selectedLeagueId===lg.id?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>{lg.name}</button>)}</div></div>}
         {recentSessions.length>0&&<div style={{marginBottom:9}}>
-          <select value={attachSessionId} onChange={e=>setAttachSessionId(e.target.value)} style={{...inp,fontSize:11,color:attachSessionId?"#C9A84C":"#555"}}>
+          <select value={attachSessionId} onChange={e=>setAttachSessionId(e.target.value)} style={{...inp,fontSize:11,color:attachSessionId?"#E9B949":"#555"}}>
             <option value="">📎 Attach to a session (optional)</option>
             {recentSessions.map((s:any)=><option key={s.id} value={s.id}>{fmtSessionLabel(s)}</option>)}
           </select>
         </div>}
         {mediaPreview&&<div style={{position:"relative",marginBottom:9}}>{mediaFile?.type.startsWith("video")?<video src={mediaPreview} controls style={{width:"100%",borderRadius:9,maxHeight:240}}/>:<img src={mediaPreview} style={{width:"100%",borderRadius:9,maxHeight:240,objectFit:"cover"}}/>}<button onClick={()=>{setMediaFile(null);setMediaPreview(null);}} style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:24,height:24,cursor:"pointer",fontSize:12}}>×</button></div>}
-        <div style={{display:"flex",gap:7,alignItems:"center"}}><button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><Icon name="camera" size={12} color="#888"/></button><input ref={fileRef} type="file" accept="image/*,video/*" onChange={e=>{const f=e.target.files?.[0];if(f){setMediaFile(f);setMediaPreview(URL.createObjectURL(f));}}} style={{display:"none"}}/><button onClick={handlePost} disabled={uploading||(!newPost.trim()&&!mediaFile)} style={{marginLeft:"auto",padding:"5px 14px",background:(!newPost.trim()&&!mediaFile)||uploading?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:20,color:(!newPost.trim()&&!mediaFile)||uploading?"#444":"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>{uploading?<Spinner size={11}/>:"POST"}</button></div>
+        <div style={{display:"flex",gap:7,alignItems:"center"}}><button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><Icon name="camera" size={12} color="#888"/></button><input ref={fileRef} type="file" accept="image/*,video/*" onChange={e=>{const f=e.target.files?.[0];if(f){setMediaFile(f);setMediaPreview(URL.createObjectURL(f));}}} style={{display:"none"}}/><button onClick={handlePost} disabled={uploading||(!newPost.trim()&&!mediaFile)} style={{marginLeft:"auto",padding:"5px 14px",background:(!newPost.trim()&&!mediaFile)||uploading?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:20,color:(!newPost.trim()&&!mediaFile)||uploading?"#444":"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>{uploading?<Spinner size={11}/>:"POST"}</button></div>
       </Card>}
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:36}}><Spinner/></div>}
-      {!loading&&posts.length===0&&<Card><div style={{textAlign:"center",padding:"24px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No posts yet.<br/>Add friends from league standings!</div></Card>}
+      {!loading&&posts.length===0&&<Card><div style={{textAlign:"center",padding:"24px 0",color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>No posts yet.<br/>Add friends from league standings!</div></Card>}
       {posts.map((post:any)=>{
         const isMine=post.author_name.toLowerCase()===profile.display_name.toLowerCase();const canEdit=isMine||isCommForLeague(post.league_id);
         return<Card key={post.id} style={{marginBottom:11}}>
-          <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={post.author_name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:13,fontWeight:600}}>{post.author_name}</div><div style={{display:"flex",gap:7,alignItems:"center",marginTop:1}}><span style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace",background:"rgba(201,168,76,0.1)",padding:"1px 6px",borderRadius:9}}>{getLeagueName(post.league_id)}</span>{post.session_id&&<span style={{color:"#5577CC",fontSize:9,fontFamily:"'Space Mono',monospace",background:"rgba(85,119,204,0.1)",padding:"1px 6px",borderRadius:9}}>📎 session</span>}<span style={{color:"#555",fontSize:9,fontFamily:"'Space Mono',monospace"}}>{timeAgo(post.created_at)}</span></div></div>{canEdit&&<div style={{display:"flex",gap:5}}>{isMine&&<button onClick={()=>{setEditingPost(post.id);setEditContent(post.content||"");}} style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",fontFamily:"'Space Mono',monospace"}}>EDIT</button>}<button onClick={async()=>{if(!db)return;await db.from("posts").delete().eq("id",post.id);await loadPosts();}} style={{background:"none",border:"none",color:"#E05555",fontSize:10,cursor:"pointer",fontFamily:"'Space Mono',monospace"}}>DEL</button></div>}</div>
-          {editingPost===post.id?<div><textarea value={editContent} onChange={e=>setEditContent(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(201,168,76,0.2)",borderRadius:9,padding:9,color:"#fff",fontFamily:"'Space Mono',monospace",fontSize:11,resize:"none",height:58,outline:"none",marginBottom:7}}/><div style={{display:"flex",gap:7}}><button onClick={()=>setEditingPost(null)} style={{padding:"5px 12px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Cancel</button><button onClick={async()=>{if(!db)return;await db.from("posts").update({content:editContent}).eq("id",post.id);setEditingPost(null);await loadPosts();}} style={{padding:"5px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Save</button></div></div>
+          <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}><Avatar name={post.author_name} size={30}/><div style={{flex:1}}><div style={{color:"#fff",fontSize:13,fontWeight:600}}>{post.author_name}</div><div style={{display:"flex",gap:7,alignItems:"center",marginTop:1}}><span style={{color:"#E9B949",fontSize:9,fontFamily:"'JetBrains Mono',monospace",background:"rgba(233,185,73,0.1)",padding:"1px 6px",borderRadius:9}}>{getLeagueName(post.league_id)}</span>{post.session_id&&<span style={{color:"#8AB4FF",fontSize:9,fontFamily:"'JetBrains Mono',monospace",background:"rgba(138,180,255,0.1)",padding:"1px 6px",borderRadius:9}}>📎 session</span>}<span style={{color:"#555",fontSize:9,fontFamily:"'JetBrains Mono',monospace"}}>{timeAgo(post.created_at)}</span></div></div>{canEdit&&<div style={{display:"flex",gap:5}}>{isMine&&<button onClick={()=>{setEditingPost(post.id);setEditContent(post.content||"");}} style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>EDIT</button>}<button onClick={async()=>{if(!db)return;await db.from("posts").delete().eq("id",post.id);await loadPosts();}} style={{background:"none",border:"none",color:"#F87171",fontSize:10,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>DEL</button></div>}</div>
+          {editingPost===post.id?<div><textarea value={editContent} onChange={e=>setEditContent(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(233,185,73,0.2)",borderRadius:9,padding:9,color:"#fff",fontFamily:"'JetBrains Mono',monospace",fontSize:11,resize:"none",height:58,outline:"none",marginBottom:7}}/><div style={{display:"flex",gap:7}}><button onClick={()=>setEditingPost(null)} style={{padding:"5px 12px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>Cancel</button><button onClick={async()=>{if(!db)return;await db.from("posts").update({content:editContent}).eq("id",post.id);setEditingPost(null);await loadPosts();}} style={{padding:"5px 12px",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>Save</button></div></div>
           :<>{post.content&&<div style={{color:"#ccc",fontSize:12,lineHeight:1.6,marginBottom:post.media_url?9:0}}>{post.content}</div>}{post.media_url&&(post.media_type==="video"?<video src={post.media_url} controls style={{width:"100%",borderRadius:9,maxHeight:320}}/>:<img src={post.media_url} style={{width:"100%",borderRadius:9,maxHeight:320,objectFit:"cover"}}/>)}</>}
         </Card>;
       })}
@@ -1850,58 +1863,58 @@ function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogou
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       {!isSelf&&onBack&&<BackButton onBack={onBack}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff"}}>Profile</div>
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff"}}>Profile</div>
         {isSelf&&<div style={{display:"flex",gap:7}}>
-          <button onClick={onFriends} style={{padding:"5px 11px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>FRIENDS</button>
-          <button onClick={()=>setEditing(!editing)} style={{padding:"5px 11px",background:editing?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${editing?"rgba(201,168,76,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#C9A84C":"#888",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
+          <button onClick={onFriends} style={{padding:"5px 11px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>FRIENDS</button>
+          <button onClick={()=>setEditing(!editing)} style={{padding:"5px 11px",background:editing?"rgba(233,185,73,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${editing?"rgba(233,185,73,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#E9B949":"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
         </div>}
-        {!isSelf&&!isFriend&&<button onClick={()=>onSendFriendRequest&&onSendFriendRequest(displayName)} style={{padding:"6px 14px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}{!isSelf&&isFriend&&<span style={{padding:"6px 14px",background:"rgba(76,175,140,0.08)",border:"1px solid rgba(76,175,140,0.2)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:9}}>● Friends</span>}
+        {!isSelf&&!isFriend&&<button onClick={()=>onSendFriendRequest&&onSendFriendRequest(displayName)} style={{padding:"6px 14px",background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}{!isSelf&&isFriend&&<span style={{padding:"6px 14px",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:20,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:9}}>● Friends</span>}
       </div>
       <div style={{textAlign:"center",marginBottom:18}}>
         <div style={{position:"relative",display:"inline-block"}}>
           <Avatar name={displayName} url={isSelf?profile.avatar_url:null} size={76}/>
-          {isSelf&&editing&&<button onClick={()=>fileRef.current?.click()} style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#C9A84C",border:"2px solid #0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{uploadingAvatar?<Spinner size={11}/>:<Icon name="camera" size={13} color="#0A0A0A"/>}</button>}
+          {isSelf&&editing&&<button onClick={()=>fileRef.current?.click()} style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#E9B949",border:"2px solid #0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{uploadingAvatar?<Spinner size={11}/>:<Icon name="camera" size={13} color="#0A0A0A"/>}</button>}
           {isSelf&&<input ref={fileRef} type="file" accept="image/*" onChange={handleAvatar} style={{display:"none"}}/>}
         </div>
-        {isSelf&&editing?<div style={{marginTop:10,display:"flex",gap:7,justifyContent:"center",alignItems:"center"}}><input value={newName} onChange={e=>setNewName(e.target.value)} style={{...inp,width:200,fontSize:15,textAlign:"center" as const,fontFamily:"'Playfair Display',serif"}}/><button onClick={handleSaveName} disabled={savingName||!newName.trim()||newName.trim()===profile.display_name} style={{padding:"9px 12px",background:"rgba(201,168,76,0.15)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:9,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>{savingName?"...":"✓"}</button></div>:<div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginTop:10}}>{displayName}</div>}
-        {msg&&<div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:5}}>✓ {msg}</div>}
+        {isSelf&&editing?<div style={{marginTop:10,display:"flex",gap:7,justifyContent:"center",alignItems:"center"}}><input value={newName} onChange={e=>setNewName(e.target.value)} style={{...inp,width:200,fontSize:15,textAlign:"center" as const,fontFamily:"'Fraunces',serif"}}/><button onClick={handleSaveName} disabled={savingName||!newName.trim()||newName.trim()===profile.display_name} style={{padding:"9px 12px",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:9,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>{savingName?"...":"✓"}</button></div>:<div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff",marginTop:10}}>{displayName}</div>}
+        {msg&&<div style={{color:"#4ADE80",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:5}}>✓ {msg}</div>}
         <div style={{display:"flex",justifyContent:"center",gap:14,marginTop:6}}>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{allStats?.leagues||0} leagues</div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{friendCount} friends</div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{allStats?.leagues||0} leagues</div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{friendCount} friends</div>
         </div>
         {!loading&&allStats&&<>
-          <div style={{color:"#4CAF8C",fontSize:32,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:10}}>+${cuTotalWin}</div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>total won (gross)</div>
+          <div style={{color:"#4ADE80",fontSize:32,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:10}}>+${cuTotalWin}</div>
+          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>total won (gross)</div>
         </>}
         {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
-        {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'Space Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
+        {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
       </div>
       {!loading&&allStats&&<>
-        {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
+        {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
           <StatBox label="Sessions" value={cuSessions}/>
-          <StatBox label="Wins" value={cuWins} accent="#4CAF8C"/>
-          <StatBox label="Best Night" value={`$${cuBestN}`} accent="#C9A84C"/>
-          <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${cuWorstN}`:"—"} accent={allStats.worst_night<0?"#E05555":"#555"}/>
-          <StatBox label="Win %" value={allStats.sessions>0?`${cuWinPct}%`:"—"} accent="#5577CC"/>
-          <StatBox label="Win Streak" value={cuWinStreak} accent="#4CAF8C"/>
-          <StatBox label="All-Time P/L" value={allStats.total_profit>=0?`+$${cuPL}`:`-$${cuPL}`} accent={isUp?"#4CAF8C":"#E05555"}/>
-          <StatBox label="Avg/Game" value={allStats.sessions>0?(allStats.avg>=0?`+$${cuAvg}`:`-$${cuAvg}`):"—"} accent={allStats.avg>=0?"#4CAF8C":"#E05555"}/>
-          <StatBox label="$/Hour" value={allStats.time_seconds>0?(hourlyRate>=0?`+$${cuHrRate}`:`-$${cuHrRate}`):"—"} accent={hourlyRate>=0?"#4CAF8C":"#E05555"}/>
+          <StatBox label="Wins" value={cuWins} accent="#4ADE80"/>
+          <StatBox label="Best Night" value={`$${cuBestN}`} accent="#E9B949"/>
+          <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${cuWorstN}`:"—"} accent={allStats.worst_night<0?"#F87171":"#555"}/>
+          <StatBox label="Win %" value={allStats.sessions>0?`${cuWinPct}%`:"—"} accent="#8AB4FF"/>
+          <StatBox label="Win Streak" value={cuWinStreak} accent="#4ADE80"/>
+          <StatBox label="All-Time P/L" value={allStats.total_profit>=0?`+$${cuPL}`:`-$${cuPL}`} accent={isUp?"#4ADE80":"#F87171"}/>
+          <StatBox label="Avg/Game" value={allStats.sessions>0?(allStats.avg>=0?`+$${cuAvg}`:`-$${cuAvg}`):"—"} accent={allStats.avg>=0?"#4ADE80":"#F87171"}/>
+          <StatBox label="$/Hour" value={allStats.time_seconds>0?(hourlyRate>=0?`+$${cuHrRate}`:`-$${cuHrRate}`):"—"} accent={hourlyRate>=0?"#4ADE80":"#F87171"}/>
           <StatBox label="Time Played" value={cuHrs>0?`${cuHrs}h ${cuMins}m`:"—"} accent="#888"/>
-          <StatBox label="Dinners" value={cuDinners} accent="#C9A84C"/>
-          <StatBox label="Rebuys" value={cuRebuys} accent="#5577CC"/>
+          <StatBox label="Dinners" value={cuDinners} accent="#E9B949"/>
+          <StatBox label="Rebuys" value={cuRebuys} accent="#8AB4FF"/>
         </div>
         </>}
         {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries} friendCount={friendCount} displayName={displayName}/>}
-        {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(201,168,76,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#5577CC"/>:<Icon name="spade" size={14} color="#C9A84C"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#C9A84C"/>}</div>)}</Card>}
+        {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(233,185,73,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#8AB4FF"/>:<Icon name="spade" size={14} color="#E9B949"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#E9B949"/>}</div>)}</Card>}
         {isSelf&&editing&&<>
           <Card style={{marginBottom:10}}>
-            <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:10}}>PRIVACY</div>
+            <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:10}}>PRIVACY</div>
             <Toggle value={!!allStats.privacy?.hide_stats} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_stats:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide my stats from others" sub="Others only see your time played"/>
           </Card>
-          <Card style={{marginBottom:10}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:6}}>ACCOUNT</div><div style={{color:"#555",fontSize:11,fontFamily:"'Space Mono',monospace",marginBottom:5}}>{profile.email}</div><div style={{color:"#444",fontSize:11,lineHeight:1.6}}>To change your password, sign out and use "Forgot password?"</div></Card>
-          <button onClick={onLogout} style={{width:"100%",padding:"13px 0",background:"rgba(224,85,85,0.08)",border:"1px solid rgba(224,85,85,0.25)",borderRadius:11,color:"#E05555",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>SIGN OUT</button>
+          <Card style={{marginBottom:10}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:6}}>ACCOUNT</div><div style={{color:"#555",fontSize:11,fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{profile.email}</div><div style={{color:"#444",fontSize:11,lineHeight:1.6}}>To change your password, sign out and use "Forgot password?"</div></Card>
+          <button onClick={onLogout} style={{width:"100%",padding:"13px 0",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:11,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>SIGN OUT</button>
         </>}
       </>}
     </div>
@@ -1931,32 +1944,32 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/><SectionTitle text="Friends"/>
-      <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginBottom:12}}>Add friends from league standings. Mutual friends appear in your feed.</div>
+      <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginBottom:12}}>Add friends from league standings. Mutual friends appear in your feed.</div>
       {loading&&<div style={{display:"flex",justifyContent:"center",padding:32}}><Spinner/></div>}
       {!loading&&pending.length>0&&<div style={{marginBottom:18}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:9}}>PENDING ({pending.length})</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:9}}>PENDING ({pending.length})</div>
         {pending.map((f:any)=><Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
           <Avatar name={f.requester_name} size={38}/>
-          <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{f.requester_name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>wants to be friends</div></div>
+          <div style={{flex:1}}><div style={{color:"#fff",fontSize:13}}>{f.requester_name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>wants to be friends</div></div>
           <div style={{display:"flex",gap:7}}>
-            <button onClick={()=>accept(f.id)} style={{padding:"4px 10px",background:"rgba(76,175,140,0.2)",border:"1px solid rgba(76,175,140,0.4)",borderRadius:20,color:"#4CAF8C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Accept</button>
-            <button onClick={()=>decline(f.id)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.1)",border:"1px solid rgba(224,85,85,0.3)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer"}}>Decline</button>
+            <button onClick={()=>accept(f.id)} style={{padding:"4px 10px",background:"rgba(74,222,128,0.2)",border:"1px solid rgba(74,222,128,0.4)",borderRadius:20,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>Accept</button>
+            <button onClick={()=>decline(f.id)} style={{padding:"4px 10px",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>Decline</button>
           </div>
         </Card>)}
       </div>}
       <div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}><div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>FRIENDS ({friends.length})</div>{friends.length>0&&<button onClick={()=>setEditMode(e=>!e)} style={{background:"none",border:"none",color:editMode?"#C9A84C":"#555",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>{editMode?"DONE":"EDIT"}</button>}</div>
-        {!loading&&friends.length===0&&<Card><div style={{textAlign:"center",padding:"20px 0",color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>No friends yet — tap players in league standings!</div></Card>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>FRIENDS ({friends.length})</div>{friends.length>0&&<button onClick={()=>setEditMode(e=>!e)} style={{background:"none",border:"none",color:editMode?"#E9B949":"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>{editMode?"DONE":"EDIT"}</button>}</div>
+        {!loading&&friends.length===0&&<Card><div style={{textAlign:"center",padding:"20px 0",color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>No friends yet — tap players in league standings!</div></Card>}
         {friends.map((f:any)=>{const n=getN(f);return(
           <Card key={f.id} style={{marginBottom:9,display:"flex",alignItems:"center",gap:11}}>
             <div style={{display:"flex",alignItems:"center",gap:11,flex:1,cursor:"pointer",minWidth:0}} onClick={()=>onViewFriendProfile(n)}>
               <Avatar name={n} size={38}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:"#fff",fontSize:13}}>{n}</div>
-                <div style={{color:"#4CAF8C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>● Friends · tap to view</div>
+                <div style={{color:"#4ADE80",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>● Friends · tap to view</div>
               </div>
             </div>
-            {editMode&&<button onClick={()=>removeFriend(f.id,n)} style={{padding:"4px 10px",background:"rgba(224,85,85,0.05)",border:"1px solid rgba(224,85,85,0.2)",borderRadius:20,color:"#E05555",fontFamily:"'Space Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>Remove</button>}
+            {editMode&&<button onClick={()=>removeFriend(f.id,n)} style={{padding:"4px 10px",background:"rgba(248,113,113,0.05)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:20,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",flexShrink:0}}>Remove</button>}
           </Card>
         );})}
       </div>
@@ -1970,7 +1983,7 @@ function FriendsView({profile,onBack,onViewFriendProfile}:any){
 const RW_TIERS=[
   {sessions:10,  name:"Punt Artist",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
   {sessions:50,  name:"Table Regular",  color:"#888",    glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {sessions:100, name:"Full-Time",       color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {sessions:100, name:"Full-Time",       color:"#E9B949", glow:"rgba(233,185,73,0.4)",  label:"GOLD"},
   {sessions:500, name:"Chip Whisperer", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
   {sessions:1000,name:"The Gambler",    color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE",  hidden:true},
 ];
@@ -1988,7 +2001,7 @@ function getRWNext(sessions:number){
 const COLLECTOR_TIERS=[
   {dinners:5,   name:"Hungry",    color:"#A0714F", glow:"rgba(160,113,79,0.4)",  label:"BRONZE"},
   {dinners:10,  name:"Regular",   color:"#888888", glow:"rgba(160,160,160,0.4)", label:"SILVER"},
-  {dinners:50,  name:"Chef",      color:"#C9A84C", glow:"rgba(201,168,76,0.4)",  label:"GOLD"},
+  {dinners:50,  name:"Chef",      color:"#E9B949", glow:"rgba(233,185,73,0.4)",  label:"GOLD"},
   {dinners:100, name:"Head Chef", color:"#5BCFED", glow:"rgba(91,207,237,0.4)",  label:"DIAMOND"},
   {dinners:500, name:"The Table", color:"#FF6B35", glow:"rgba(255,107,53,0.5)",  label:"FIRE", hidden:true},
 ];
@@ -2001,13 +2014,13 @@ const BADGE_DEFS=[
     desc:"Win your first chicken dinner — highest profit in any single session. One-time honor.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <ellipse cx="24" cy="38" rx="16" ry="4" fill={earned?"#C9A84C":"#333"} opacity="0.25"/>
-        <path d="M24 8 C16 8 11 14 11 22 C11 28 15 32 18 34 L30 34 C33 32 37 28 37 22 C37 14 32 8 24 8Z" fill={earned?"#C9A84C":"#3a3a3a"}/>
+        <ellipse cx="24" cy="38" rx="16" ry="4" fill={earned?"#E9B949":"#333"} opacity="0.25"/>
+        <path d="M24 8 C16 8 11 14 11 22 C11 28 15 32 18 34 L30 34 C33 32 37 28 37 22 C37 14 32 8 24 8Z" fill={earned?"#E9B949":"#3a3a3a"}/>
         <path d="M24 8 C24 8 28 11 28 17 C28 21 26 24 24 24 C22 24 20 21 20 17 C20 11 24 8 24 8Z" fill={earned?"rgba(232,197,106,0.4)":"rgba(255,255,255,0.06)"}/>
-        <rect x="21" y="3" width="6" height="7" rx="3" fill={earned?"#E8C56A":"#555"}/>
-        <rect x="10" y="34" width="28" height="3" rx="1.5" fill={earned?"#E8C56A":"#444"}/>
+        <rect x="21" y="3" width="6" height="7" rx="3" fill={earned?"#F0CA5A":"#555"}/>
+        <rect x="10" y="34" width="28" height="3" rx="1.5" fill={earned?"#F0CA5A":"#444"}/>
         <path d="M16 22 Q20 18 24 22 Q28 26 32 22" stroke={earned?"rgba(0,0,0,0.5)":"rgba(0,0,0,0.3)"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-        {earned&&<ellipse cx="24" cy="8" rx="3" ry="2" fill="#E8C56A" opacity="0.6"/>}
+        {earned&&<ellipse cx="24" cy="8" rx="3" ry="2" fill="#F0CA5A" opacity="0.6"/>}
       </svg>
     ),
   },
@@ -2017,13 +2030,13 @@ const BADGE_DEFS=[
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         <rect x="6" y="17" width="36" height="22" rx="4" fill={earned?"#2a1f0a":"#222"}/>
-        <rect x="6" y="17" width="36" height="22" rx="4" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5"/>
-        <circle cx="24" cy="28" r="7" fill={earned?"rgba(201,168,76,0.15)":"rgba(255,255,255,0.04)"} stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5"/>
-        <text x="24" y="32" textAnchor="middle" fill={earned?"#C9A84C":"#444"} fontSize="9" fontFamily="monospace" fontWeight="bold">$</text>
-        <circle cx="10" cy="21" r="2" fill={earned?"#E8C56A":"#333"}/>
-        <circle cx="38" cy="35" r="2" fill={earned?"#E8C56A":"#333"}/>
-        <rect x="8" y="11" width="32" height="8" rx="3" fill={earned?"#C9A84C":"#3a3a3a"} stroke={earned?"#E8C56A":"#444"} strokeWidth="1"/>
-        <path d="M16 9 L24 12 L32 9" stroke={earned?"#C9A84C":"#444"} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+        <rect x="6" y="17" width="36" height="22" rx="4" stroke={earned?"#E9B949":"#444"} strokeWidth="1.5"/>
+        <circle cx="24" cy="28" r="7" fill={earned?"rgba(233,185,73,0.15)":"rgba(255,255,255,0.04)"} stroke={earned?"#E9B949":"#444"} strokeWidth="1.5"/>
+        <text x="24" y="32" textAnchor="middle" fill={earned?"#E9B949":"#444"} fontSize="9" fontFamily="monospace" fontWeight="bold">$</text>
+        <circle cx="10" cy="21" r="2" fill={earned?"#F0CA5A":"#333"}/>
+        <circle cx="38" cy="35" r="2" fill={earned?"#F0CA5A":"#333"}/>
+        <rect x="8" y="11" width="32" height="8" rx="3" fill={earned?"#E9B949":"#3a3a3a"} stroke={earned?"#F0CA5A":"#444"} strokeWidth="1"/>
+        <path d="M16 9 L24 12 L32 9" stroke={earned?"#E9B949":"#444"} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
       </svg>
     ),
   },
@@ -2047,11 +2060,11 @@ const BADGE_DEFS=[
     desc:"Rebuy 3+ times in a single session and still walk away profitable. Earned again each time.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <path d="M24 40 C13 40 6 32 6 24 C6 16 13 8 21 8" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="3" strokeLinecap="round" fill="none"/>
-        <path d="M27 8 C35 8 42 16 42 24 C42 32 35 40 27 40" stroke={earned?"#E8C56A":"#444"} strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="5 3"/>
-        <path d="M19 5 L24 11 L19 17" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        <path d="M20 24 L24 20 L28 24 L24 28 Z" fill={earned?"#C9A84C":"#555"} stroke={earned?"#E8C56A":"none"} strokeWidth="1"/>
-        {earned&&<circle cx="24" cy="24" r="10" fill="none" stroke="#C9A84C" strokeWidth="0.5" opacity="0.3"/>}
+        <path d="M24 40 C13 40 6 32 6 24 C6 16 13 8 21 8" stroke={earned?"#E9B949":"#3a3a3a"} strokeWidth="3" strokeLinecap="round" fill="none"/>
+        <path d="M27 8 C35 8 42 16 42 24 C42 32 35 40 27 40" stroke={earned?"#F0CA5A":"#444"} strokeWidth="3" strokeLinecap="round" fill="none" strokeDasharray="5 3"/>
+        <path d="M19 5 L24 11 L19 17" stroke={earned?"#E9B949":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M20 24 L24 20 L28 24 L24 28 Z" fill={earned?"#E9B949":"#555"} stroke={earned?"#F0CA5A":"none"} strokeWidth="1"/>
+        {earned&&<circle cx="24" cy="24" r="10" fill="none" stroke="#E9B949" strokeWidth="0.5" opacity="0.3"/>}
       </svg>
     ),
   },
@@ -2060,13 +2073,13 @@ const BADGE_DEFS=[
     desc:"Win 5 sessions in a row. The counter increases each time you hit a new streak of 5.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <path d="M5 26 C5 26 12 17 24 17 C36 17 43 26 43 26 C43 26 36 35 24 35 C12 35 5 26 5 26Z" fill={earned?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)"} stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5"/>
-        <path d="M24 17 L28 7 L33 17" fill={earned?"#C9A84C":"#3a3a3a"}/>
-        <circle cx="17" cy="25" r="2.5" fill={earned?"#E8C56A":"#444"}/>
+        <path d="M5 26 C5 26 12 17 24 17 C36 17 43 26 43 26 C43 26 36 35 24 35 C12 35 5 26 5 26Z" fill={earned?"rgba(233,185,73,0.12)":"rgba(255,255,255,0.03)"} stroke={earned?"#E9B949":"#3a3a3a"} strokeWidth="1.5"/>
+        <path d="M24 17 L28 7 L33 17" fill={earned?"#E9B949":"#3a3a3a"}/>
+        <circle cx="17" cy="25" r="2.5" fill={earned?"#F0CA5A":"#444"}/>
         <circle cx="17" cy="25" r="1" fill={earned?"#0A0A0A":"#222"}/>
-        <path d="M30 23 L33 26 L30 29" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        <path d="M34 23 L37 26 L34 29" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.5"/>
-        <path d="M11 30 C11 30 14 32 17 31" stroke={earned?"#C9A84C":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
+        <path d="M30 23 L33 26 L30 29" stroke={earned?"#E9B949":"#3a3a3a"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M34 23 L37 26 L34 29" stroke={earned?"#E9B949":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.5"/>
+        <path d="M11 30 C11 30 14 32 17 31" stroke={earned?"#E9B949":"#3a3a3a"} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6"/>
       </svg>
     ),
   },
@@ -2075,16 +2088,16 @@ const BADGE_DEFS=[
     desc:"Log 1,000 hours at the table. You didn't choose this life. This life chose you.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <circle cx="24" cy="24" r="18" fill={earned?"rgba(201,168,76,0.08)":"#111"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
-        <path d="M24 10 L24 24 L32 30" stroke={earned?"#C9A84C":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="24" cy="24" r="2" fill={earned?"#E8C56A":"#444"}/>
+        <circle cx="24" cy="24" r="18" fill={earned?"rgba(233,185,73,0.08)":"#111"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5"/>
+        <path d="M24 10 L24 24 L32 30" stroke={earned?"#E9B949":"#444"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="24" cy="24" r="2" fill={earned?"#F0CA5A":"#444"}/>
         {[0,30,60,90,120,150,180,210,240,270,300,330].map((deg,i)=>{
           const r=14;const rad=((deg-90)*Math.PI)/180;
           const x=24+r*Math.cos(rad);const y=24+r*Math.sin(rad);
-          return<circle key={i} cx={x} cy={y} r={i%3===0?1.5:0.8} fill={earned?"#C9A84C":"#333"}/>;
+          return<circle key={i} cx={x} cy={y} r={i%3===0?1.5:0.8} fill={earned?"#E9B949":"#333"}/>;
         })}
         {earned&&<>
-          <path d="M6 38 Q12 34 18 38 Q24 42 30 38 Q36 34 42 38" stroke="#C9A84C" strokeWidth="1" fill="none" opacity="0.4" strokeLinecap="round"/>
+          <path d="M6 38 Q12 34 18 38 Q24 42 30 38 Q36 34 42 38" stroke="#E9B949" strokeWidth="1" fill="none" opacity="0.4" strokeLinecap="round"/>
         </>}
       </svg>
     ),
@@ -2102,11 +2115,11 @@ const BADGE_DEFS=[
         {/* Drumstick bone */}
         <path d="M18 28 C16 22 14 16 17 12 C19 9 23 9 25 12 C27 15 26 20 28 24" stroke={earned?tierColor:"#444"} strokeWidth="3" strokeLinecap="round"/>
         {/* Meat at top */}
-        <ellipse cx="23" cy="11" rx="6" ry="5" fill={earned?tierColor:"#2a2a2a"} stroke={earned?"#E8C56A":"#333"} strokeWidth="1"/>
+        <ellipse cx="23" cy="11" rx="6" ry="5" fill={earned?tierColor:"#2a2a2a"} stroke={earned?"#F0CA5A":"#333"} strokeWidth="1"/>
         {/* Bone knob at bottom */}
         <circle cx="28" cy="25" r="4" fill={earned?"#0A0A0A":"#111"} stroke={earned?tierColor:"#333"} strokeWidth="1.5"/>
         <circle cx="28" cy="25" r="2" fill={earned?tierColor:"#2a2a2a"}/>
-        {earned&&<circle cx="23" cy="11" r="2" fill="#E8C56A" opacity="0.7"/>}
+        {earned&&<circle cx="23" cy="11" r="2" fill="#F0CA5A" opacity="0.7"/>}
       </svg>
     ),
   },
@@ -2116,11 +2129,11 @@ const BADGE_DEFS=[
     desc:"Add at least one friend on Home Game. The table's better with people you know.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <circle cx="17" cy="16" r="7" fill={earned?"rgba(85,119,204,0.3)":"#1a1a1a"} stroke={earned?"#5577CC":"#333"} strokeWidth="1.5"/>
-        <path d="M5 36 C5 28 10 24 17 24 C24 24 29 28 29 36" stroke={earned?"#5577CC":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <circle cx="33" cy="16" r="6" fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
-        <path d="M27 36 C27 29 31 25 37 25 C42 25 44 28 44 34" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
-        <path d="M24 20 L28 20" stroke={earned?"#4CAF8C":"#333"} strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="17" cy="16" r="7" fill={earned?"rgba(138,180,255,0.3)":"#1a1a1a"} stroke={earned?"#8AB4FF":"#333"} strokeWidth="1.5"/>
+        <path d="M5 36 C5 28 10 24 17 24 C24 24 29 28 29 36" stroke={earned?"#8AB4FF":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <circle cx="33" cy="16" r="6" fill={earned?"rgba(233,185,73,0.3)":"#1a1a1a"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5"/>
+        <path d="M27 36 C27 29 31 25 37 25 C42 25 44 28 44 34" stroke={earned?"#E9B949":"#333"} strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <path d="M24 20 L28 20" stroke={earned?"#4ADE80":"#333"} strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -2130,14 +2143,14 @@ const BADGE_DEFS=[
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         {/* Podium */}
-        <rect x="18" y="28" width="12" height="14" rx="2" fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        <rect x="18" y="28" width="12" height="14" rx="2" fill={earned?"rgba(233,185,73,0.2)":"#1a1a1a"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5"/>
         {/* Person */}
-        <circle cx="24" cy="15" r="6" fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
-        <path d="M16 26 C16 20 19 18 24 18 C29 18 32 20 32 26" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        <circle cx="24" cy="15" r="6" fill={earned?"rgba(233,185,73,0.3)":"#1a1a1a"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5"/>
+        <path d="M16 26 C16 20 19 18 24 18 C29 18 32 20 32 26" stroke={earned?"#E9B949":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
         {/* Arms up */}
-        <path d="M16 22 L10 18 M32 22 L38 18" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" strokeLinecap="round"/>
+        <path d="M16 22 L10 18 M32 22 L38 18" stroke={earned?"#E9B949":"#333"} strokeWidth="2" strokeLinecap="round"/>
         {/* Crown */}
-        <path d="M18 12 L20 8 L24 11 L28 8 L30 12" stroke={earned?"#E8C56A":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M18 12 L20 8 L24 11 L28 8 L30 12" stroke={earned?"#F0CA5A":"#444"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       </svg>
     ),
   },
@@ -2147,16 +2160,16 @@ const BADGE_DEFS=[
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         {/* Whale body */}
-        <path d="M6 26 C6 18 12 12 22 12 C34 12 44 18 44 26 C44 32 38 36 28 36 L8 36 Z" fill={earned?"rgba(85,119,204,0.25)":"#1a1a1a"} stroke={earned?"#5577CC":"#333"} strokeWidth="1.5"/>
+        <path d="M6 26 C6 18 12 12 22 12 C34 12 44 18 44 26 C44 32 38 36 28 36 L8 36 Z" fill={earned?"rgba(138,180,255,0.25)":"#1a1a1a"} stroke={earned?"#8AB4FF":"#333"} strokeWidth="1.5"/>
         {/* Tail */}
-        <path d="M8 36 C6 38 4 42 8 42 C10 42 10 38 12 38 C14 38 14 42 16 42 C20 42 18 38 8 36Z" fill={earned?"#5577CC":"#333"} opacity={earned?0.8:0.5}/>
+        <path d="M8 36 C6 38 4 42 8 42 C10 42 10 38 12 38 C14 38 14 42 16 42 C20 42 18 38 8 36Z" fill={earned?"#8AB4FF":"#333"} opacity={earned?0.8:0.5}/>
         {/* Eye */}
-        <circle cx="34" cy="22" r="2.5" fill={earned?"#5577CC":"#333"}/>
+        <circle cx="34" cy="22" r="2.5" fill={earned?"#8AB4FF":"#333"}/>
         <circle cx="35" cy="21" r="1" fill={earned?"#fff":"#444"}/>
         {/* Spout */}
-        <path d="M28 12 C28 8 26 4 24 6 C22 4 20 8 20 12" stroke={earned?"#5577CC":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+        <path d="M28 12 C28 8 26 4 24 6 C22 4 20 8 20 12" stroke={earned?"#8AB4FF":"#333"} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
         {/* Dollar */}
-        <text x="18" y="30" fill={earned?"#E8C56A":"#444"} fontSize="10" fontFamily="monospace" fontWeight="bold">$</text>
+        <text x="18" y="30" fill={earned?"#F0CA5A":"#444"} fontSize="10" fontFamily="monospace" fontWeight="bold">$</text>
       </svg>
     ),
   },
@@ -2183,13 +2196,13 @@ const BADGE_DEFS=[
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         {/* Bag */}
-        <path d="M16 20 C16 14 19 10 24 10 C29 10 32 14 32 20 L34 36 C34 38 32 40 30 40 L18 40 C16 40 14 38 14 36 Z" fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5"/>
+        <path d="M16 20 C16 14 19 10 24 10 C29 10 32 14 32 20 L34 36 C34 38 32 40 30 40 L18 40 C16 40 14 38 14 36 Z" fill={earned?"rgba(233,185,73,0.2)":"#1a1a1a"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5"/>
         {/* Bag tie */}
-        <path d="M20 10 C20 6 28 6 28 10" stroke={earned?"#C9A84C":"#333"} strokeWidth="2" fill="none" strokeLinecap="round"/>
+        <path d="M20 10 C20 6 28 6 28 10" stroke={earned?"#E9B949":"#333"} strokeWidth="2" fill="none" strokeLinecap="round"/>
         {/* Dollar sign */}
-        <text x="19" y="32" fill={earned?"#E8C56A":"#444"} fontSize="14" fontFamily="monospace" fontWeight="bold">$</text>
+        <text x="19" y="32" fill={earned?"#F0CA5A":"#444"} fontSize="14" fontFamily="monospace" fontWeight="bold">$</text>
         {/* Speed lines */}
-        <path d="M35 18 L42 16 M35 24 L43 24 M35 30 L41 32" stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinecap="round" opacity={earned?0.6:0.3}/>
+        <path d="M35 18 L42 16 M35 24 L43 24 M35 30 L41 32" stroke={earned?"#E9B949":"#333"} strokeWidth="1.5" strokeLinecap="round" opacity={earned?0.6:0.3}/>
       </svg>
     ),
   },
@@ -2198,10 +2211,10 @@ const BADGE_DEFS=[
     desc:"Win a session immediately after a loss. You took the hit and came back swinging.",
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
-        <path d="M14 10 L14 28" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
-        <path d="M8 22 L14 30 L20 22" stroke={earned?"#E05555":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-        <path d="M34 38 L34 20" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
-        <path d="M28 26 L34 18 L40 26" stroke={earned?"#4CAF8C":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M14 10 L14 28" stroke={earned?"#F87171":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M8 22 L14 30 L20 22" stroke={earned?"#F87171":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M34 38 L34 20" stroke={earned?"#4ADE80":"#333"} strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M28 26 L34 18 L40 26" stroke={earned?"#4ADE80":"#333"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
         <path d="M14 30 C14 38 34 38 34 30" stroke={earned?"#888":"#333"} strokeWidth="1.5" strokeLinecap="round" fill="none" strokeDasharray="3 2"/>
       </svg>
     ),
@@ -2212,10 +2225,10 @@ const BADGE_DEFS=[
     icon:(earned:boolean,size=36)=>(
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         <path d="M24 6 L28 19 L40 15 L32 24 L42 28 L30 29 L35 41 L24 33 L13 41 L18 29 L6 28 L16 24 L8 15 L20 19 Z"
-          fill={earned?"rgba(201,168,76,0.2)":"#1a1a1a"} stroke={earned?"#C9A84C":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
-        <circle cx="24" cy="24" r="5" fill={earned?"#C9A84C":"#2a2a2a"}/>
+          fill={earned?"rgba(233,185,73,0.2)":"#1a1a1a"} stroke={earned?"#E9B949":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
+        <circle cx="24" cy="24" r="5" fill={earned?"#E9B949":"#2a2a2a"}/>
         <text x="21.5" y="28" fill={earned?"#0A0A0A":"#444"} fontSize="7" fontFamily="monospace" fontWeight="bold">80</text>
-        {earned&&<circle cx="24" cy="24" r="9" fill="none" stroke="#E8C56A" strokeWidth="0.8" opacity="0.5"/>}
+        {earned&&<circle cx="24" cy="24" r="9" fill="none" stroke="#F0CA5A" strokeWidth="0.8" opacity="0.5"/>}
       </svg>
     ),
   },
@@ -2226,11 +2239,11 @@ const BADGE_DEFS=[
       <svg viewBox="0 0 48 48" width={size} height={size} fill="none">
         {/* Lightning bolt */}
         <path d="M28 6 L16 26 L23 26 L20 42 L32 22 L25 22 Z"
-          fill={earned?"rgba(201,168,76,0.3)":"#1a1a1a"} stroke={earned?"#E8C56A":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
+          fill={earned?"rgba(233,185,73,0.3)":"#1a1a1a"} stroke={earned?"#F0CA5A":"#333"} strokeWidth="1.5" strokeLinejoin="round"/>
         {/* Dollar circle */}
-        <circle cx="36" cy="12" r="7" fill={earned?"rgba(76,175,140,0.2)":"#1a1a1a"} stroke={earned?"#4CAF8C":"#333"} strokeWidth="1.5"/>
-        <text x="33" y="16" fill={earned?"#4CAF8C":"#444"} fontSize="8" fontFamily="monospace" fontWeight="bold">$</text>
-        {earned&&<path d="M24 6 L28 6" stroke="#E8C56A" strokeWidth="1" opacity="0.5" strokeLinecap="round"/>}
+        <circle cx="36" cy="12" r="7" fill={earned?"rgba(74,222,128,0.2)":"#1a1a1a"} stroke={earned?"#4ADE80":"#333"} strokeWidth="1.5"/>
+        <text x="33" y="16" fill={earned?"#4ADE80":"#444"} fontSize="8" fontFamily="monospace" fontWeight="bold">$</text>
+        {earned&&<path d="M24 6 L28 6" stroke="#F0CA5A" strokeWidth="1" opacity="0.5" strokeLinecap="round"/>}
       </svg>
     ),
   },
@@ -2249,8 +2262,8 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
   const activeTiers=isRW?RW_TIERS:isCollector?COLLECTOR_TIERS:null;
   const activeVal=isRW?sessions:isCollector?dinners:0;
   const activeKey=isRW?'sessions':'dinners';
-  const tierColor=activeTier?.color||"#C9A84C";
-  const tierGlow=activeTier?.glow||"rgba(201,168,76,0.3)";
+  const tierColor=activeTier?.color||"#E9B949";
+  const tierGlow=activeTier?.glow||"rgba(233,185,73,0.3)";
   const isFire=activeTier?.label==='FIRE';
   const displayName=(isRW||isCollector)
     ?(isFire&&!earned?"???":activeTier?.name||b.name)
@@ -2269,16 +2282,16 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
         <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,padding:"8px 4px"}}>
           {b.icon(earned,38,tierColor)}
           {earned&&b.repeatable&&count>1&&(
-            <div style={{position:"absolute",top:5,right:5,background:"#C9A84C",borderRadius:8,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",border:"2px solid #0A0A0A"}}>
-              <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{count}x</span>
+            <div style={{position:"absolute",top:5,right:5,background:"#E9B949",borderRadius:8,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",border:"2px solid #0A0A0A"}}>
+              <span style={{color:"#0A0A0A",fontSize:9,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{count}x</span>
             </div>
           )}
           {b.id==='road_warrior'&&rwTier&&earned&&(
             <div style={{position:"absolute",top:5,left:5,background:isFire?"#FF6B35":tierColor,borderRadius:5,padding:"1px 4px"}}>
-              <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'Space Mono',monospace",fontWeight:700}}>{isFire?"🔥":rwTier.label}</span>
+              <span style={{color:"#0A0A0A",fontSize:7,fontFamily:"'JetBrains Mono',monospace",fontWeight:700}}>{isFire?"🔥":rwTier.label}</span>
             </div>
           )}
-          <div style={{color:earned?tierColor:"#444",fontSize:8,fontFamily:"'Space Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700,paddingBottom:2}}>{displayName}</div>
+          <div style={{color:earned?tierColor:"#444",fontSize:8,fontFamily:"'JetBrains Mono',monospace",textAlign:"center",letterSpacing:0.5,lineHeight:1.3,fontWeight:700,paddingBottom:2}}>{displayName}</div>
         </div>
       </div>
 
@@ -2305,8 +2318,8 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
             <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
               <div style={{flexShrink:0}}>{b.icon(earned,52,tierColor)}</div>
               <div style={{flex:1}}>
-                <div style={{color:earned?tierColor:"#555",fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700}}>{displayName}</div>
-                <div style={{color:earned?"#888":"#333",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1,marginTop:3}}>
+                <div style={{color:earned?tierColor:"#555",fontFamily:"'Fraunces',serif",fontSize:20,fontWeight:700}}>{displayName}</div>
+                <div style={{color:earned?"#888":"#333",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1,marginTop:3}}>
                   {earned?"✓ EARNED"+(b.repeatable&&count>1?` · ${count}×`:""):"LOCKED"}
                 </div>
               </div>
@@ -2318,7 +2331,7 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
             {/* Progression — road_warrior or collector */}
             {(isRW||isCollector)&&activeTiers&&(
               <div style={{borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:16}}>
-                <div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:1.5,marginBottom:14}}>PROGRESSION</div>
+                <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1.5,marginBottom:14}}>PROGRESSION</div>
                 {activeTiers.map((t:any,i:number)=>{
                   const tVal=(t as any)[activeKey];
                   const done=activeVal>=tVal;
@@ -2348,25 +2361,25 @@ function BadgeCard({b,count,sessions,dinners,flipped,onFlip}:any){
                         <div style={{
                           color:done?t.color:"#333",
                           fontSize:current?13:11,
-                          fontFamily:current?"'Playfair Display',serif":"'Space Mono',monospace",
+                          fontFamily:current?"'Fraunces',serif":"'JetBrains Mono',monospace",
                           fontWeight:current?700:400,
                           animation:isFireTier&&done?"fireFlicker 2s ease-in-out infinite":undefined,
                         }}>
                           {(!isFireTier||done)?t.name:"????"}
-                          {current&&<span style={{color:t.color,fontSize:9,fontFamily:"'Space Mono',monospace",marginLeft:8,background:`${t.color}22`,padding:"1px 6px",borderRadius:4}}>CURRENT</span>}
+                          {current&&<span style={{color:t.color,fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginLeft:8,background:`${t.color}22`,padding:"1px 6px",borderRadius:4}}>CURRENT</span>}
                         </div>
-                        <div style={{color:done?t.color+"66":"#222",fontSize:9,fontFamily:"'Space Mono',monospace",marginTop:1}}>
+                        <div style={{color:done?t.color+"66":"#222",fontSize:9,fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>
                           {tVal} {activeKey} · {isFireTier&&!done?"????":t.label}
                         </div>
                       </div>
                     </div>
                   );
                 })}
-                {activeNext&&<div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace",marginTop:8,textAlign:"center" as const}}>{(activeNext as any)[activeKey]-activeVal} to go until {(activeNext as any).hidden&&!earned?"????":activeNext.name}</div>}
+                {activeNext&&<div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:8,textAlign:"center" as const}}>{(activeNext as any)[activeKey]-activeVal} to go until {(activeNext as any).hidden&&!earned?"????":activeNext.name}</div>}
               </div>
             )}
             <div style={{marginTop:16,textAlign:"center" as const}}>
-              <button onClick={onFlip} style={{background:"none",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,color:"#444",fontFamily:"'Space Mono',monospace",fontSize:10,padding:"6px 18px",cursor:"pointer"}}>CLOSE</button>
+              <button onClick={onFlip} style={{background:"none",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,color:"#444",fontFamily:"'JetBrains Mono',monospace",fontSize:10,padding:"6px 18px",cursor:"pointer"}}>CLOSE</button>
             </div>
           </div>
         </div>
@@ -2484,7 +2497,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
     <>
       {/* BADGES — progressive */}
       <Card style={{marginBottom:12}}>
-        <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
+        <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:14}}>BADGES</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           {badgeDefs.map(b=>(
             <BadgeCard key={b.id} b={b} count={counts[b.id]||0} sessions={sessions} dinners={dinners}
@@ -2501,10 +2514,10 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
       {/* ACHIEVEMENTS — swipeable pages */}
       <Card style={{marginBottom:12,overflow:"hidden" as const}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <div style={{color:"#888",fontSize:10,fontFamily:"'Space Mono',monospace",letterSpacing:2}}>ACHIEVEMENTS</div>
+          <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2}}>ACHIEVEMENTS</div>
           {totalPages>1&&<div style={{display:"flex",gap:5,alignItems:"center"}}>
             {Array(totalPages).fill(0).map((_,i)=>(
-              <div key={i} onClick={()=>setAchPage(i)} style={{width:i===achPage?16:6,height:6,borderRadius:3,background:i===achPage?"#C9A84C":"rgba(255,255,255,0.12)",transition:"all 0.25s",cursor:"pointer"}}/>
+              <div key={i} onClick={()=>setAchPage(i)} style={{width:i===achPage?16:6,height:6,borderRadius:3,background:i===achPage?"#E9B949":"rgba(255,255,255,0.12)",transition:"all 0.25s",cursor:"pointer"}}/>
             ))}
           </div>}
         </div>
@@ -2534,7 +2547,7 @@ function BadgeRow({allStats,sessionEntries,friendCount,displayName}:any){
             ))}
           </div>
         </div>
-        {totalPages>1&&<div style={{textAlign:"center" as const,marginTop:12,color:"#444",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:1}}>SWIPE TO SEE MORE</div>}
+        {totalPages>1&&<div style={{textAlign:"center" as const,marginTop:12,color:"#444",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:1}}>SWIPE TO SEE MORE</div>}
       </Card>
     </>
   );
@@ -2548,10 +2561,10 @@ function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
   return(
     <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
       <BackButton onBack={onBack}/>
-      <div style={{textAlign:"center",marginBottom:18}}><Avatar name={player.name} size={68}/><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#fff",marginTop:9}}>{player.name}</div><div style={{color:isUp?"#4CAF8C":"#E05555",fontSize:26,fontFamily:"'Space Mono',monospace",fontWeight:700,marginTop:3}}>{isUp?"+":""}${player.total_profit}</div><div style={{color:"#555",fontSize:10,fontFamily:"'Space Mono',monospace"}}>in this league</div>{!isSelf&&<button onClick={()=>onSendFriendRequest(player.name)} style={{marginTop:10,padding:"6px 18px",background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.3)",borderRadius:20,color:"#C9A84C",fontFamily:"'Space Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}</div>
-      <div style={{display:"flex",gap:7,marginBottom:12}}><StatBox label="Sessions" value={player.session_count}/><StatBox label="Wins" value={player.wins} accent="#4CAF8C"/><StatBox label="Win %" value={`${winRate}%`} accent="#5577CC"/><StatBox label="Best" value={`$${player.best_night}`}/></div>
-      {badges.length>0&&<Card style={{marginBottom:11}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{badges.map((b:any,i:number)=><div key={i} style={{background:"rgba(201,168,76,0.1)",border:"1px solid rgba(201,168,76,0.25)",borderRadius:9,padding:"5px 10px",display:"flex",alignItems:"center",gap:5}}><Icon name={b.icon} size={12} color="#C9A84C"/><span style={{color:"#C9A84C",fontSize:10,fontFamily:"'Space Mono',monospace"}}>{b.label}</span></div>)}</div></Card>}
-      <Card>{([["Avg/session",fmtProfit(player.session_count>0?Math.round(player.total_profit/player.session_count):0),isUp?"#4CAF8C":"#E05555"],["Biggest win",`$${player.best_night}`,"#C9A84C"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}`,"#4CAF8C"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'Space Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'Space Mono',monospace"}}>{val}</span></div>)}</Card>
+      <div style={{textAlign:"center",marginBottom:18}}><Avatar name={player.name} size={68}/><div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff",marginTop:9}}>{player.name}</div><div style={{color:isUp?"#4ADE80":"#F87171",fontSize:26,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:3}}>{isUp?"+":""}${player.total_profit}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>in this league</div>{!isSelf&&<button onClick={()=>onSendFriendRequest(player.name)} style={{marginTop:10,padding:"6px 18px",background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}</div>
+      <div style={{display:"flex",gap:7,marginBottom:12}}><StatBox label="Sessions" value={player.session_count}/><StatBox label="Wins" value={player.wins} accent="#4ADE80"/><StatBox label="Win %" value={`${winRate}%`} accent="#8AB4FF"/><StatBox label="Best" value={`$${player.best_night}`}/></div>
+      {badges.length>0&&<Card style={{marginBottom:11}}><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{badges.map((b:any,i:number)=><div key={i} style={{background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.25)",borderRadius:9,padding:"5px 10px",display:"flex",alignItems:"center",gap:5}}><Icon name={b.icon} size={12} color="#E9B949"/><span style={{color:"#E9B949",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{b.label}</span></div>)}</div></Card>}
+      <Card>{([["Avg/session",fmtProfit(player.session_count>0?Math.round(player.total_profit/player.session_count):0),isUp?"#4ADE80":"#F87171"],["Biggest win",`$${player.best_night}`,"#E9B949"],["Time in league",fmtSeconds(player.time_played_seconds||0),"#888"],["Win streak",`${player.streak}`,"#4ADE80"]] as any[]).map(([label,val,col]:any,i:number,arr:any[])=><div key={label} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><span style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{label}</span><span style={{color:col,fontFamily:"'JetBrains Mono',monospace"}}>{val}</span></div>)}</Card>
     </div>
   );
 }
@@ -2559,15 +2572,19 @@ function PlayerProfileView({player,profile,onBack,onSendFriendRequest}:any){
 
 // ─── BOTTOM NAV ────────────────────────────────────────
 function BottomNav({activeTab,onTab,profile}:{activeTab:Tab;onTab:(t:Tab)=>void;profile:any}){
+  const tabs=[
+    {key:'league' as Tab,icon:'♠',label:'Leagues'},
+    {key:'feed'   as Tab,icon:'◈',label:'Feed'},
+    {key:'profile'as Tab,icon:'○',label:'Profile'},
+  ];
   return(
-    <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,10,10,0.97)",borderTop:"1px solid rgba(201,168,76,0.15)",display:"flex",padding:"10px 0 20px",zIndex:100}}>
-      {([{key:'feed' as Tab,icon:'◈',label:'Feed'},{key:'league' as Tab,icon:'⬡',label:'League'}]).map(t=><button key={t.key} onClick={()=>onTab(t.key)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab===t.key?"#C9A84C":"#444"}}><span style={{fontSize:20}}>{t.icon}</span><span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>{t.label}</span></button>)}
-      <button onClick={()=>onTab('profile')} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",color:activeTab==='profile'?"#C9A84C":"#444"}}>
-        <div style={{width:24,height:24,borderRadius:"50%",overflow:"hidden",border:`2px solid ${activeTab==='profile'?"#C9A84C":"#333"}`,flexShrink:0}}>
-          <Avatar name={profile?.display_name||"?"} url={profile?.avatar_url} size={24}/>
-        </div>
-        <span style={{fontFamily:"'Space Mono',monospace",fontSize:10,letterSpacing:1}}>Profile</span>
-      </button>
+    <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",display:"flex",gap:4,padding:6,background:"rgba(19,19,23,0.92)",backdropFilter:"blur(20px) saturate(160%)",WebkitBackdropFilter:"blur(20px) saturate(160%)",border:"1px solid rgba(255,255,255,0.10)",borderRadius:999,zIndex:100,boxShadow:"0 16px 48px rgba(0,0,0,0.6)"}}>
+      {tabs.map(t=>(
+        <button key={t.key} onClick={()=>onTab(t.key)}
+          style={{background:activeTab===t.key?"#E9B949":"transparent",color:activeTab===t.key?"#0A0A0A":"#5C616B",border:"none",padding:"10px 18px",borderRadius:999,fontWeight:600,fontSize:13,transition:"all 0.2s",minWidth:44,display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontFamily:"'Inter Tight',system-ui,sans-serif",whiteSpace:"nowrap"}}>
+          <span>{t.icon}</span>{t.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -2939,9 +2956,9 @@ export default function HomeGameApp(){
   return(
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Space+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        body,html{background:#0A0A0A;color:#fff;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;touch-action:pan-x pan-y;}
+        body,html{background:#0B0B0D;color:#F2F2F3;font-family:'Inter Tight',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;touch-action:pan-x pan-y;}
         input[type=number]{-moz-appearance:textfield;}
         input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
         input::placeholder,textarea::placeholder{color:#333!important;}
@@ -2954,24 +2971,24 @@ export default function HomeGameApp(){
         @keyframes fireBorder{0%,100%{border-color:#FF6B35;}33%{border-color:#FF8C55;}66%{border-color:#FF4500;}}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
       `}</style>
-      <div style={{background:"#0A0A0A",minHeight:"100vh",paddingBottom:80}}>
-        {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(76,175,140,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'Space Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{toast}</div>}
-        {error&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(224,85,85,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'Space Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{error}</div>}
+      <div style={{background:"#0B0B0D",minHeight:"100vh",paddingBottom:96}}>
+        {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(74,222,128,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'JetBrains Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{toast}</div>}
+        {error&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"rgba(248,113,113,0.95)",color:"#fff",padding:"10px 20px",borderRadius:30,fontFamily:"'JetBrains Mono',monospace",fontSize:12,zIndex:999,maxWidth:"88vw",textAlign:"center"}}>{error}</div>}
         {/* Badge unlock popup */}
         {badgePopup.length>0&&(()=>{
           const b=badgePopup[0];
           const isBadge=b.progression;
           return(
             <div onClick={()=>setBadgePopup(p=>p.slice(1))} style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,animation:"fadeIn 0.2s ease"}}>
-              <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:320,background:"linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))",border:"2px solid #C9A84C",borderRadius:20,padding:28,boxShadow:"0 0 40px rgba(201,168,76,0.3)",animation:"slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)"}}>
+              <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:320,background:"linear-gradient(145deg,rgba(15,10,3,0.99),rgba(0,0,0,0.99))",border:"2px solid #E9B949",borderRadius:20,padding:28,boxShadow:"0 0 40px rgba(233,185,73,0.3)",animation:"slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)"}}>
                 <div style={{textAlign:"center" as const,marginBottom:16}}>
-                  <div style={{color:"#C9A84C",fontSize:9,fontFamily:"'Space Mono',monospace",letterSpacing:3,marginBottom:8}}>{isBadge?"BADGE LEVEL UP":"ACHIEVEMENT UNLOCKED"}</div>
-                  <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>{b.icon(true,56,"#C9A84C")}</div>
-                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:"#C9A84C",fontWeight:700,marginBottom:6}}>{b.name}</div>
+                  <div style={{color:"#E9B949",fontSize:9,fontFamily:"'JetBrains Mono',monospace",letterSpacing:3,marginBottom:8}}>{isBadge?"BADGE LEVEL UP":"ACHIEVEMENT UNLOCKED"}</div>
+                  <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>{b.icon(true,56,"#E9B949")}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#E9B949",fontWeight:700,marginBottom:6}}>{b.name}</div>
                   <div style={{color:"#888",fontSize:12,lineHeight:1.7,marginBottom:4}}>🎉 Congratulations!</div>
                   <div style={{color:"#666",fontSize:11,lineHeight:1.6}}>{b.desc}</div>
                 </div>
-                <button onClick={()=>setBadgePopup(p=>p.slice(1))} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#C9A84C,#E8C56A)",border:"none",borderRadius:11,color:"#0A0A0A",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>
+                <button onClick={()=>setBadgePopup(p=>p.slice(1))} style={{width:"100%",padding:"11px 0",background:"linear-gradient(135deg,#E9B949,#F0CA5A)",border:"none",borderRadius:11,color:"#0A0A0A",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>
                   {badgePopup.length>1?`NEXT (${badgePopup.length-1} more)`:"LET'S GO →"}
                 </button>
               </div>
