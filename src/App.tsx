@@ -1797,129 +1797,967 @@ function useCountUp(target:number,duration=900,enabled=true){
   return val;
 }
 
-function ProfileTabView({profile,myLeagues,isSelf,externalName,onFriends,onLogout,onSendFriendRequest,onBack}:any){
-  const [allStats,setAllStats]=useState<any>(null);const [loading,setLoading]=useState(true);
-  const [friendCount,setFriendCount]=useState(0);const [isFriend,setIsFriend]=useState(false);const [editing,setEditing]=useState(false);
-  const [newName,setNewName]=useState(profile?.display_name||"");const [savingName,setSavingName]=useState(false);
-  const [uploadingAvatar,setUploadingAvatar]=useState(false);const [msg,setMsg]=useState("");
-  const fileRef=useRef<HTMLInputElement>(null);
-  const displayName=isSelf?profile.display_name:(externalName||profile.display_name);
-  const [sessionEntries,setSessionEntries]=useState<any[]>([]);
-  useEffect(()=>{loadStats();},[displayName]);
+// ═══════════════════════════════════════════════════════════════════
+// VAULT PROFILE SYSTEM · Phase 1
+// Paste this entire block into App.tsx, replacing the old ProfileTabView.
+// Installation instructions at the bottom of this file.
+// ═══════════════════════════════════════════════════════════════════
 
-  const loadStats=async()=>{
-    if(!db||!displayName)return;setLoading(true);
-    const[{data:rows},{data:fd}]=await Promise.all([
-      db.from("players").select("total_profit,session_count,wins,best_night,worst_night,time_played_seconds,chicken_dinners").ilike("name",displayName),
-      db.from("friends").select("id,requester_name,recipient_name").or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`).eq("status","accepted")
-    ]);
-    setFriendCount((fd||[]).length);const myName=profile.display_name.toLowerCase();setIsFriend(!isSelf&&(fd||[]).some((f:any)=>f.requester_name.toLowerCase()===myName||f.recipient_name.toLowerCase()===myName));
-    const{data:profData}=await db.from("profiles")
-      .select("archived_profit,archived_sessions,archived_wins,archived_best_night,archived_worst_night,archived_time_seconds,archived_chicken_dinners,archived_rebuys,total_rebuys,privacy_settings")
-      .ilike("display_name",displayName).single();
-    const arch=profData||{};
-    const liveRows=rows||[];
-    const tp=liveRows.reduce((a:number,p:any)=>a+(p.total_profit||0),0)+(arch.archived_profit||0);
-    const s=liveRows.reduce((a:number,p:any)=>a+(p.session_count||0),0)+(arch.archived_sessions||0);
-    const w=liveRows.reduce((a:number,p:any)=>a+(p.wins||0),0)+(arch.archived_wins||0);
-    const best=Math.max(arch.archived_best_night||0,...liveRows.map((p:any)=>p.best_night||0));
-    const worst=Math.min(arch.archived_worst_night||0,...liveRows.map((p:any)=>p.worst_night||0));
-    const time=liveRows.reduce((a:number,p:any)=>a+(p.time_played_seconds||0),0)+(arch.archived_time_seconds||0);
-    const cd=liveRows.reduce((a:number,p:any)=>a+(p.chicken_dinners||0),0)+(arch.archived_chicken_dinners||0);
-    const rebuys=(arch.total_rebuys||0)+(arch.archived_rebuys||0);
-    const privacy=arch.privacy_settings||{};
-    setAllStats({total_profit:tp,sessions:s,wins:w,losses:s-w,best_night:best,worst_night:worst,leagues:liveRows.length,time_seconds:time,chicken_dinners:cd,avg:s>0?tp/s:0,rebuys,privacy});
-    // Fetch session entries for badge/achievement computation
-    const playerIdRows=(await db.from("players").select("id").ilike("name",displayName)).data||[];
-    const playerIds=playerIdRows.map((p:any)=>p.id);
-    const{data:seData}=await db.from("session_entries")
-      .select("profit,rebuys,buy_in,cash_out,sessions!inner(stats_committed,created_at,chicken_dinner_name,pot,duration_seconds)")
-      .eq("sessions.stats_committed",true)
-      .in("player_id",playerIds);
-    setSessionEntries((seData||[]).sort((a:any,b:any)=>new Date(a.sessions?.created_at||0).getTime()-new Date(b.sessions?.created_at||0).getTime()));
-    setLoading(false);
-  };
+// ─── VAULT THEME TOKENS ──────────────────────────────────────────
+const vault = {
+  bg: '#0B0B0D',
+  bgElev: '#131317',
+  bgElev2: '#1A1A20',
+  line: 'rgba(255,255,255,0.06)',
+  line2: 'rgba(255,255,255,0.10)',
+  text: '#F2F2F3',
+  textDim: '#9AA0A6',
+  textMuted: '#5C616B',
+  gold: '#E9B949',
+  goldDim: '#8E6F24',
+  green: '#4ADE80',
+  red: '#F87171',
+  blue: '#8AB4FF',
+  fontSerif: "'Fraunces','Playfair Display',Georgia,serif",
+  fontSans: "'Inter Tight','Inter',system-ui,sans-serif",
+  fontMono: "'JetBrains Mono','Space Mono',ui-monospace,monospace",
+  easeOut: 'cubic-bezier(0.22,1,0.36,1)',
+  durFast: '140ms',
+  durMed: '240ms',
+  durSlow: '420ms',
+};
 
-  const handleSaveName=async()=>{if(!db||!newName.trim()||newName.trim()===profile.display_name)return;setSavingName(true);const{error}=await db.from("profiles").update({display_name:newName.trim()}).eq("id",profile.id);if(!error){bustAvatarCache(profile.display_name,profile.avatar_url);bustAvatarCache(newName.trim(),profile.avatar_url);profile.display_name=newName.trim();setMsg("Name updated!");setTimeout(()=>setMsg(""),3000);}setSavingName(false);};
-  const handleAvatar=async(e:any)=>{const f=e.target.files?.[0];if(!f||!db)return;setUploadingAvatar(true);try{const ext=f.name.split('.').pop();const path=`${profile.id}/avatar.${ext}`;await db.storage.from("avatars").upload(path,f,{upsert:true});const{data:ud}=db.storage.from("avatars").getPublicUrl(path);const url=ud.publicUrl+"?t="+Date.now();await db.from("profiles").update({avatar_url:url}).eq("id",profile.id);bustAvatarCache(profile.display_name,url);profile.avatar_url=url;setMsg("Photo updated!");setTimeout(()=>setMsg(""),3000);}finally{setUploadingAvatar(false);}};
-  const isUp=(allStats?.total_profit||0)>=0;
-  // Count-up values — always called at top level (hooks rule)
-  const cuSessions=  useCountUp(allStats?.sessions||0,950,!loading&&!!allStats);
-  const cuWins=      useCountUp(allStats?.wins||0,1000,!loading&&!!allStats);
-  const cuBestN=     useCountUp(allStats?.best_night||0,1050,!loading&&!!allStats);
-  const cuWorstN=    useCountUp(Math.abs(allStats?.worst_night||0),1050,!loading&&!!allStats);
-  const cuWinPct=    useCountUp(allStats?.sessions>0?Math.round((allStats.wins/allStats.sessions)*100):0,1000,!loading&&!!allStats);
-  const cuWinStreak= useCountUp(allStats?.wins||0,950,!loading&&!!allStats);
-  const cuPL=        useCountUp(Math.abs(Math.round(allStats?.total_profit||0)),1150,!loading&&!!allStats);
-  const cuAvg=       useCountUp(Math.abs(Math.round(allStats?.avg||0)),1050,!loading&&!!allStats);
-  const cuHrs=       useCountUp(Math.floor((allStats?.time_seconds||0)/3600),1150,!loading&&!!allStats);
-  const cuDinners=   useCountUp(allStats?.chicken_dinners||0,950,!loading&&!!allStats);
-  const cuRebuys=    useCountUp(allStats?.rebuys||0,950,!loading&&!!allStats);
-  const cuTotalWin=  useCountUp(Math.round((sessionEntries||[]).filter((e:any)=>(e.profit||0)>0).reduce((a:number,e:any)=>a+(e.profit||0),0)),1300,!loading&&sessionEntries.length>0);
-  const cuHrRate=    useCountUp(Math.abs(Math.round(allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0)),1050,!loading&&!!allStats);
-  const hourlyRate=  allStats?.time_seconds>0?(allStats.total_profit/((allStats.time_seconds||1)/3600)):0;
-  const cuMins=      Math.floor(((allStats?.time_seconds||0)%3600)/60);
-  return(
-    <div style={{padding:"20px 16px",maxWidth:500,margin:"0 auto"}}>
-      {!isSelf&&onBack&&<BackButton onBack={onBack}/>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-        <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff"}}>Profile</div>
-        {isSelf&&<div style={{display:"flex",gap:7}}>
-          <button onClick={onFriends} style={{padding:"5px 11px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:20,color:"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>FRIENDS</button>
-          <button onClick={()=>setEditing(!editing)} style={{padding:"5px 11px",background:editing?"rgba(233,185,73,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${editing?"rgba(233,185,73,0.3)":"rgba(255,255,255,0.1)"}`,borderRadius:20,color:editing?"#E9B949":"#888",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer"}}>EDIT</button>
-        </div>}
-        {!isSelf&&!isFriend&&<button onClick={()=>onSendFriendRequest&&onSendFriendRequest(displayName)} style={{padding:"6px 14px",background:"rgba(233,185,73,0.1)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:20,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:9,cursor:"pointer",letterSpacing:1}}>+ ADD FRIEND</button>}{!isSelf&&isFriend&&<span style={{padding:"6px 14px",background:"rgba(74,222,128,0.08)",border:"1px solid rgba(74,222,128,0.2)",borderRadius:20,color:"#4ADE80",fontFamily:"'JetBrains Mono',monospace",fontSize:9}}>● Friends</span>}
-      </div>
-      <div style={{textAlign:"center",marginBottom:18}}>
-        <div style={{position:"relative",display:"inline-block"}}>
-          <Avatar name={displayName} url={isSelf?profile.avatar_url:null} size={76}/>
-          {isSelf&&editing&&<button onClick={()=>fileRef.current?.click()} style={{position:"absolute",bottom:0,right:0,width:26,height:26,borderRadius:"50%",background:"#E9B949",border:"2px solid #0A0A0A",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>{uploadingAvatar?<Spinner size={11}/>:<Icon name="camera" size={13} color="#0A0A0A"/>}</button>}
-          {isSelf&&<input ref={fileRef} type="file" accept="image/*" onChange={handleAvatar} style={{display:"none"}}/>}
-        </div>
-        {isSelf&&editing?<div style={{marginTop:10,display:"flex",gap:7,justifyContent:"center",alignItems:"center"}}><input value={newName} onChange={e=>setNewName(e.target.value)} style={{...inp,width:200,fontSize:15,textAlign:"center" as const,fontFamily:"'Fraunces',serif"}}/><button onClick={handleSaveName} disabled={savingName||!newName.trim()||newName.trim()===profile.display_name} style={{padding:"9px 12px",background:"rgba(233,185,73,0.15)",border:"1px solid rgba(233,185,73,0.3)",borderRadius:9,color:"#E9B949",fontFamily:"'JetBrains Mono',monospace",fontSize:10,cursor:"pointer"}}>{savingName?"...":"✓"}</button></div>:<div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"#fff",marginTop:10}}>{displayName}</div>}
-        {msg&&<div style={{color:"#4ADE80",fontSize:10,fontFamily:"'JetBrains Mono',monospace",marginTop:5}}>✓ {msg}</div>}
-        <div style={{display:"flex",justifyContent:"center",gap:14,marginTop:6}}>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{allStats?.leagues||0} leagues</div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{friendCount} friends</div>
-        </div>
-        {!loading&&allStats&&<>
-          <div style={{color:"#4ADE80",fontSize:32,fontFamily:"'JetBrains Mono',monospace",fontWeight:700,marginTop:10}}>+${cuTotalWin}</div>
-          <div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>total won (gross)</div>
-        </>}
-        {loading&&<div style={{display:"flex",justifyContent:"center",marginTop:14}}><Spinner/></div>}
-        {!loading&&allStats&&<div style={{color:"#333",fontSize:9,fontFamily:"'JetBrains Mono',monospace",textAlign:"center" as const,marginTop:6,letterSpacing:1}}>stats reflect locked sessions only</div>}
-      </div>
-      {!loading&&allStats&&<>
-        {!isSelf&&allStats.privacy?.hide_stats?<Card style={{marginBottom:12,textAlign:"center" as const}}><div style={{color:"#555",fontFamily:"'JetBrains Mono',monospace",fontSize:11,padding:"14px 0",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Icon name="lock" size={13} color="#555"/>This player's stats are private</div><div style={{display:"flex",gap:7,justifyContent:"center",marginTop:10}}><StatBox label="Time Played" value={fmtSeconds(allStats.time_seconds)} accent="#888"/></div></Card>:<>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-          <StatBox label="Sessions" value={cuSessions}/>
-          <StatBox label="Wins" value={cuWins} accent="#4ADE80"/>
-          <StatBox label="Best Night" value={`$${cuBestN}`} accent="#E9B949"/>
-          <StatBox label="Worst Night" value={allStats.worst_night<0?`-$${cuWorstN}`:"—"} accent={allStats.worst_night<0?"#F87171":"#555"}/>
-          <StatBox label="Win %" value={allStats.sessions>0?`${cuWinPct}%`:"—"} accent="#8AB4FF"/>
-          <StatBox label="Win Streak" value={cuWinStreak} accent="#4ADE80"/>
-          <StatBox label="All-Time P/L" value={allStats.total_profit>=0?`+$${cuPL}`:`-$${cuPL}`} accent={isUp?"#4ADE80":"#F87171"}/>
-          <StatBox label="Avg/Game" value={allStats.sessions>0?(allStats.avg>=0?`+$${cuAvg}`:`-$${cuAvg}`):"—"} accent={allStats.avg>=0?"#4ADE80":"#F87171"}/>
-          <StatBox label="$/Hour" value={allStats.time_seconds>0?(hourlyRate>=0?`+$${cuHrRate}`:`-$${cuHrRate}`):"—"} accent={hourlyRate>=0?"#4ADE80":"#F87171"}/>
-          <StatBox label="Time Played" value={cuHrs>0?`${cuHrs}h ${cuMins}m`:"—"} accent="#888"/>
-          <StatBox label="Dinners" value={cuDinners} accent="#E9B949"/>
-          <StatBox label="Rebuys" value={cuRebuys} accent="#8AB4FF"/>
-        </div>
-        </>}
-        {!loading&&allStats&&<BadgeRow allStats={allStats} sessionEntries={sessionEntries} friendCount={friendCount} displayName={displayName}/>}
-        {isSelf&&myLeagues.length>0&&<Card style={{marginBottom:12}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:11}}>MY LEAGUES</div>{myLeagues.map((lg:any,i:number)=><div key={lg.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:i<myLeagues.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}><div style={{width:30,height:30,borderRadius:7,background:"rgba(233,185,73,0.1)",display:"flex",alignItems:"center",justifyContent:"center"}}>{lg.is_public?<Icon name="globe" size={14} color="#8AB4FF"/>:<Icon name="spade" size={14} color="#E9B949"/>}</div><div style={{flex:1}}><div style={{color:"#fff",fontSize:12}}>{lg.name}</div><div style={{color:"#555",fontSize:10,fontFamily:"'JetBrains Mono',monospace"}}>{lg.season}</div></div>{lg.commissioner_id===lg._myUserId&&<Icon name="crown" size={12} color="#E9B949"/>}</div>)}</Card>}
-        {isSelf&&editing&&<>
-          <Card style={{marginBottom:10}}>
-            <div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:10}}>PRIVACY</div>
-            <Toggle value={!!allStats.privacy?.hide_stats} onChange={async(v:boolean)=>{if(!db)return;const np={...allStats.privacy,hide_stats:v};await db.from("profiles").update({privacy_settings:np}).eq("id",profile.id);setAllStats((s:any)=>({...s,privacy:np}));}} label="Hide my stats from others" sub="Others only see your time played"/>
-          </Card>
-          <Card style={{marginBottom:10}}><div style={{color:"#888",fontSize:10,fontFamily:"'JetBrains Mono',monospace",letterSpacing:2,marginBottom:6}}>ACCOUNT</div><div style={{color:"#555",fontSize:11,fontFamily:"'JetBrains Mono',monospace",marginBottom:5}}>{profile.email}</div><div style={{color:"#444",fontSize:11,lineHeight:1.6}}>To change your password, sign out and use "Forgot password?"</div></Card>
-          <button onClick={onLogout} style={{width:"100%",padding:"13px 0",background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:11,color:"#F87171",fontFamily:"'JetBrains Mono',monospace",fontWeight:700,fontSize:12,letterSpacing:2,cursor:"pointer"}}>SIGN OUT</button>
-        </>}
-      </>}
+const vaultCard: React.CSSProperties = {
+  background: vault.bgElev,
+  border: `1px solid ${vault.line}`,
+  borderRadius: 16,
+  padding: 20,
+};
+
+// Inject Vault keyframes once on mount
+function VaultStyles() {
+  return (
+    <style>{`
+      @keyframes vault_fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @keyframes vault_slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+      @keyframes vault_pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+      @keyframes vault_shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+      @keyframes vault_drawIn { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+      @keyframes vault_growUp { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      @keyframes vault_cellPop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+      .vault-fade-in { animation: vault_fadeIn ${vault.durMed} ${vault.easeOut} both; }
+      .vault-slide-up { animation: vault_slideUp ${vault.durSlow} ${vault.easeOut} both; }
+      .vault-shimmer {
+        background: linear-gradient(90deg, ${vault.bgElev} 0%, ${vault.bgElev2} 50%, ${vault.bgElev} 100%);
+        background-size: 200% 100%;
+        animation: vault_shimmer 1.6s infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .vault-fade-in, .vault-slide-up { animation: none !important; }
+      }
+    `}</style>
+  );
+}
+
+// ─── SVG VISUALIZATIONS ──────────────────────────────────────────
+
+// Cumulative P/L area chart with draw-in animation
+function BankrollChart({ data, color, width = 320, height = 90 }: { data: number[]; color: string; width?: number; height?: number; }) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const areaRef = useRef<SVGPathElement>(null);
+  useEffect(() => {
+    if (!pathRef.current) return;
+    const len = pathRef.current.getTotalLength();
+    pathRef.current.style.setProperty('--len', String(len));
+    pathRef.current.style.strokeDasharray = `${len}`;
+    pathRef.current.style.strokeDashoffset = `${len}`;
+    // Force reflow
+    void pathRef.current.getBoundingClientRect();
+    pathRef.current.style.transition = `stroke-dashoffset 900ms ${vault.easeOut}`;
+    pathRef.current.style.strokeDashoffset = '0';
+    if (areaRef.current) {
+      areaRef.current.style.opacity = '0';
+      void areaRef.current.getBoundingClientRect();
+      areaRef.current.style.transition = `opacity 900ms ${vault.easeOut}`;
+      areaRef.current.style.opacity = '1';
+    }
+  }, [data]);
+
+  if (!data || data.length < 2) {
+    return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: vault.textMuted, fontFamily: vault.fontMono, fontSize: 11 }}>Not enough games yet — play one tonight</div>;
+  }
+  const min = Math.min(0, ...data);
+  const max = Math.max(0, ...data);
+  const range = (max - min) || 1;
+  const pts = data.map((v, i) => [(i / (data.length - 1)) * width, height - ((v - min) / range) * (height - 8) - 4]);
+  const zeroY = height - ((0 - min) / range) * (height - 8) - 4;
+  const pathLine = pts.map(([x, y], i) => (i === 0 ? `M${x},${y}` : `L${x},${y}`)).join(' ');
+  const pathArea = `${pathLine} L${width},${zeroY} L0,${zeroY} Z`;
+  const gradId = `vaultBankroll_${color.replace('#', '')}`;
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ maxWidth: width, display: 'block', margin: '0 auto' }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.45" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1="0" x2={width} y1={zeroY} y2={zeroY} stroke={vault.line2} strokeDasharray="3 3" />
+      <path ref={areaRef} d={pathArea} fill={`url(#${gradId})`} />
+      <path ref={pathRef} d={pathLine} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="5" fill={color} stroke={vault.bg} strokeWidth="2" />
+    </svg>
+  );
+}
+
+// Win/loss bar chart with grow-up animation
+function SessionBars({ data }: { data: number[]; }) {
+  const max = Math.max(1, ...data.map(Math.abs));
+  const height = 90;
+  if (!data.length) {
+    return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: vault.textMuted, fontFamily: vault.fontMono, fontSize: 11 }}>No sessions in this window</div>;
+  }
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', height, justifyContent: 'space-between' }}>
+      {data.map((v, i) => {
+        const h = (Math.abs(v) / max) * (height / 2 - 6);
+        const isPos = v >= 0;
+        const delay = `${i * 35}ms`;
+        return (
+          <div key={i} title={fmtProfit(v)} style={{ flex: 1, height, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+              {isPos && (
+                <div style={{
+                  width: '100%', maxWidth: 20, height: h,
+                  background: `linear-gradient(to top, ${vault.green}, ${vault.green}88)`,
+                  borderRadius: '3px 3px 0 0',
+                  transformOrigin: 'bottom',
+                  animation: `vault_growUp 500ms ${vault.easeOut} ${delay} both`,
+                }} />
+              )}
+            </div>
+            <div style={{ height: 1, background: vault.line2 }} />
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+              {!isPos && v < 0 && (
+                <div style={{
+                  width: '100%', maxWidth: 20, height: h,
+                  background: `linear-gradient(to bottom, ${vault.red}, ${vault.red}88)`,
+                  borderRadius: '0 0 3px 3px',
+                  transformOrigin: 'top',
+                  animation: `vault_growUp 500ms ${vault.easeOut} ${delay} both`,
+                }} />
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
+
+// Radar chart for Play Style
+function RadarChart({ data, color, size = 220 }: { data: { label: string; value: number; }[]; color: string; size?: number; }) {
+  const cx = size / 2, cy = size / 2, r = size / 2 - 26;
+  const n = data.length;
+  const angle = (i: number) => (Math.PI * 2 * i) / n - Math.PI / 2;
+  const point = (val: number, i: number) => [cx + Math.cos(angle(i)) * (r * val / 100), cy + Math.sin(angle(i)) * (r * val / 100)];
+  const poly = data.map((d, i) => point(d.value, i).join(',')).join(' ');
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {[25, 50, 75, 100].map(p => (
+          <polygon key={p} points={data.map((_, i) => [cx + Math.cos(angle(i)) * (r * p / 100), cy + Math.sin(angle(i)) * (r * p / 100)].join(',')).join(' ')}
+            fill="none" stroke={vault.line} strokeWidth="1" />
+        ))}
+        {data.map((_, i) => {
+          const [x, y] = [cx + Math.cos(angle(i)) * r, cy + Math.sin(angle(i)) * r];
+          return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke={vault.line} strokeWidth="1" />;
+        })}
+        <polygon points={poly} fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round"
+          style={{ animation: `vault_fadeIn 600ms ${vault.easeOut} 150ms both` }} />
+        {data.map((d, i) => {
+          const [x, y] = point(d.value, i);
+          return <circle key={i} cx={x} cy={y} r="3" fill={color} style={{ animation: `vault_cellPop 400ms ${vault.easeOut} ${300 + i * 60}ms both` }} />;
+        })}
+        {data.map((d, i) => {
+          const [lx, ly] = [cx + Math.cos(angle(i)) * (r + 14), cy + Math.sin(angle(i)) * (r + 14)];
+          return <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize="10" fill={vault.textDim} fontFamily={vault.fontMono} style={{ letterSpacing: 1 }}>{d.label.toUpperCase()}</text>;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// GitHub-style activity heatmap with dual metric toggle
+function ActivityHeatmap({ cells, metric, onMetricChange }: { cells: { hours: number[]; money: number[]; rawHours: number[]; rawMoney: number[]; }; metric: 'hours' | 'money'; onMetricChange: (m: 'hours' | 'money') => void; }) {
+  const weeks = 12;
+  const levels = metric === 'hours' ? cells.hours : cells.money;
+  const raws = metric === 'hours' ? cells.rawHours : cells.rawMoney;
+  const palette = ['transparent', 'rgba(233,185,73,0.15)', 'rgba(233,185,73,0.35)', 'rgba(233,185,73,0.6)', 'rgba(233,185,73,0.9)'];
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600 }}>Activity heatmap</div>
+        <div style={{ display: 'flex', gap: 2, padding: 2, background: vault.bgElev2, border: `1px solid ${vault.line}`, borderRadius: 999 }}>
+          {(['hours', 'money'] as const).map(k => (
+            <button key={k} onClick={() => onMetricChange(k)}
+              style={{
+                padding: '4px 10px', borderRadius: 999, border: 'none',
+                background: metric === k ? vault.gold : 'transparent',
+                color: metric === k ? '#0A0A0A' : vault.textDim,
+                fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+                fontFamily: vault.fontSans, cursor: 'pointer',
+                transition: `all ${vault.durFast} ${vault.easeOut}`,
+              }}>
+              {k === 'hours' ? 'Hours' : 'Won'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div key={metric} style={{ display: 'grid', gridTemplateColumns: `20px repeat(${weeks}, 1fr)`, gap: 3 }}>
+        <div />
+        {Array.from({ length: weeks }).map((_, w) => (
+          <div key={w} style={{ color: vault.textMuted, fontSize: 9, textAlign: 'center', fontFamily: vault.fontMono }}>{w % 3 === 0 ? `w${w + 1}` : ''}</div>
+        ))}
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, di) => (
+          <React.Fragment key={di}>
+            <div style={{ color: vault.textMuted, fontSize: 9, fontFamily: vault.fontMono, textAlign: 'right', paddingRight: 4, lineHeight: '14px' }}>{d}</div>
+            {Array.from({ length: weeks }).map((_, w) => {
+              const cellIdx = di * weeks + w;
+              const v = levels[cellIdx] || 0;
+              const raw = raws[cellIdx] || 0;
+              const title = v === 0 ? 'No game'
+                : metric === 'hours' ? `${raw.toFixed(1)}h played`
+                : `+$${raw.toFixed(0)} won`;
+              return (
+                <div
+                  key={w}
+                  title={title}
+                  style={{
+                    aspectRatio: '1',
+                    background: palette[v],
+                    border: `1px solid ${vault.line}`,
+                    borderRadius: 2,
+                    animation: `vault_cellPop 400ms ${vault.easeOut} ${(w * 20) + (di * 8)}ms both`,
+                  }}
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end', color: vault.textMuted, fontSize: 10, fontFamily: vault.fontMono }}>
+        <span>less</span>
+        {palette.map((c, i) => <div key={i} style={{ width: 10, height: 10, background: c, border: `1px solid ${vault.line}`, borderRadius: 2 }} />)}
+        <span>more</span>
+      </div>
+    </div>
+  );
+}
+
+// Profit bar (horizontal) for head-to-head rows
+function ProfitBar({ value, max, width = 100 }: { value: number; max: number; width?: number; }) {
+  const pct = Math.min(1, Math.abs(value) / (max || 1));
+  const isPos = value >= 0;
+  return (
+    <div style={{ width, height: 6, position: 'relative', background: vault.bgElev2, borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: vault.line2 }} />
+      <div style={{
+        position: 'absolute', height: '100%',
+        background: isPos ? vault.green : vault.red,
+        left: isPos ? '50%' : `${50 - pct * 50}%`,
+        width: `${pct * 50}%`,
+        borderRadius: 2, opacity: 0.85,
+        transition: `width 600ms ${vault.easeOut}, left 600ms ${vault.easeOut}`,
+      }} />
+    </div>
+  );
+}
+
+// Mini stat tile (one of 4 in primary tile row)
+function MiniStat({ label, value, unit, sub, color, animKey }: { label: string; value: string | number; unit?: string; sub?: string; color?: string; animKey?: string | number; }) {
+  return (
+    <div key={animKey} style={{ ...vaultCard, padding: '12px 10px', textAlign: 'center', animation: `vault_fadeIn 400ms ${vault.easeOut} both` }}>
+      <div style={{ color: vault.textMuted, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: 600 }}>{label}</div>
+      <div style={{ color: color || vault.text, fontFamily: vault.fontSerif, fontSize: 26, fontWeight: 500, marginTop: 4, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+        {value}{unit && <span style={{ fontSize: 14, color: vault.textMuted }}>{unit}</span>}
+      </div>
+      {sub && <div style={{ color: vault.textMuted, fontSize: 10, marginTop: 3, fontFamily: vault.fontMono }}>{sub}</div>}
+    </div>
+  );
+}
+
+// Timeframe pill selector (Week / Month / Season / All)
+function TimeframePills({ value, onChange }: { value: string; onChange: (v: any) => void; }) {
+  const opts = [['week', 'Week'], ['month', 'Month'], ['season', 'Season'], ['all', 'All']];
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+      {opts.map(([k, l]) => (
+        <button key={k} onClick={() => onChange(k)}
+          style={{
+            padding: '4px 10px',
+            background: value === k ? vault.bgElev2 : 'transparent',
+            color: value === k ? vault.text : vault.textMuted,
+            border: `1px solid ${value === k ? vault.line2 : 'transparent'}`,
+            borderRadius: 999, fontSize: 11, fontWeight: 600,
+            fontFamily: vault.fontSans, cursor: 'pointer',
+            transition: `all ${vault.durFast} ${vault.easeOut}`,
+          }}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+// League filter pills (All leagues + each league you're in)
+function LeaguePills({ leagues, selectedId, onSelect }: { leagues: any[]; selectedId: string | null; onSelect: (id: string | null) => void; }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 12, WebkitOverflowScrolling: 'touch' }}>
+      <button onClick={() => onSelect(null)}
+        style={{
+          padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+          background: selectedId === null ? 'rgba(233,185,73,0.12)' : vault.bgElev,
+          color: selectedId === null ? vault.gold : vault.textDim,
+          border: `1px solid ${selectedId === null ? 'rgba(233,185,73,0.3)' : vault.line}`,
+          fontSize: 12, fontWeight: 600, fontFamily: vault.fontSans, cursor: 'pointer',
+          transition: `all ${vault.durFast} ${vault.easeOut}`,
+        }}>All leagues</button>
+      {leagues.map(lg => (
+        <button key={lg.id} onClick={() => onSelect(lg.id)}
+          style={{
+            padding: '6px 12px', borderRadius: 999, whiteSpace: 'nowrap',
+            background: selectedId === lg.id ? 'rgba(233,185,73,0.12)' : vault.bgElev,
+            color: selectedId === lg.id ? vault.gold : vault.textDim,
+            border: `1px solid ${selectedId === lg.id ? 'rgba(233,185,73,0.3)' : vault.line}`,
+            fontSize: 12, fontWeight: 600, fontFamily: vault.fontSans, cursor: 'pointer',
+            transition: `all ${vault.durFast} ${vault.easeOut}`,
+          }}>{lg.name}</button>
+      ))}
+    </div>
+  );
+}
+
+// Achievement grid — 8 tiles, earned = gold, unearned = dimmed+grayscaled
+function AchievementGrid({ items }: { items: { id: string; icon: string; label: string; earned: boolean; detail: string; }[]; }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+      {items.map((a, i) => (
+        <div key={a.id} style={{
+          padding: 10,
+          background: a.earned ? 'rgba(233,185,73,0.08)' : vault.bgElev2,
+          border: `1px solid ${a.earned ? 'rgba(233,185,73,0.2)' : vault.line}`,
+          borderRadius: 10, textAlign: 'center',
+          opacity: a.earned ? 1 : 0.45,
+          animation: `vault_fadeIn 400ms ${vault.easeOut} ${i * 40}ms both`,
+          transition: `transform ${vault.durFast} ${vault.easeOut}, opacity ${vault.durFast} ${vault.easeOut}`,
+        }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}>
+          <div style={{ fontSize: 22, filter: a.earned ? 'none' : 'grayscale(1)' }}>{a.icon}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, marginTop: 4, color: a.earned ? vault.gold : vault.textMuted, letterSpacing: 0.5 }}>{a.label}</div>
+          <div style={{ fontSize: 9, color: vault.textMuted, fontFamily: vault.fontMono, marginTop: 2 }}>{a.detail}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Player archetype label derived from stats
+function vaultArchetype(p: { profit: number; dinners: number; streak: number; sessions: number; winPct: number; }) {
+  if (p.profit > 200 && p.winPct >= 40) return { label: 'The Shark', emoji: '🦈' };
+  if (p.dinners >= 3) return { label: 'The Closer', emoji: '🎯' };
+  if (p.streak >= 3) return { label: 'On a Heater', emoji: '🔥' };
+  if (p.profit < -100) return { label: 'The Donor', emoji: '🐟' };
+  if (p.winPct >= 50) return { label: 'The Grinder', emoji: '⚙️' };
+  if (p.sessions >= 10 && Math.abs(p.profit) < 50) return { label: 'Break-Even Bob', emoji: '🎲' };
+  return { label: 'The Regular', emoji: '🎲' };
+}
+
+// ─── ANALYTICS ENGINE ──────────────────────────────────────────
+
+type VaultTimeframe = 'week' | 'month' | 'season' | 'all';
+
+function usePlayerAnalytics(displayName: string, leagueFilter: string | null, timeframe: VaultTimeframe, myLeagues: any[]) {
+  const [state, setState] = useState<any>({ loading: true });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!db || !displayName) {
+        setState({ loading: false, empty: true });
+        return;
+      }
+      setState((s: any) => ({ ...s, loading: true }));
+
+      // 1. Player rows (per-league)
+      const { data: playerRows = [] } = await db.from("players")
+        .select("id,league_id,total_profit,session_count,wins,best_night,worst_night,time_played_seconds,chicken_dinners,is_commissioner")
+        .ilike("name", displayName);
+
+      // 2. Profile (archived stats, privacy)
+      const { data: profRow } = await db.from("profiles")
+        .select("archived_profit,archived_sessions,archived_wins,archived_best_night,archived_worst_night,archived_time_seconds,archived_chicken_dinners,archived_rebuys,total_rebuys,privacy_settings")
+        .ilike("display_name", displayName).single();
+
+      // 3. Friends count
+      const { data: fd = [] } = await db.from("friends")
+        .select("id,requester_name,recipient_name")
+        .or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`)
+        .eq("status", "accepted");
+
+      // 4. Session entries joined with sessions
+      const playerIds = (playerRows || []).map((p: any) => p.id);
+      let entries: any[] = [];
+      if (playerIds.length) {
+        const { data: seData = [] } = await db.from("session_entries")
+          .select("profit,rebuys,buy_in,cash_out,sessions!inner(id,notes,created_at,chicken_dinner_name,pot,duration_seconds,league_id,stats_committed)")
+          .eq("sessions.stats_committed", true)
+          .in("player_id", playerIds);
+        entries = seData || [];
+      }
+
+      if (cancelled) return;
+
+      // Filter by league
+      let filtered = entries;
+      if (leagueFilter) filtered = filtered.filter((e: any) => e.sessions?.league_id === leagueFilter);
+
+      // Filter by timeframe
+      const now = new Date();
+      const cutoff = new Date(now);
+      if (timeframe === 'week') cutoff.setDate(now.getDate() - 7);
+      else if (timeframe === 'month') cutoff.setDate(now.getDate() - 30);
+      else if (timeframe === 'season') cutoff.setDate(now.getDate() - 90);
+      else cutoff.setFullYear(1970);
+
+      const inframe = filtered.filter((e: any) => new Date(e.sessions?.created_at || 0) >= cutoff);
+
+      // Sort oldest → newest
+      const sorted = [...inframe].sort((a, b) => new Date(a.sessions?.created_at || 0).getTime() - new Date(b.sessions?.created_at || 0).getTime());
+      const reversed = [...sorted].reverse();
+
+      // Basic aggregates
+      const totalProfit = sorted.reduce((a, e: any) => a + (e.profit || 0), 0);
+      const games = sorted.length;
+      const wins = sorted.filter((e: any) => (e.profit || 0) > 0).length;
+      const winPct = games > 0 ? Math.round(wins / games * 100) : 0;
+      const lowerName = displayName.toLowerCase();
+      const dinners = sorted.filter((e: any) => (e.sessions?.chicken_dinner_name || "").toLowerCase() === lowerName).length;
+      const hoursPlayed = sorted.reduce((a, e: any) => a + ((e.sessions?.duration_seconds || 0) / 3600), 0);
+      const bestNight = sorted.length ? Math.max(0, ...sorted.map((e: any) => e.profit || 0)) : 0;
+      const worstNight = sorted.length ? Math.min(0, ...sorted.map((e: any) => e.profit || 0)) : 0;
+      const avgPerSesh = games > 0 ? totalProfit / games : 0;
+      const totalBuyIn = sorted.reduce((a, e: any) => a + (e.buy_in || 0) + (e.rebuys || 0) * (e.buy_in || 0), 0);
+      const roi = totalBuyIn > 0 ? (totalProfit / totalBuyIn) * 100 : 0;
+
+      // Current streak: walk backwards from most recent, count consecutive wins
+      let streak = 0;
+      for (const e of reversed) {
+        if ((e.profit || 0) > 0) streak++;
+        else break;
+      }
+
+      // Cumulative trend (running sum over sorted entries)
+      const trend: number[] = [];
+      let running = 0;
+      for (const e of sorted) {
+        running += (e.profit || 0);
+        trend.push(running);
+      }
+
+      // Per-session bars: most recent 12
+      const perSession = reversed.slice(0, 12).reverse().map((e: any) => e.profit || 0);
+
+      // Heatmap: last 12 weeks × 7 days (84 cells), day index = row, week index = col
+      // Cells are laid out row-major: cellIdx = day * 12 + week
+      const hmHoursRaw = new Array(84).fill(0);
+      const hmMoneyRaw = new Array(84).fill(0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay(); // 0=Sun..6=Sat
+      const mondayOffset = (dayOfWeek + 6) % 7; // 0 if Monday, 6 if Sunday
+      const thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() - mondayOffset);
+      const oldestMonday = new Date(thisMonday);
+      oldestMonday.setDate(thisMonday.getDate() - 11 * 7);
+
+      for (const e of inframe) {
+        const raw = e.sessions?.created_at;
+        if (!raw) continue;
+        const d = new Date(raw);
+        d.setHours(0, 0, 0, 0);
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysFromOldest = Math.floor((d.getTime() - oldestMonday.getTime()) / msPerDay);
+        if (daysFromOldest < 0 || daysFromOldest >= 84) continue;
+        const weekIdx = Math.floor(daysFromOldest / 7);
+        const dayIdx = daysFromOldest % 7;
+        if (weekIdx < 0 || weekIdx >= 12 || dayIdx < 0 || dayIdx >= 7) continue;
+        const cellIdx = dayIdx * 12 + weekIdx;
+        hmHoursRaw[cellIdx] += (e.sessions?.duration_seconds || 0) / 3600;
+        hmMoneyRaw[cellIdx] += Math.max(0, e.profit || 0);
+      }
+      const maxHours = Math.max(0.0001, ...hmHoursRaw);
+      const maxMoney = Math.max(0.0001, ...hmMoneyRaw);
+      const hoursLevels = hmHoursRaw.map(v => v === 0 ? 0 : Math.min(4, Math.ceil((v / maxHours) * 4)));
+      const moneyLevels = hmMoneyRaw.map(v => v === 0 ? 0 : Math.min(4, Math.ceil((v / maxMoney) * 4)));
+
+      // Is user a commissioner anywhere?
+      const isCommishSomewhere = (myLeagues || []).some((lg: any) => lg.commissioner_id === lg._myUserId);
+
+      // Achievements
+      const achievements = [
+        { id: 'dinners', icon: '🍗', label: 'Dinners', earned: dinners > 0, detail: `×${dinners}` },
+        { id: 'heater', icon: '🔥', label: 'Heater', earned: streak >= 3, detail: streak > 0 ? `${streak}W` : 'cold' },
+        { id: 'commish', icon: '👑', label: 'Commish', earned: isCommishSomewhere, detail: 'Host' },
+        { id: 'bignite', icon: '💰', label: 'Big nite', earned: bestNight >= 100, detail: bestNight > 0 ? `+$${Math.round(bestNight)}` : '—' },
+        { id: 'win50', icon: '🎯', label: '50%+', earned: winPct >= 50 && games >= 3, detail: games > 0 ? `${winPct}%` : '—' },
+        { id: 'fish', icon: '🐟', label: 'The fish', earned: totalProfit < -100, detail: 'Donor' },
+        { id: 'grinder', icon: '📈', label: 'Grinder', earned: games >= 10, detail: `${games}G` },
+        { id: 'shark', icon: '🦈', label: 'Shark', earned: totalProfit > 200, detail: totalProfit > 0 ? `+$${Math.round(totalProfit)}` : '—' },
+      ];
+
+      // Recent sessions (most recent 6)
+      const recent = reversed.slice(0, 6).map((e: any) => ({
+        id: e.sessions?.id,
+        date: e.sessions?.created_at,
+        notes: e.sessions?.notes || "Session",
+        profit: e.profit || 0,
+      }));
+
+      // Leagues you play in (for filter pills)
+      const leagueIds = Array.from(new Set((playerRows || []).map((p: any) => p.league_id)));
+      const leagues = leagueIds
+        .map((id: any) => (myLeagues || []).find((lg: any) => lg.id === id))
+        .filter(Boolean);
+
+      // Head-to-head rivals (only meaningful when a specific league is selected)
+      let rivals: any[] = [];
+      if (leagueFilter) {
+        const { data: rivalRows = [] } = await db.from("players")
+          .select("id,name,total_profit,session_count,wins")
+          .eq("league_id", leagueFilter)
+          .neq("name", displayName);
+        const myProfitInLeague = (playerRows || []).find((p: any) => p.league_id === leagueFilter)?.total_profit || 0;
+        rivals = (rivalRows || [])
+          .map((r: any) => ({
+            id: r.id, name: r.name,
+            sessions: r.session_count || 0,
+            delta: myProfitInLeague - (r.total_profit || 0),
+          }))
+          .sort((a: any, b: any) => Math.abs(b.delta) - Math.abs(a.delta))
+          .slice(0, 4);
+      }
+
+      // Radar: derived from this window's stats (not archived)
+      const radarData = [
+        { label: 'Aggression', value: Math.min(100, 40 + streak * 10 + dinners * 5) },
+        { label: 'Patience', value: Math.min(100, 30 + Math.max(0, games - wins) * 5) },
+        { label: 'Profit', value: Math.min(100, Math.max(10, 50 + totalProfit * 0.1)) },
+        { label: 'Volume', value: Math.min(100, games * 7) },
+        { label: 'Clutch', value: Math.min(100, 30 + winPct) },
+        { label: 'Swagger', value: Math.min(100, 20 + dinners * 15 + streak * 8) },
+      ].map(r => ({ ...r, value: Math.max(10, r.value) }));
+
+      const archetype = vaultArchetype({ profit: totalProfit, dinners, streak, sessions: games, winPct });
+
+      // Preserve all committed entries (unfiltered) so the existing BadgeRow
+      // can still compute its detailed badges from the raw stream.
+      const allEntriesSorted = [...entries].sort((a: any, b: any) =>
+        new Date(a.sessions?.created_at || 0).getTime() - new Date(b.sessions?.created_at || 0).getTime()
+      );
+
+      if (cancelled) return;
+      setState({
+        loading: false,
+        empty: games === 0,
+        totalProfit, games, wins, winPct, dinners, streak, hoursPlayed,
+        bestNight, worstNight, avgPerSesh, roi,
+        trend, perSession,
+        heatmap: { hours: hoursLevels, money: moneyLevels, rawHours: hmHoursRaw, rawMoney: hmMoneyRaw },
+        achievements, recent, rivals, radarData, archetype,
+        leagues, friendCount: (fd || []).length,
+        privacy: profRow?.privacy_settings || {},
+        allEntriesSorted,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [displayName, leagueFilter, timeframe]);
+
+  return state;
+}
+
+// ─── VAULT PROFILE VIEW ──────────────────────────────────────────
+
+function ProfileTabView({ profile, myLeagues, isSelf, externalName, onFriends, onLogout, onSendFriendRequest, onBack }: any) {
+  // Profile editing state
+  const [editing, setEditing] = useState(false);
+  const [newName, setNewName] = useState(profile?.display_name || "");
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [msg, setMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Analytics state
+  const displayName = isSelf ? profile.display_name : (externalName || profile.display_name);
+  const [timeframe, setTimeframe] = useState<VaultTimeframe>('season');
+  const [leagueFilter, setLeagueFilter] = useState<string | null>(null);
+  const [heatmapMetric, setHeatmapMetric] = useState<'hours' | 'money'>('hours');
+  const [isFriend, setIsFriend] = useState(false);
+
+  const a = usePlayerAnalytics(displayName, leagueFilter, timeframe, myLeagues);
+
+  // Lookup friend status (small side query to preserve existing behavior)
+  useEffect(() => {
+    if (isSelf || !db) return;
+    (async () => {
+      const { data: fd = [] } = await db.from("friends")
+        .select("id,requester_name,recipient_name")
+        .or(`requester_name.ilike.${displayName},recipient_name.ilike.${displayName}`)
+        .eq("status", "accepted");
+      const myName = profile.display_name.toLowerCase();
+      setIsFriend((fd || []).some((f: any) => f.requester_name.toLowerCase() === myName || f.recipient_name.toLowerCase() === myName));
+    })();
+  }, [isSelf, displayName]);
+
+  const handleSaveName = async () => {
+    if (!db || !newName.trim() || newName.trim() === profile.display_name) return;
+    setSavingName(true);
+    const { error } = await db.from("profiles").update({ display_name: newName.trim() }).eq("id", profile.id);
+    if (!error) {
+      bustAvatarCache(profile.display_name, profile.avatar_url);
+      bustAvatarCache(newName.trim(), profile.avatar_url);
+      profile.display_name = newName.trim();
+      setMsg("Name updated!"); setTimeout(() => setMsg(""), 3000);
+    }
+    setSavingName(false);
+  };
+  const handleAvatar = async (e: any) => {
+    const f = e.target.files?.[0]; if (!f || !db) return;
+    setUploadingAvatar(true);
+    try {
+      const ext = f.name.split('.').pop();
+      const path = `${profile.id}/avatar.${ext}`;
+      await db.storage.from("avatars").upload(path, f, { upsert: true });
+      const { data: ud } = db.storage.from("avatars").getPublicUrl(path);
+      const url = ud.publicUrl + "?t=" + Date.now();
+      await db.from("profiles").update({ avatar_url: url }).eq("id", profile.id);
+      bustAvatarCache(profile.display_name, url);
+      profile.avatar_url = url;
+      setMsg("Photo updated!"); setTimeout(() => setMsg(""), 3000);
+    } finally { setUploadingAvatar(false); }
+  };
+
+  // Count-up animations for stat tiles (hooks must always run)
+  const cuPL = useCountUp(Math.abs(Math.round(a.totalProfit || 0)), 1150, !a.loading);
+  const cuGames = useCountUp(a.games || 0, 900, !a.loading);
+  const cuWinPct = useCountUp(a.winPct || 0, 1000, !a.loading);
+  const cuDinners = useCountUp(a.dinners || 0, 900, !a.loading);
+  const cuStreak = useCountUp(a.streak || 0, 900, !a.loading);
+
+  const isProfit = (a.totalProfit || 0) >= 0;
+  const trendColor = isProfit ? vault.green : vault.red;
+  const biggestWin = a.perSession ? Math.max(0, ...a.perSession) : 0;
+  const biggestLoss = a.perSession ? Math.min(0, ...a.perSession) : 0;
+  const dispPL = a.totalProfit >= 0 ? `+$${cuPL}` : `−$${cuPL}`;
+  const selectedLeague = leagueFilter ? (myLeagues || []).find((lg: any) => lg.id === leagueFilter) : null;
+  const subtitle = selectedLeague
+    ? (selectedLeague.commissioner_id === selectedLeague._myUserId ? `Commissioner · ${selectedLeague.name}` : selectedLeague.name)
+    : `${(a.leagues || []).length || 0} leagues · ${a.friendCount || 0} friends`;
+
+  const isOtherAndHidden = !isSelf && a.privacy?.hide_stats;
+
+  return (
+    <div style={{
+      background: vault.bg, minHeight: '100vh', color: vault.text,
+      fontFamily: vault.fontSans, paddingBottom: 88,
+    }}>
+      <VaultStyles />
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '16px 20px 32px' }}>
+        {/* Header */}
+        <div className="vault-fade-in" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, minHeight: 44 }}>
+          {!isSelf && onBack && (
+            <button onClick={onBack} aria-label="Back"
+              style={{ background: vault.bgElev, border: `1px solid ${vault.line}`, color: vault.text, borderRadius: 10, padding: '6px 10px', cursor: 'pointer', fontSize: 16 }}>←</button>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {isSelf && editing ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={newName} onChange={e => setNewName(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', background: vault.bgElev, border: `1px solid ${vault.line2}`, borderRadius: 10, color: vault.text, fontSize: 20, fontFamily: vault.fontSerif }} />
+                <button onClick={handleSaveName} disabled={savingName || !newName.trim() || newName.trim() === profile.display_name}
+                  style={{ padding: '8px 12px', background: 'rgba(233,185,73,0.15)', border: '1px solid rgba(233,185,73,0.3)', borderRadius: 9, color: vault.gold, fontFamily: vault.fontMono, fontSize: 12, cursor: 'pointer' }}>
+                  {savingName ? "…" : "✓"}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: vault.fontSerif, fontSize: 28, fontWeight: 500, letterSpacing: -0.5, lineHeight: 1.1 }}>{displayName}</div>
+                <div style={{ color: vault.textDim, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
+              </>
+            )}
+            {msg && <div style={{ color: vault.green, fontSize: 10, fontFamily: vault.fontMono, marginTop: 4 }}>✓ {msg}</div>}
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Avatar name={displayName} url={isSelf ? profile.avatar_url : null} size={56} />
+            {isSelf && editing && (
+              <button onClick={() => fileRef.current?.click()}
+                style={{ position: 'absolute', bottom: -4, right: -4, width: 26, height: 26, borderRadius: '50%', background: vault.gold, border: `2px solid ${vault.bg}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                {uploadingAvatar ? <Spinner size={11} /> : <Icon name="camera" size={13} color="#0A0A0A" />}
+              </button>
+            )}
+            {isSelf && <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatar} style={{ display: 'none' }} />}
+          </div>
+        </div>
+
+        {/* Action row: friends / edit / add-friend */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, justifyContent: 'flex-end' }}>
+          {isSelf && (
+            <>
+              <button onClick={onFriends}
+                style={{ padding: '6px 12px', background: vault.bgElev, border: `1px solid ${vault.line}`, borderRadius: 999, color: vault.textDim, fontFamily: vault.fontMono, fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
+                FRIENDS · {a.friendCount || 0}
+              </button>
+              <button onClick={() => setEditing(!editing)}
+                style={{ padding: '6px 12px', background: editing ? 'rgba(233,185,73,0.15)' : vault.bgElev, border: `1px solid ${editing ? 'rgba(233,185,73,0.3)' : vault.line}`, borderRadius: 999, color: editing ? vault.gold : vault.textDim, fontFamily: vault.fontMono, fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
+                {editing ? 'DONE' : 'EDIT'}
+              </button>
+            </>
+          )}
+          {!isSelf && !isFriend && (
+            <button onClick={() => onSendFriendRequest && onSendFriendRequest(displayName)}
+              style={{ padding: '6px 14px', background: 'rgba(233,185,73,0.1)', border: '1px solid rgba(233,185,73,0.3)', borderRadius: 999, color: vault.gold, fontFamily: vault.fontMono, fontSize: 10, cursor: 'pointer', letterSpacing: 1 }}>+ ADD FRIEND</button>
+          )}
+          {!isSelf && isFriend && (
+            <span style={{ padding: '6px 14px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 999, color: vault.green, fontFamily: vault.fontMono, fontSize: 10 }}>● Friends</span>
+          )}
+        </div>
+
+        {/* League filter pills */}
+        {(a.leagues || []).length > 1 && (
+          <LeaguePills leagues={a.leagues || []} selectedId={leagueFilter} onSelect={setLeagueFilter} />
+        )}
+
+        {/* Privacy gate */}
+        {isOtherAndHidden ? (
+          <div style={{ ...vaultCard, textAlign: 'center', padding: 28 }}>
+            <div style={{ color: vault.textDim, fontFamily: vault.fontMono, fontSize: 11, letterSpacing: 1.5 }}>🔒 THIS PLAYER'S STATS ARE PRIVATE</div>
+          </div>
+        ) : a.loading ? (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div className="vault-shimmer" style={{ height: 230, borderRadius: 16, border: `1px solid ${vault.line}` }} />
+            <div className="vault-shimmer" style={{ height: 90, borderRadius: 16, border: `1px solid ${vault.line}` }} />
+            <div className="vault-shimmer" style={{ height: 180, borderRadius: 16, border: `1px solid ${vault.line}` }} />
+          </div>
+        ) : (
+          <>
+            {/* HERO — Season P/L with timeframe pills + area chart */}
+            <div className="vault-slide-up" style={{ ...vaultCard, marginBottom: 12, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% 0%, ${trendColor}15, transparent 60%)`, pointerEvents: 'none' }} />
+              <div style={{ position: 'relative' }}>
+                <TimeframePills value={timeframe} onChange={setTimeframe} />
+                <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600, marginTop: 14 }}>
+                  {timeframe === 'week' ? 'Week' : timeframe === 'month' ? 'Month' : timeframe === 'season' ? 'Season' : 'All-time'} P/L
+                </div>
+                <div key={`pl-${timeframe}-${leagueFilter}`} style={{ fontFamily: vault.fontSerif, fontSize: 56, fontWeight: 500, color: trendColor, marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1, animation: `vault_fadeIn 500ms ${vault.easeOut}` }}>
+                  {dispPL}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginTop: 6, color: vault.textDim, fontSize: 12, fontFamily: vault.fontMono }}>
+                  <span>ROI {Math.round(a.roi || 0)}%</span>
+                  <span style={{ color: vault.line2 }}>│</span>
+                  <span style={{ color: isProfit ? vault.green : vault.red }}>
+                    {isProfit ? '▲' : '▼'} ${Math.abs(Math.round(a.avgPerSesh || 0))}/sesh
+                  </span>
+                </div>
+                <div style={{ marginTop: 14 }} key={`chart-${timeframe}-${leagueFilter}`}>
+                  <BankrollChart data={a.trend || []} color={trendColor} width={320} height={90} />
+                </div>
+              </div>
+            </div>
+
+            {/* PRIMARY STAT TILES */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
+              <MiniStat label="Games" value={cuGames} sub="played" />
+              <MiniStat label="Win %" value={cuWinPct} unit="%" color={a.winPct >= 50 ? vault.green : vault.textDim} sub={`${a.wins || 0}W`} />
+              <MiniStat label="🍗" value={cuDinners} sub="dinners" color={vault.gold} />
+              <MiniStat label="Streak" value={a.streak > 0 ? cuStreak : '—'} sub={a.streak > 0 ? 'wins' : 'cold'} color={a.streak >= 3 ? '#FF6B35' : vault.text} />
+            </div>
+
+            {/* PER-SESSION P/L BARS */}
+            <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div>
+                  <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600 }}>Per-session P/L</div>
+                  <div style={{ color: vault.textDim, fontSize: 12, marginTop: 2 }}>Last {(a.perSession || []).length} sessions</div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: vault.fontMono }}>
+                  <div><span style={{ color: vault.green }}>▲</span> <span style={{ color: vault.textDim }}>best </span><span style={{ color: vault.green }}>${Math.round(biggestWin)}</span></div>
+                  <div><span style={{ color: vault.red }}>▼</span> <span style={{ color: vault.textDim }}>worst </span><span style={{ color: vault.red }}>−${Math.abs(Math.round(biggestLoss))}</span></div>
+                </div>
+              </div>
+              <div key={`bars-${timeframe}-${leagueFilter}`}>
+                <SessionBars data={a.perSession || []} />
+              </div>
+            </div>
+
+            {/* PLAY STYLE RADAR */}
+            {a.games >= 3 && (
+              <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600 }}>Play style</div>
+                    <div style={{ fontFamily: vault.fontSerif, fontSize: 18, marginTop: 2 }}>{a.archetype?.label}</div>
+                  </div>
+                  <div style={{ fontSize: 26 }}>{a.archetype?.emoji}</div>
+                </div>
+                <RadarChart data={a.radarData || []} color={vault.gold} size={220} />
+              </div>
+            )}
+
+            {/* HEAD-TO-HEAD (only when a league is selected) */}
+            {leagueFilter && (a.rivals || []).length > 0 && (
+              <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+                <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600, marginBottom: 12 }}>Head-to-head</div>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {(a.rivals || []).map((r: any) => {
+                    const max = Math.max(1, ...(a.rivals || []).map((x: any) => Math.abs(x.delta)));
+                    return (
+                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={r.name} size={32} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>vs {r.name}</div>
+                          <div style={{ color: vault.textMuted, fontSize: 11, fontFamily: vault.fontMono }}>{r.sessions}G</div>
+                        </div>
+                        <ProfitBar value={r.delta} max={max} width={100} />
+                        <div style={{ color: r.delta >= 0 ? vault.green : vault.red, fontFamily: vault.fontMono, fontWeight: 600, fontSize: 13, minWidth: 56, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtProfit(r.delta)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ACTIVITY HEATMAP */}
+            <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+              <ActivityHeatmap cells={a.heatmap || { hours: [], money: [], rawHours: [], rawMoney: [] }} metric={heatmapMetric} onMetricChange={setHeatmapMetric} />
+            </div>
+
+            {/* ACHIEVEMENTS */}
+            <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+              <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600, marginBottom: 12 }}>Achievements</div>
+              <AchievementGrid items={a.achievements || []} />
+            </div>
+
+            {/* RECENT SESSIONS */}
+            <div className="vault-fade-in" style={{ ...vaultCard, padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ padding: '12px 16px', color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, borderBottom: `1px solid ${vault.line}`, fontWeight: 600 }}>Recent sessions</div>
+              {(a.recent || []).length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: vault.textMuted, fontFamily: vault.fontMono, fontSize: 12 }}>No sessions in this window</div>
+              ) : (
+                (a.recent || []).map((s: any, i: number) => (
+                  <div key={s.id || i} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: i < (a.recent.length - 1) ? `1px solid ${vault.line}` : 'none' }}>
+                    <div style={{ width: 4, height: 36, background: s.profit >= 0 ? vault.green : vault.red, borderRadius: 2 }} />
+                    <div style={{ color: vault.textDim, fontSize: 12, minWidth: 52, fontFamily: vault.fontMono }}>
+                      {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                    <div style={{ flex: 1, fontSize: 13, color: vault.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.notes}</div>
+                    <div style={{ color: s.profit >= 0 ? vault.green : vault.red, fontFamily: vault.fontMono, fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtProfit(s.profit)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Full badges / achievements section from existing system — preserved below */}
+            {!a.loading && (
+              <BadgeRow
+                allStats={{
+                  total_profit: a.totalProfit, sessions: a.games, wins: a.wins,
+                  best_night: a.bestNight, worst_night: a.worstNight,
+                  chicken_dinners: a.dinners, rebuys: 0,
+                  time_seconds: (a.hoursPlayed || 0) * 3600,
+                  avg: a.avgPerSesh, leagues: (a.leagues || []).length,
+                  privacy: a.privacy,
+                }}
+                sessionEntries={a.allEntriesSorted || []}
+                friendCount={a.friendCount}
+                displayName={displayName}
+              />
+            )}
+
+            {/* Leagues list — only for self view */}
+            {isSelf && (myLeagues || []).length > 0 && (
+              <div className="vault-fade-in" style={{ ...vaultCard, marginBottom: 12 }}>
+                <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600, marginBottom: 12 }}>My leagues</div>
+                {myLeagues.map((lg: any, i: number) => (
+                  <div key={lg.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < myLeagues.length - 1 ? `1px solid ${vault.line}` : 'none' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: lg.is_public ? 'rgba(138,180,255,0.1)' : 'rgba(233,185,73,0.1)', border: `1px solid ${lg.is_public ? 'rgba(138,180,255,0.2)' : 'rgba(233,185,73,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: lg.is_public ? vault.blue : vault.gold }}>
+                      {lg.is_public ? '◎' : '♠'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: vault.text, fontSize: 13, fontWeight: 500 }}>{lg.name}</div>
+                      <div style={{ color: vault.textMuted, fontSize: 11, fontFamily: vault.fontMono }}>{lg.season || 'Season'}</div>
+                    </div>
+                    {lg.commissioner_id === lg._myUserId && (
+                      <span style={{ color: vault.gold, fontSize: 16 }}>♛</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Edit panel — only when editing */}
+            {isSelf && editing && (
+              <>
+                <div style={{ ...vaultCard, marginBottom: 10 }}>
+                  <div style={{ color: vault.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600, marginBottom: 10 }}>Account</div>
+                  <div style={{ color: vault.textDim, fontSize: 12, fontFamily: vault.fontMono, marginBottom: 6 }}>{profile.email}</div>
+                  <div style={{ color: vault.textMuted, fontSize: 11, lineHeight: 1.6 }}>To change your password, sign out and use "Forgot password?"</div>
+                </div>
+                <button onClick={onLogout}
+                  style={{ width: '100%', padding: '13px 0', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 11, color: vault.red, fontFamily: vault.fontMono, fontWeight: 700, fontSize: 12, letterSpacing: 2, cursor: 'pointer' }}>SIGN OUT</button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INSTALLATION INSTRUCTIONS
+// ═══════════════════════════════════════════════════════════════════
+//
+// 1. index.html — add the Vault fonts. In the <head>, REPLACE your
+//    existing Google Fonts <link> with:
+//
+//    <link rel="preconnect" href="https://fonts.googleapis.com">
+//    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+//    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+//
+//    (Playfair Display and Space Mono are kept as fallbacks during the
+//    transition so nothing else in the app breaks.)
+//
+// 2. App.tsx — find the line that starts:
+//
+//       function ProfileTabView({profile,myLeagues,isSelf, ...
+//
+//    It's currently around line 1787. Select from that line all the way
+//    down through its closing `}` (the one that ends the function, around
+//    line 1909 — right before `// ─── FRIENDS ─────`). Delete that entire
+//    block and paste this entire file in its place.
+//
+// 3. Build + deploy:
+//       npm run build
+//       git add .
+//       git commit -m "Vault profile redesign + analytics engine (phase 1)"
+//       git push
+//
+//    Netlify auto-deploys in ~60s.
+//
+// ═══════════════════════════════════════════════════════════════════
 
 // ─── FRIENDS ───────────────────────────────────────────
 function FriendsView({profile,onBack,onViewFriendProfile}:any){
